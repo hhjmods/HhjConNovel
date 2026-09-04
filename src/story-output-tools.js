@@ -1,4 +1,5 @@
-import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-2';
+import { getOne, putOne } from './db.js';
+import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-3';
 
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');
@@ -6,13 +7,41 @@ const editorActions = document.querySelector('.editor-header > div:last-child');
 const addTextButton = document.getElementById('addTextBtn');
 const clearStoryButton = document.getElementById('clearStoryBtn');
 const toolbar = document.querySelector('.text-format-toolbar');
+const IMAGE_MEMO_DOC_ID = 'image-marker-memo-v1';
+
+let imageMemoDoc = { id: IMAGE_MEMO_DOC_ID, version: 1, items: {}, updatedAt: Date.now() };
+let imageMemoLoaded = false;
+let imageMemoSaveTimer = null;
+let imageMemoSaveChain = Promise.resolve();
+const imageMemoEditedBeforeLoad = new Set();
 
 const style = document.createElement('style');
 style.id = 'story-output-tools-style';
 style.textContent = `
-.story-image-source{display:none!important}.story-image-placeholder{width:100%;display:inline-grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center;padding:7px 8px!important;background:rgba(255,184,77,.10)!important;border-color:#765d32!important}.story-image-placeholder>.story-drag-handle{grid-column:1;grid-row:1;min-width:24px;width:24px;align-self:stretch;cursor:grab;color:var(--muted)}.story-image-placeholder>.story-image-label{grid-column:2;grid-row:1;padding:8px 12px;border-radius:7px;background:rgba(255,184,77,.08);display:flex;flex-direction:column;gap:4px;text-align:center;color:#ffd58c}.story-image-placeholder>.story-image-label strong{font-weight:700}.story-image-placeholder>.story-image-label small{font-size:10px;line-height:1.4;font-weight:400;color:var(--muted)}.story-image-placeholder>.story-tools{grid-column:3;grid-row:1}.story-html-toggle{margin-left:auto;white-space:nowrap}.text-format-toolbar.html-preview-active>:not(.story-html-toggle){opacity:.4;pointer-events:none}.editor-panel.html-preview-mode>.story-list,.editor-panel.html-preview-mode>.story-drop-zone{display:none!important}.story-html-preview{flex:1;min-height:180px;margin:10px;padding:12px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:#0f141b;color:var(--text);font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;tab-size:2;user-select:text}.story-html-preview[hidden]{display:none!important}.story-detail-stats{min-height:34px;padding:7px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:12px}.story-detail-stats strong{color:var(--text);font-weight:600}:root[data-theme="light"] .story-image-placeholder{background:#fff8e8!important;border-color:#d7b66b!important}:root[data-theme="light"] .story-image-placeholder>.story-image-label{background:#fff2cf;color:#815800}:root[data-theme="light"] .story-html-preview{background:#fff;color:var(--text)}
+.story-image-source{display:none!important}.story-image-placeholder{width:100%;display:inline-grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center;padding:7px 8px!important;background:rgba(255,184,77,.10)!important;border-color:#765d32!important}.story-image-placeholder>.story-drag-handle{grid-column:1;grid-row:1;min-width:24px;width:24px;align-self:stretch;cursor:grab;color:var(--muted)}.story-image-placeholder>.story-image-label{grid-column:2;grid-row:1;padding:8px 12px;border-radius:7px;background:rgba(255,184,77,.08);display:flex;flex-direction:column;gap:5px;text-align:center;color:#ffd58c}.story-image-placeholder>.story-image-label strong{font-weight:700}.story-image-placeholder>.story-image-label small{font-size:10px;line-height:1.4;font-weight:400;color:var(--muted)}.story-image-memo-input{width:min(100%,560px);align-self:center;padding:6px 8px;font-size:12px}.story-image-placeholder>.story-tools{grid-column:3;grid-row:1}.story-html-toggle{margin-left:auto;white-space:nowrap}.text-format-toolbar.html-preview-active>:not(.story-html-toggle){opacity:.4;pointer-events:none}.editor-panel.html-preview-mode>.story-list,.editor-panel.html-preview-mode>.story-drop-zone{display:none!important}.story-html-preview{flex:1;min-height:180px;margin:10px;padding:12px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:#0f141b;color:var(--text);font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;tab-size:2;user-select:text}.story-html-preview[hidden]{display:none!important}.story-detail-stats{min-height:34px;padding:7px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:12px}.story-detail-stats strong{color:var(--text);font-weight:600}:root[data-theme="light"] .story-image-placeholder{background:#fff8e8!important;border-color:#d7b66b!important}:root[data-theme="light"] .story-image-placeholder>.story-image-label{background:#fff2cf;color:#815800}:root[data-theme="light"] .story-html-preview{background:#fff;color:var(--text)}
 `;
 document.head.append(style);
+
+function queueImageMemoSave() {
+  clearTimeout(imageMemoSaveTimer);
+  imageMemoSaveTimer = setTimeout(() => {
+    imageMemoDoc.updatedAt = Date.now();
+    const snapshot = structuredClone(imageMemoDoc);
+    imageMemoSaveChain = imageMemoSaveChain.catch(() => {}).then(() => putOne('documents', snapshot));
+  }, 160);
+}
+
+function setImageMemo(storyId, value) {
+  const text = String(value ?? '');
+  if (!imageMemoLoaded) imageMemoEditedBeforeLoad.add(storyId);
+  if (text.trim()) imageMemoDoc.items[storyId] = { text, updatedAt: Date.now() };
+  else delete imageMemoDoc.items[storyId];
+  queueImageMemoSave();
+}
+
+function savedImageMemo(storyId) {
+  return String(imageMemoDoc.items?.[storyId]?.text || '');
+}
 
 function forwardDrop(target, dataTransfer) {
   if (!target || !dataTransfer) return;
@@ -80,6 +109,28 @@ function ensureImageDragHandle(row) {
   row.prepend(handle);
 }
 
+function ensureImageMemoInput(row, label) {
+  const storyId = row.dataset.storyId;
+  if (!storyId) return null;
+  let input = label.querySelector(':scope > .story-image-memo-input');
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'story-image-memo-input';
+    input.placeholder = '어떤 이미지인지 메모를 입력하세요.';
+    input.setAttribute('aria-label', '이미지 자료 메모');
+    input.autocomplete = 'off';
+    input.draggable = false;
+    input.addEventListener('pointerdown', event => event.stopPropagation());
+    input.addEventListener('click', event => event.stopPropagation());
+    input.addEventListener('dragstart', event => event.stopPropagation());
+    input.addEventListener('input', () => setImageMemo(storyId, input.value));
+    label.append(input);
+  }
+  if (imageMemoLoaded && document.activeElement !== input) input.value = savedImageMemo(storyId);
+  return input;
+}
+
 function decorateImageRow(row) {
   const textarea = row.querySelector(':scope > textarea');
   if (!textarea || textarea.value !== IMAGE_SENTINEL) return false;
@@ -92,8 +143,9 @@ function decorateImageRow(row) {
   textarea.classList.add('story-image-source');
   row.dataset.richTextReady = 'image';
   ensureImageDragHandle(row);
-  if (!row.querySelector(':scope > .story-image-label')) {
-    const label = document.createElement('div');
+  let label = row.querySelector(':scope > .story-image-label');
+  if (!label) {
+    label = document.createElement('div');
     label.className = 'story-image-label';
     const title = document.createElement('strong');
     title.textContent = '이미지 자료 위치 마커';
@@ -102,6 +154,7 @@ function decorateImageRow(row) {
     label.append(title, help);
     row.insertBefore(label, row.querySelector(':scope > .story-tools') || null);
   }
+  ensureImageMemoInput(row, label);
   row.title = IMAGE_PLACEHOLDER_TEXT;
   return true;
 }
@@ -195,5 +248,24 @@ observer.observe(storyList, { childList: true });
 storyList.addEventListener('input', () => scheduleRefresh());
 storyList.addEventListener('change', () => scheduleRefresh());
 storyList.addEventListener('click', () => scheduleRefresh(0));
+
+getOne('documents', IMAGE_MEMO_DOC_ID).then(saved => {
+  if (saved?.items && typeof saved.items === 'object') {
+    const edited = structuredClone(imageMemoDoc.items);
+    imageMemoDoc = saved;
+    imageMemoEditedBeforeLoad.forEach(storyId => {
+      if (edited[storyId]) imageMemoDoc.items[storyId] = edited[storyId];
+      else delete imageMemoDoc.items[storyId];
+    });
+  }
+  imageMemoLoaded = true;
+  decorateImages();
+  scheduleRefresh(0);
+}).catch(() => {
+  imageMemoLoaded = true;
+  decorateImages();
+  scheduleRefresh(0);
+});
+
 decorateImages();
 scheduleRefresh(0);

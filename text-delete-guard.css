@@ -1,0 +1,16 @@
+.story-text.text-delete-confirming {
+  border-color: #d94f63 !important;
+  box-shadow: 0 0 0 1px rgba(217, 79, 99, .35);
+}
+
+.story-text .text-delete-armed {
+  border-color: #d94f63 !important;
+  background: rgba(217, 79, 99, .18) !important;
+  color: #ff9bab !important;
+  box-shadow: inset 0 0 0 1px #d94f63;
+}
+
+:root[data-theme="light"] .story-text .text-delete-armed {
+  background: #fde9ec !important;
+  color: #b42335 !important;
+}

@@ -3,6 +3,7 @@ const storyList = document.getElementById('storyList');
 if (storyList) {
   let activeDragKind = null;
   let sourceRow = null;
+  let movingStoryIds = new Set();
   let guide = null;
   let activeBoundary = null;
   let forwardingDrop = false;
@@ -15,16 +16,26 @@ if (storyList) {
     return guide;
   }
 
+  function isMovingRow(row) {
+    return Boolean(row?.dataset?.storyId && movingStoryIds.has(row.dataset.storyId));
+  }
+
   function previousStoryItem(node) {
     let current = node?.previousElementSibling || null;
-    while (current && !current.classList.contains('story-item')) current = current.previousElementSibling;
-    return current;
+    while (current) {
+      if (current.classList.contains('story-item') && !isMovingRow(current)) return current;
+      current = current.previousElementSibling;
+    }
+    return null;
   }
 
   function nextStoryItem(node) {
     let current = node?.nextElementSibling || null;
-    while (current && !current.classList.contains('story-item')) current = current.nextElementSibling;
-    return current;
+    while (current) {
+      if (current.classList.contains('story-item') && !isMovingRow(current)) return current;
+      current = current.nextElementSibling;
+    }
+    return null;
   }
 
   function dragKindFromTarget(target) {
@@ -33,6 +44,24 @@ if (storyList) {
     if (storyItem?.classList.contains('story-text') || storyItem?.classList.contains('story-image-placeholder')) return 'block';
     if (target?.closest?.('.con-card')) return 'con';
     return null;
+  }
+
+  function captureMovingRows(kind, row) {
+    movingStoryIds = new Set();
+    if (!row?.dataset.storyId) return;
+
+    if (kind === 'con' && row.classList.contains('selected')) {
+      storyList.querySelectorAll(':scope > .story-con.selected[data-story-id]').forEach(item => {
+        movingStoryIds.add(item.dataset.storyId);
+      });
+      if (movingStoryIds.size) return;
+    }
+
+    movingStoryIds.add(row.dataset.storyId);
+  }
+
+  function logicalRows() {
+    return [...storyList.querySelectorAll(':scope > .story-item')].filter(row => !isMovingRow(row));
   }
 
   function hideGuide() {
@@ -82,7 +111,7 @@ if (storyList) {
   }
 
   function nearestRow(clientX, clientY) {
-    const rows = [...storyList.querySelectorAll(':scope > .story-item')].filter(row => row !== sourceRow);
+    const rows = logicalRows();
     if (!rows.length) return null;
     let best = null;
     let bestDistance = Infinity;
@@ -100,8 +129,7 @@ if (storyList) {
   }
 
   function isLowerTailPoint(clientY) {
-    const rows = [...storyList.querySelectorAll(':scope > .story-item')];
-    const last = rows.at(-1);
+    const last = logicalRows().at(-1);
     if (!last) return true;
     return clientY >= last.getBoundingClientRect().bottom;
   }
@@ -139,14 +167,14 @@ if (storyList) {
 
   function showBlankPointBoundary(event) {
     if (isLowerTailPoint(event.clientY)) {
-      const rows = [...storyList.querySelectorAll(':scope > .story-item')];
+      const rows = logicalRows();
       showBoundary(rows.at(-1) || null, null);
       return;
     }
 
     if (activeDragKind === 'con') {
       const sameLineCons = [...storyList.querySelectorAll(':scope > .story-con')]
-        .filter(row => row !== sourceRow)
+        .filter(row => !isMovingRow(row))
         .filter(row => {
           const rect = row.getBoundingClientRect();
           return event.clientY >= rect.top - 4 && event.clientY <= rect.bottom + 4;
@@ -193,15 +221,14 @@ if (storyList) {
 
     const tail = event.target.closest('.story-tail-drop');
     if (tail) {
-      const rows = [...storyList.querySelectorAll(':scope > .story-item')];
+      const rows = logicalRows();
       showBoundary(rows.at(-1) || null, null);
       return;
     }
 
     let row = event.target.closest('.story-item');
-    if (row === sourceRow) {
-      if (activeDragKind === 'con') showBoundary(previousStoryItem(row), row);
-      else showHorizontal(row.getBoundingClientRect().top);
+    if (isMovingRow(row)) {
+      showBoundary(previousStoryItem(row), nextStoryItem(row));
       return;
     }
 
@@ -231,6 +258,7 @@ if (storyList) {
     if (!kind) return;
     activeDragKind = kind;
     sourceRow = event.target?.closest?.('.story-item') || null;
+    captureMovingRows(kind, sourceRow);
     storyList.classList.add('story-guide-dragging');
     if (kind === 'con') storyList.classList.add('story-con-dragging');
     if (kind === 'block') {
@@ -257,6 +285,9 @@ if (storyList) {
     const types = event.dataTransfer?.types;
     if (!types?.includes('application/x-hhjstory-ids') && !types?.includes('application/x-hhjcon-ids')) return;
 
+    const directRow = event.target.closest?.('.story-item');
+    if (isMovingRow(directRow)) return;
+
     const target = activeBoundary.next || storyList.querySelector(':scope > .story-tail-drop');
     if (!target) return;
     if (event.target === target || target.contains(event.target)) return;
@@ -278,6 +309,7 @@ if (storyList) {
     storyList.classList.remove('story-guide-dragging', 'story-block-dragging', 'story-con-dragging');
     activeDragKind = null;
     sourceRow = null;
+    movingStoryIds = new Set();
   }
 
   document.addEventListener('dragend', finishDrag, true);

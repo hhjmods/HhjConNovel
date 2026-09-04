@@ -6,6 +6,7 @@
   <title>HhjConNovel</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./story-multiselect.css">
+  <link rel="stylesheet" href="./workspace-enhancements.css">
 </head>
 <body>
   <header class="topbar">
@@ -16,7 +17,7 @@
     <div class="top-actions">
       <div class="dc-connect-box">
         <input id="dcWriteUrlInput" type="url" placeholder="DC 글쓰기 페이지 주소" autocomplete="off" spellcheck="false">
-        <a class="file-button" href="./bridge/hhjcon-dc-bridge.user.js?v=0.5.0" target="_blank" rel="noopener">DC 브리지 설치</a>
+        <a class="file-button" href="./bridge/hhjcon-dc-bridge.user.js?v=0.6.0" target="_blank" rel="noopener">DC 브리지 설치</a>
         <a class="helper-link" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey 설치</a>
         <a class="helper-link" href="https://github.com/hhjmods/HhjConNovel/blob/main/USAGE.md" target="_blank" rel="noopener">사용법</a>
         <button id="syncDcBtn" class="primary">DC 동기화</button>
@@ -72,5 +73,7 @@
   <script type="module" src="./src/story-drag-guard.js"></script>
   <script type="module" src="./src/collection-missing-ui.js"></script>
   <script type="module" src="./src/app.js"></script>
+  <script type="module" src="./src/library-workspace.js"></script>
+  <script type="module" src="./src/story-insertion.js"></script>
 </body>
 </html>

@@ -23,10 +23,15 @@ function applyMetadataToCard(card) {
   const id = card.dataset.conId;
   const meta = refMetaByConId.get(id);
   if (!meta) return false;
+
   const label = card.querySelector('span');
-  if (label && meta.name) label.textContent = meta.name;
-  card.dataset.packageName = meta.packageName || '';
-  card.title = `${meta.name || '미보유 디시콘'}\n${meta.packageName ? `디시콘 묶음: ${meta.packageName}` : '원본 디시콘 묶음 이름을 확인할 수 없습니다.'}`;
+  const nextName = String(meta.name || '미보유 디시콘');
+  const nextPackageName = String(meta.packageName || '');
+  const nextTitle = `${nextName}\n${nextPackageName ? `디시콘 묶음: ${nextPackageName}` : '원본 디시콘 묶음 이름을 확인할 수 없습니다.'}`;
+
+  if (label && label.textContent !== nextName) label.textContent = nextName;
+  if (card.dataset.packageName !== nextPackageName) card.dataset.packageName = nextPackageName;
+  if (card.title !== nextTitle) card.title = nextTitle;
   return true;
 }
 

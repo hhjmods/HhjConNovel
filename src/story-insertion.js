@@ -1,10 +1,12 @@
 import { getOne, putOne } from './db.js';
 
+const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const storyList = document.getElementById('storyList');
 const storyDropZone = document.getElementById('storyDropZone');
 const editorActions = document.querySelector('.editor-header > div:last-child');
+const addTextButton = document.getElementById('addTextBtn');
 
-if (storyList && editorActions) {
+if (storyList && editorActions && addTextButton) {
   const breakButton = document.createElement('button');
   breakButton.className = 'small';
   breakButton.textContent = '+ 줄바꿈';
@@ -20,9 +22,9 @@ if (storyList && editorActions) {
     target.dispatchEvent(forwarded);
   }
 
-  function makeInsertSlot(target) {
+  function makeInsertSlot(target, mode) {
     const slot = document.createElement('div');
-    slot.className = 'story-insert-slot';
+    slot.className = `story-insert-slot ${mode}`;
     slot.title = '이 위치에 삽입';
     slot.addEventListener('dragenter', event => {
       event.preventDefault();
@@ -43,36 +45,30 @@ if (storyList && editorActions) {
     return slot;
   }
 
-  async function removeBreak(id) {
-    const story = await getOne('documents', 'current');
-    if (!story?.items) return;
-    story.items = story.items.filter(item => String(item.id) !== String(id));
-    story.updatedAt = Date.now();
-    await putOne('documents', story);
-    location.reload();
-  }
-
-  function decorateBreak(row) {
-    if (row.dataset.breakDecorated === '1') return;
-    row.dataset.breakDecorated = '1';
+  function addBreakDrag(row) {
+    if (row.dataset.breakDragReady === '1') return;
+    row.dataset.breakDragReady = '1';
     row.draggable = true;
-    const label = document.createElement('span');
-    label.className = 'story-break-label';
-    label.textContent = '줄바꿈';
-    const remove = document.createElement('button');
-    remove.className = 'icon-button story-break-remove';
-    remove.textContent = '×';
-    remove.title = '줄바꿈 삭제';
-    remove.addEventListener('click', event => {
-      event.stopPropagation();
-      removeBreak(row.dataset.storyId);
-    });
-    row.append(label, remove);
     row.addEventListener('dragstart', event => {
-      if (!event.dataTransfer) return;
+      if (!event.dataTransfer || !row.dataset.storyId) return;
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
     });
+  }
+
+  function decorateSentinelBreak(row) {
+    const textarea = row.querySelector('textarea');
+    if (!textarea || textarea.value !== BREAK_SENTINEL) return false;
+    row.classList.add('story-break');
+    textarea.classList.add('story-break-source');
+    if (!row.querySelector('.story-break-label')) {
+      const label = document.createElement('span');
+      label.className = 'story-break-label';
+      label.textContent = '줄바꿈';
+      row.insertBefore(label, row.querySelector('.story-tools') || null);
+    }
+    addBreakDrag(row);
+    return true;
   }
 
   const observer = new MutationObserver(() => decorateStory());
@@ -81,36 +77,116 @@ if (storyList && editorActions) {
     observer.disconnect();
     storyList.querySelectorAll(':scope > .story-insert-slot').forEach(slot => slot.remove());
     const items = [...storyList.querySelectorAll(':scope > .story-item')];
-    items.forEach(row => {
-      storyList.insertBefore(makeInsertSlot(row), row);
-      if (row.classList.contains('story-break')) decorateBreak(row);
+    items.forEach(decorateSentinelBreak);
+
+    items.forEach((row, index) => {
+      const previous = items[index - 1] || null;
+      const mode = previous?.classList.contains('story-con') ? 'inline' : 'block';
+      storyList.insertBefore(makeInsertSlot(row, mode), row);
     });
+
     const tail = storyList.querySelector(':scope > .story-tail-drop');
     if (tail) {
+      const last = items.at(-1) || null;
       tail.classList.add('story-direct-tail');
-      tail.textContent = '여기에 놓으면 맨 뒤에 삽입';
+      if (last?.classList.contains('story-con')) {
+        storyList.insertBefore(makeInsertSlot(tail, 'inline'), tail);
+        tail.classList.add('story-tail-hidden');
+        tail.textContent = '';
+      } else {
+        tail.classList.remove('story-tail-hidden');
+        tail.textContent = items.length ? '여기에 놓으면 맨 뒤에 삽입' : '여기에 콘을 놓아 삽입';
+      }
     }
     observer.observe(storyList, { childList: true });
   }
 
-  breakButton.addEventListener('click', async () => {
-    const story = await getOne('documents', 'current') || { id: 'current', items: [], updatedAt: Date.now() };
-    if (!Array.isArray(story.items)) story.items = [];
-    const selectedIds = [...storyList.querySelectorAll('.story-con.selected[data-story-id]')].map(row => String(row.dataset.storyId));
-    let insertAt = story.items.length;
-    if (selectedIds.length) {
-      const selected = new Set(selectedIds);
-      let lastIndex = -1;
-      story.items.forEach((item, index) => {
-        if (selected.has(String(item.id))) lastIndex = index;
-      });
-      if (lastIndex >= 0) insertAt = lastIndex + 1;
-    }
-    story.items.splice(insertAt, 0, { id: `story_${crypto.randomUUID()}`, type: 'break' });
+  function currentItemRows() {
+    return [...storyList.querySelectorAll(':scope > .story-item')];
+  }
+
+  function selectedNextId() {
+    const rows = currentItemRows();
+    const selected = new Set(
+      rows.filter(row => row.classList.contains('story-con') && row.classList.contains('selected'))
+        .map(row => row.dataset.storyId)
+        .filter(Boolean)
+    );
+    if (!selected.size) return null;
+    let lastIndex = -1;
+    rows.forEach((row, index) => {
+      if (selected.has(row.dataset.storyId)) lastIndex = index;
+    });
+    return rows[lastIndex + 1]?.dataset.storyId || null;
+  }
+
+  function waitForNewText(existingIds, timeout = 2500) {
+    return new Promise(resolve => {
+      const started = performance.now();
+      const check = () => {
+        const row = [...storyList.querySelectorAll(':scope > .story-text[data-story-id]')]
+          .find(item => !existingIds.has(item.dataset.storyId));
+        if (row) {
+          resolve(row);
+          return;
+        }
+        if (performance.now() - started >= timeout) {
+          resolve(null);
+          return;
+        }
+        requestAnimationFrame(check);
+      };
+      check();
+    });
+  }
+
+  function moveStoryItemBefore(itemId, beforeId) {
+    if (!itemId || !beforeId || itemId === beforeId) return;
+    const target = storyList.querySelector(`.story-item[data-story-id="${CSS.escape(beforeId)}"]`);
+    if (!target) return;
+    const transfer = new DataTransfer();
+    transfer.effectAllowed = 'move';
+    transfer.setData('application/x-hhjstory-ids', JSON.stringify([itemId]));
+    forwardDrop(target, transfer);
+  }
+
+  async function migrateLegacyBreaks() {
+    const story = await getOne('documents', 'current');
+    if (!story?.items?.some(item => item.type === 'break')) return false;
+    story.items = story.items.map(item => item.type === 'break' ? { ...item, type: 'text', text: BREAK_SENTINEL } : item);
     story.updatedAt = Date.now();
     await putOne('documents', story);
-    location.reload();
+    return true;
+  }
+
+  breakButton.disabled = true;
+  migrateLegacyBreaks().then(migrated => {
+    if (migrated) {
+      location.reload();
+      return;
+    }
+    breakButton.disabled = false;
+    decorateStory();
+  }).catch(() => {
+    breakButton.disabled = false;
+    decorateStory();
   });
 
-  decorateStory();
+  breakButton.addEventListener('click', async () => {
+    const beforeId = selectedNextId();
+    const existingIds = new Set(
+      [...storyList.querySelectorAll(':scope > .story-text[data-story-id]')].map(row => row.dataset.storyId)
+    );
+    addTextButton.click();
+    const newRow = await waitForNewText(existingIds);
+    if (!newRow) return;
+
+    const newId = newRow.dataset.storyId;
+    const textarea = newRow.querySelector('textarea');
+    if (!newId || !textarea) return;
+    textarea.value = BREAK_SENTINEL;
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    if (beforeId) moveStoryItemBefore(newId, beforeId);
+    decorateStory();
+  });
 }

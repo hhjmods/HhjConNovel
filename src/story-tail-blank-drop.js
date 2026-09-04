@@ -25,6 +25,13 @@ if (storyList) {
     return Boolean(dataTransfer?.types?.includes('application/x-hhjstory-ids'));
   }
 
+  function isLowerBlankPoint(clientY) {
+    const rows = [...storyList.querySelectorAll(':scope > .story-item')];
+    const last = rows.at(-1);
+    if (!last) return true;
+    return clientY >= last.getBoundingClientRect().bottom;
+  }
+
   function forwardDrop(target, dataTransfer) {
     if (!target || !dataTransfer) return;
     const forwarded = new Event('drop', { bubbles: true, cancelable: true });
@@ -33,7 +40,10 @@ if (storyList) {
   }
 
   storyList.addEventListener('dragover', event => {
-    if (event.target !== storyList || !hasStoryPayload(event.dataTransfer)) return;
+    if (event.target !== storyList || !hasStoryPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) {
+      storyList.classList.remove('story-tail-blank-hover');
+      return;
+    }
     const tail = ensureTailReady();
     if (!tail) return;
     event.preventDefault();
@@ -47,7 +57,7 @@ if (storyList) {
   });
 
   storyList.addEventListener('drop', event => {
-    if (event.target !== storyList || !hasStoryPayload(event.dataTransfer)) return;
+    if (event.target !== storyList || !hasStoryPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) return;
     const tail = ensureTailReady();
     if (!tail) return;
     event.preventDefault();

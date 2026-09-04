@@ -22,7 +22,7 @@ if (storyList) {
   function dragKindFromTarget(target) {
     const storyItem = target?.closest?.('.story-item');
     if (storyItem?.classList.contains('story-con')) return 'con';
-    if (storyItem?.classList.contains('story-text')) return 'block';
+    if (storyItem?.classList.contains('story-text') || storyItem?.classList.contains('story-image-placeholder')) return 'block';
     if (target?.closest?.('.con-card')) return 'con';
     return null;
   }
@@ -83,7 +83,11 @@ if (storyList) {
     }
 
     let row = event.target.closest('.story-item');
-    if (!row || row === sourceRow) row = nearestRow(event.clientX, event.clientY);
+    if (row === sourceRow) {
+      showHorizontal(sourceRow.getBoundingClientRect().top);
+      return;
+    }
+    if (!row) row = nearestRow(event.clientX, event.clientY);
     if (!row || row === sourceRow) {
       hideGuide();
       return;

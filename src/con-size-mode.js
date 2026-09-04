@@ -32,6 +32,25 @@ if (storyList) {
     button.title = big ? '일반콘으로 사용' : '대왕콘으로 사용';
   }
 
+  function targetRows(row) {
+    if (!row.classList.contains('selected')) return [row];
+    const selected = [...storyList.querySelectorAll(':scope > .story-con.selected[data-story-id]')];
+    return selected.length ? selected : [row];
+  }
+
+  function setRowsBig(rows, big) {
+    const changedAt = Date.now();
+    rows.forEach(row => {
+      const storyId = row.dataset.storyId;
+      if (!storyId) return;
+      if (big) displayDoc.items[storyId] = { big: true, updatedAt: changedAt };
+      else delete displayDoc.items[storyId];
+      const button = row.querySelector(':scope > .story-tools > .con-size-toggle');
+      if (button) applyRowState(row, button);
+    });
+    queueSave();
+  }
+
   function decorateRow(row) {
     const storyId = row.dataset.storyId;
     const tools = row.querySelector(':scope > .story-tools');
@@ -47,14 +66,7 @@ if (storyList) {
       button.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
-        const nextBig = !isBig(storyId);
-        if (nextBig) {
-          displayDoc.items[storyId] = { big: true, updatedAt: Date.now() };
-        } else {
-          delete displayDoc.items[storyId];
-        }
-        applyRowState(row, button);
-        queueSave();
+        setRowsBig(targetRows(row), !isBig(storyId));
       });
       tools.prepend(button);
     }

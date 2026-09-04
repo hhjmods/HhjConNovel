@@ -105,12 +105,7 @@ if (storyList && editorActions && addTextButton) {
   function addBreakDrag(row) {
     if (row.dataset.breakDragReady === '1') return;
     row.dataset.breakDragReady = '1';
-    row.draggable = true;
-    row.addEventListener('dragstart', event => {
-      if (event.target.closest('.story-drag-handle')) return;
-      writeStoryDrag(event, row);
-    });
-    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.draggable = false;
   }
 
   function decorateSentinelBreak(row) {

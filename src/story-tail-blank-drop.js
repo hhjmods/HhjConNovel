@@ -8,8 +8,8 @@ if (storyList) {
   function ensureTailReady() {
     const tail = tailDrop();
     if (!tail) return null;
-    tail.classList.remove('story-tail-hidden');
-    tail.setAttribute('aria-label', '원고 맨 뒤에 삽입');
+    if (tail.classList.contains('story-tail-hidden')) tail.classList.remove('story-tail-hidden');
+    if (tail.getAttribute('aria-label') !== '원고 맨 뒤에 삽입') tail.setAttribute('aria-label', '원고 맨 뒤에 삽입');
     return tail;
   }
 
@@ -59,12 +59,7 @@ if (storyList) {
   document.addEventListener('dragend', () => storyList.classList.remove('story-tail-blank-hover'), true);
 
   const observer = new MutationObserver(() => queueMicrotask(ensureTailReady));
-  observer.observe(storyList, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['class']
-  });
+  observer.observe(storyList, { childList: true });
 
   ensureTailReady();
 }

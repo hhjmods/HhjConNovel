@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.5.0
+// @version      0.6.0
 // @description  HhjConNovel의 디시콘 동기화 기능을 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
@@ -64,9 +64,14 @@
   const RESULT_TYPE = 'HHJCON_DC_SYNC_RESULT';
   const PING_TYPE = 'HHJCON_DC_BRIDGE_PING';
   const PONG_TYPE = 'HHJCON_DC_BRIDGE_PONG';
-  const VERSION = '0.5.0';
+  const VERSION = '0.6.0';
   const MAX_PAGE = 30;
+  const IMAGE_CACHE_NAME = 'hhjcon-dccon-images-v1';
+  const IMAGE_NETWORK_LIMIT = 4;
   const imageCache = new Map();
+  let persistentImageCachePromise = null;
+  let activeImageRequests = 0;
+  const imageRequestQueue = [];
 
   function post(message) {
     pageWindow.postMessage(message, '*');
@@ -107,9 +112,62 @@
     }
   }
 
-  function fetchDcConImage(url) {
-    if (imageCache.has(url)) return imageCache.get(url);
-    const task = new Promise((resolve, reject) => {
+  function openPersistentImageCache() {
+    if (persistentImageCachePromise) return persistentImageCachePromise;
+    if (!pageWindow.caches?.open) return Promise.resolve(null);
+    persistentImageCachePromise = pageWindow.caches.open(IMAGE_CACHE_NAME).catch(() => null);
+    return persistentImageCachePromise;
+  }
+
+  async function readPersistentImage(url) {
+    try {
+      const cache = await openPersistentImageCache();
+      if (!cache) return null;
+      const response = await cache.match(url);
+      if (!response) return null;
+      const blob = await response.blob();
+      return blob?.size ? blob : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function writePersistentImage(url, blob, contentType = '') {
+    try {
+      const cache = await openPersistentImageCache();
+      if (!cache) return;
+      const response = new pageWindow.Response(blob, {
+        status: 200,
+        headers: { 'Content-Type': contentType || blob.type || 'application/octet-stream' }
+      });
+      await cache.put(url, response);
+    } catch {
+    }
+  }
+
+  function pumpImageQueue() {
+    while (activeImageRequests < IMAGE_NETWORK_LIMIT && imageRequestQueue.length) {
+      const entry = imageRequestQueue.shift();
+      activeImageRequests += 1;
+      Promise.resolve()
+        .then(entry.task)
+        .then(entry.resolve, entry.reject)
+        .finally(() => {
+          activeImageRequests -= 1;
+          pumpImageQueue();
+        });
+    }
+  }
+
+  function queueImageNetwork(task) {
+    return new Promise((resolve, reject) => {
+      imageRequestQueue.push({ task, resolve, reject });
+      pumpImageQueue();
+    });
+  }
+
+  function requestImageBlob(url) {
+    return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
         method: 'GET',
         url,
@@ -130,12 +188,23 @@
             reject(new Error('DC콘 이미지 응답이 비어 있습니다.'));
             return;
           }
-          resolve(pageWindow.URL.createObjectURL(blob));
+          resolve({ blob, contentType: response.responseHeaders?.match(/content-type:\s*([^\r\n]+)/i)?.[1]?.trim() || blob.type || '' });
         },
         ontimeout: () => reject(new Error('DC콘 이미지 요청 시간이 초과되었습니다.')),
         onerror: () => reject(new Error('DC콘 이미지 요청 중 네트워크 오류가 발생했습니다.'))
       });
-    }).catch(error => {
+    });
+  }
+
+  function fetchDcConImage(url) {
+    if (imageCache.has(url)) return imageCache.get(url);
+    const task = (async () => {
+      const cachedBlob = await readPersistentImage(url);
+      if (cachedBlob) return pageWindow.URL.createObjectURL(cachedBlob);
+      const { blob, contentType } = await queueImageNetwork(() => requestImageBlob(url));
+      await writePersistentImage(url, blob, contentType);
+      return pageWindow.URL.createObjectURL(blob);
+    })().catch(error => {
       imageCache.delete(url);
       throw error;
     });
@@ -144,7 +213,8 @@
   }
 
   function resolveDcConImage(img) {
-    if (!(img instanceof HTMLImageElement)) return;
+    const ImageClass = pageWindow.HTMLImageElement || HTMLImageElement;
+    if (!(img instanceof ImageClass)) return;
     if (img.dataset.hhjconDcImageState) return;
     const source = img.getAttribute('src') || '';
     if (!isDcConImage(source)) return;
@@ -163,7 +233,8 @@
   }
 
   function scanDcConImages(root) {
-    if (root instanceof HTMLImageElement) resolveDcConImage(root);
+    const ImageClass = pageWindow.HTMLImageElement || HTMLImageElement;
+    if (root instanceof ImageClass) resolveDcConImage(root);
     if (root?.querySelectorAll) root.querySelectorAll('img').forEach(resolveDcConImage);
   }
 

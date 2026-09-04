@@ -17,13 +17,12 @@
 .story-break .story-tools { grid-column: 3; grid-row: 1; flex-direction: row; align-items: center; gap: 1px; }
 .story-break .icon-button { min-width: 24px; padding: 1px 4px; }
 .story-list.story-block-dragging > .story-insert-slot { visibility: hidden !important; pointer-events: none !important; }
-.story-list.story-block-dragging > .story-item.story-drag-target { box-shadow: none !important; }
-.story-list.story-block-dragging > .story-tail-drop.drop-target { border-color: transparent !important; background: transparent !important; color: var(--muted) !important; }
 .story-list.story-con-dragging > .story-insert-slot { opacity: 0 !important; }
 .story-list.story-con-dragging > .story-insert-slot.inline.drop-target { width: 10px !important; height: 112px !important; box-shadow: none !important; }
 .story-list.story-con-dragging > .story-insert-slot.block.drop-target { width: 100% !important; height: 8px !important; box-shadow: none !important; }
-.story-list.story-con-dragging > .story-item.story-drag-target { box-shadow: none !important; }
-.story-list.story-con-dragging > .story-tail-drop.drop-target { border-color: transparent !important; background: transparent !important; color: var(--muted) !important; }
+.story-list.story-guide-dragging > .story-item.story-drag-target { box-shadow: none !important; }
+.story-list.story-guide-dragging > .story-insert-slot.drop-target { box-shadow: none !important; }
+.story-list.story-guide-dragging > .story-tail-drop.drop-target { border-color: transparent !important; background: transparent !important; color: var(--muted) !important; }
 .story-drop-guide { position: fixed; z-index: 9999; pointer-events: none; border-radius: 4px; background: #365b9b; box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgba(93, 146, 255, .45); }
 .story-drop-guide.horizontal { min-height: 6px; }
 .story-drop-guide.vertical { min-width: 8px; }

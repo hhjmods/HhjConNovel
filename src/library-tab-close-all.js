@@ -2,37 +2,39 @@ const libraryPanel = document.querySelector('.library-panel');
 const viewTabs = document.querySelector('.library-view-tabs');
 
 if (libraryPanel && viewTabs) {
-  function ensureCloseAllButton() {
-    let button = viewTabs.querySelector('.library-view-close-all');
-    if (!button) {
-      button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'library-view-close-all';
-      button.textContent = '탭 전체 닫기';
-      button.title = '탭 전체 닫기';
-      button.addEventListener('click', () => {
-        const tabs = [...viewTabs.querySelectorAll('.library-view-tab')];
-        if (!tabs.length) return;
+  const shell = document.createElement('div');
+  shell.className = 'library-view-tabs-shell';
+  libraryPanel.insertBefore(shell, viewTabs);
+  shell.append(viewTabs);
 
-        const active = tabs.find(tab => tab.classList.contains('active')) || null;
-        const others = tabs.filter(tab => tab !== active);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'library-view-close-all';
+  button.textContent = '탭 전체 닫기';
+  button.title = '탭 전체 닫기';
+  shell.append(button);
 
-        others.forEach(tab => tab.querySelector('.library-view-tab-close')?.click());
-        active?.querySelector('.library-view-tab-close')?.click();
-
-        libraryPanel.classList.add('library-tabs-empty');
-        ensureCloseAllButton();
-      });
-      viewTabs.append(button);
-    }
+  function updateButton() {
     button.disabled = !viewTabs.querySelector('.library-view-tab');
   }
+
+  button.addEventListener('click', () => {
+    let remaining = viewTabs.querySelectorAll('.library-view-tab-close').length;
+    while (remaining > 0) {
+      const close = viewTabs.querySelector('.library-view-tab-close');
+      if (!close) break;
+      close.click();
+      remaining -= 1;
+    }
+    libraryPanel.classList.add('library-tabs-empty');
+    updateButton();
+  });
 
   const observer = new MutationObserver(() => {
     if (viewTabs.querySelector('.library-view-tab')) {
       libraryPanel.classList.remove('library-tabs-empty');
     }
-    ensureCloseAllButton();
+    updateButton();
   });
 
   observer.observe(viewTabs, { childList: true });
@@ -43,5 +45,5 @@ if (libraryPanel && viewTabs) {
     }
   }, true);
 
-  ensureCloseAllButton();
+  updateButton();
 }

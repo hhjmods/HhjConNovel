@@ -5,6 +5,7 @@ if (storyList) {
   let sourceRow = null;
   let guide = null;
   let activeBoundary = null;
+  let forwardingDrop = false;
 
   function ensureGuide() {
     if (guide?.isConnected) return guide;
@@ -252,13 +253,24 @@ if (storyList) {
   });
 
   storyList.addEventListener('drop', event => {
-    if (event.target !== storyList || !activeBoundary || isLowerTailPoint(event.clientY)) return;
+    if (forwardingDrop || !activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
+    const types = event.dataTransfer?.types;
+    if (!types?.includes('application/x-hhjstory-ids') && !types?.includes('application/x-hhjcon-ids')) return;
+
     const target = activeBoundary.next || storyList.querySelector(':scope > .story-tail-drop');
     if (!target) return;
+    if (event.target === target || target.contains(event.target)) return;
+
     event.preventDefault();
+    event.stopPropagation();
     event.stopImmediatePropagation();
-    forwardDrop(target, event.dataTransfer);
-  });
+    forwardingDrop = true;
+    try {
+      forwardDrop(target, event.dataTransfer);
+    } finally {
+      forwardingDrop = false;
+    }
+  }, true);
 
   function finishDrag() {
     hideGuide();

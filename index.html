@@ -54,6 +54,8 @@
       <div id="conGrid" class="con-grid" aria-live="polite"></div>
     </section>
 
+    <div id="workspaceSplitter" class="workspace-splitter" role="separator" aria-orientation="vertical" aria-label="콘 라이브러리와 원고 영역 크기 조절" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" tabindex="0"></div>
+
     <aside class="panel editor-panel">
       <div class="editor-header">
         <div><h2>원고</h2><span id="storyStats" class="muted">0블록</span></div>
@@ -65,6 +67,7 @@
   </main>
 
   <div id="toast" class="toast" aria-live="polite"></div>
+  <script type="module" src="./src/layout-resizer.js"></script>
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>

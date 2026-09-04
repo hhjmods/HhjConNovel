@@ -13,10 +13,16 @@ if (storyList) {
     return guide;
   }
 
-  function previousStoryItem(row) {
-    let node = row?.previousElementSibling || null;
-    while (node && !node.classList.contains('story-item')) node = node.previousElementSibling;
-    return node;
+  function previousStoryItem(node) {
+    let current = node?.previousElementSibling || null;
+    while (current && !current.classList.contains('story-item')) current = current.previousElementSibling;
+    return current;
+  }
+
+  function nextStoryItem(node) {
+    let current = node?.nextElementSibling || null;
+    while (current && !current.classList.contains('story-item')) current = current.nextElementSibling;
+    return current;
   }
 
   function dragKindFromTarget(target) {
@@ -44,12 +50,23 @@ if (storyList) {
     marker.style.height = '6px';
   }
 
-  function showVertical(row) {
+  function showVerticalBefore(row) {
     const marker = ensureGuide();
     const rect = row.getBoundingClientRect();
     marker.classList.remove('hidden', 'horizontal');
     marker.classList.add('vertical');
     marker.style.left = `${rect.left - 4}px`;
+    marker.style.top = `${rect.top}px`;
+    marker.style.width = '8px';
+    marker.style.height = `${rect.height}px`;
+  }
+
+  function showVerticalAfter(row) {
+    const marker = ensureGuide();
+    const rect = row.getBoundingClientRect();
+    marker.classList.remove('hidden', 'horizontal');
+    marker.classList.add('vertical');
+    marker.style.left = `${rect.right - 4}px`;
     marker.style.top = `${rect.top}px`;
     marker.style.width = '8px';
     marker.style.height = `${rect.height}px`;
@@ -73,32 +90,77 @@ if (storyList) {
     return best;
   }
 
+  function showBoundary(previous, next) {
+    const previousIsCon = Boolean(previous?.classList.contains('story-con'));
+    const nextIsCon = Boolean(next?.classList.contains('story-con'));
+
+    if (activeDragKind === 'con') {
+      if (nextIsCon && (!previous || previousIsCon)) {
+        showVerticalBefore(next);
+        return;
+      }
+      if (!next && previousIsCon) {
+        showVerticalAfter(previous);
+        return;
+      }
+      if (next) {
+        showHorizontal(next.getBoundingClientRect().top);
+        return;
+      }
+      if (previous) {
+        showHorizontal(previous.getBoundingClientRect().bottom);
+        return;
+      }
+      hideGuide();
+      return;
+    }
+
+    if (previousIsCon && nextIsCon) {
+      showVerticalBefore(next);
+      return;
+    }
+    if (next) {
+      showHorizontal(next.getBoundingClientRect().top);
+      return;
+    }
+    if (previous) {
+      showHorizontal(previous.getBoundingClientRect().bottom);
+      return;
+    }
+    hideGuide();
+  }
+
   function showGuideForEvent(event) {
-    if (activeDragKind !== 'block') return;
+    if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
+
+    const slot = event.target.closest('.story-insert-slot');
+    if (slot) {
+      showBoundary(previousStoryItem(slot), nextStoryItem(slot));
+      return;
+    }
 
     const tail = event.target.closest('.story-tail-drop');
     if (tail) {
-      showHorizontal(tail.getBoundingClientRect().top);
+      const rows = [...storyList.querySelectorAll(':scope > .story-item')];
+      const last = rows.at(-1) || null;
+      if (activeDragKind === 'con') showBoundary(last, null);
+      else showHorizontal(tail.getBoundingClientRect().top);
       return;
     }
 
     let row = event.target.closest('.story-item');
     if (row === sourceRow) {
-      showHorizontal(sourceRow.getBoundingClientRect().top);
+      if (activeDragKind === 'con') showBoundary(previousStoryItem(row), row);
+      else showHorizontal(row.getBoundingClientRect().top);
       return;
     }
     if (!row) row = nearestRow(event.clientX, event.clientY);
-    if (!row || row === sourceRow) {
+    if (!row) {
       hideGuide();
       return;
     }
 
-    const previous = previousStoryItem(row);
-    if (previous?.classList.contains('story-con') && row.classList.contains('story-con')) {
-      showVertical(row);
-    } else {
-      showHorizontal(row.getBoundingClientRect().top);
-    }
+    showBoundary(previousStoryItem(row), row);
   }
 
   document.addEventListener('dragstart', event => {
@@ -106,22 +168,22 @@ if (storyList) {
     if (!kind) return;
     activeDragKind = kind;
     sourceRow = event.target?.closest?.('.story-item') || null;
-    if (kind === 'block') {
-      requestAnimationFrame(() => {
-        if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
-      });
-    }
+    requestAnimationFrame(() => {
+      if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
+      if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
+    });
   }, true);
 
   storyList.addEventListener('dragover', event => {
-    if (activeDragKind !== 'block') return;
-    storyList.classList.add('story-block-dragging');
+    if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
+    if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
+    if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
     showGuideForEvent(event);
   }, true);
 
   function finishDrag() {
     hideGuide();
-    storyList.classList.remove('story-block-dragging');
+    storyList.classList.remove('story-block-dragging', 'story-con-dragging');
     activeDragKind = null;
     sourceRow = null;
   }

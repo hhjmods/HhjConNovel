@@ -1,0 +1,7 @@
+.story-text.rich-text-row > .rich-text-editor.rich-text-user-resizable {
+  height: 106px;
+  min-height: 72px;
+  max-height: none;
+  resize: vertical;
+  overflow: auto;
+}

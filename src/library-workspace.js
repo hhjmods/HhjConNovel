@@ -21,6 +21,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   let editing = false;
   let editCollectionId = null;
   let pendingOpenCreatedCollection = false;
+  let restorePending = true;
 
   function readViews() {
     try {
@@ -108,6 +109,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
 
       if (view.type === 'collections') {
         tab.addEventListener('dragover', event => {
+          if (!event.dataTransfer?.types?.includes('application/x-hhjcon-ids')) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = 'copy';
           tab.classList.add('drop-target');
@@ -221,6 +223,15 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
         pendingOpenCreatedCollection = false;
       }
     }
+
+    if (restorePending) {
+      const view = activeView();
+      const target = view ? findNavElement(view) : null;
+      if (view && target) {
+        restorePending = false;
+        setTimeout(() => activateView(view), 0);
+      }
+    }
   }
 
   function annotateNavigation() {
@@ -257,6 +268,10 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     }
   }
 
+  function hasConDrag(event) {
+    return Boolean(event.dataTransfer?.types?.includes('application/x-hhjcon-ids'));
+  }
+
   function moveCards(ids, target) {
     const movingSet = new Set(ids);
     const cards = [...conGrid.querySelectorAll('.con-card')];
@@ -280,6 +295,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     }
     editing = true;
     editCollectionId = String(view.id);
+    conGrid.querySelectorAll('.con-card').forEach(card => { card.draggable = true; });
     updateEditControls();
   });
 
@@ -306,13 +322,20 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     if (view) activateView(view);
   });
 
+  conGrid.addEventListener('dragstart', event => {
+    if (!editing) return;
+    const card = event.target.closest('.con-card.missing[data-con-id]');
+    if (!card || !event.dataTransfer) return;
+    event.stopImmediatePropagation();
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/x-hhjcon-ids', JSON.stringify([String(card.dataset.conId)]));
+  }, true);
+
   conGrid.addEventListener('dragover', event => {
     const view = activeView();
     if (view?.type !== 'collections') return;
     const target = event.target.closest('.con-card, .reorder-tail');
-    if (!target) return;
-    const ids = dragIds(event);
-    if (!ids.length) return;
+    if (!target || (!hasConDrag(event) && !dragIds(event).length)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (!editing) {
@@ -377,8 +400,5 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   observer.observe(packageList, { childList: true });
   observer.observe(collectionList, { childList: true });
 
-  refreshData().then(() => {
-    const view = activeView();
-    if (view) setTimeout(() => activateView(view), 0);
-  }).catch(() => {});
+  refreshData().catch(() => {});
 }

@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.4.0
+// @version      0.5.0
 // @description  HhjConNovel의 디시콘 동기화 기능을 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
 // @connect      gall.dcinside.com
+// @connect      dcimg5.dcinside.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_cookie
 // @grant        GM_getValue
@@ -63,8 +64,9 @@
   const RESULT_TYPE = 'HHJCON_DC_SYNC_RESULT';
   const PING_TYPE = 'HHJCON_DC_BRIDGE_PING';
   const PONG_TYPE = 'HHJCON_DC_BRIDGE_PONG';
-  const VERSION = '0.4.0';
+  const VERSION = '0.5.0';
   const MAX_PAGE = 30;
+  const imageCache = new Map();
 
   function post(message) {
     pageWindow.postMessage(message, '*');
@@ -95,6 +97,86 @@
       });
     });
   }
+
+  function isDcConImage(url) {
+    try {
+      const parsed = new URL(String(url || ''), location.href);
+      return parsed.hostname === 'dcimg5.dcinside.com' && parsed.pathname === '/dccon.php' && parsed.searchParams.has('no');
+    } catch {
+      return false;
+    }
+  }
+
+  function fetchDcConImage(url) {
+    if (imageCache.has(url)) return imageCache.get(url);
+    const task = new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url,
+        responseType: 'blob',
+        anonymous: false,
+        timeout: 15000,
+        headers: {
+          'Referer': 'https://dccon.dcinside.com/',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        onload: response => {
+          if (response.status < 200 || response.status >= 400) {
+            reject(new Error(`DC콘 이미지 요청 실패: HTTP ${response.status}`));
+            return;
+          }
+          const blob = response.response;
+          if (!blob || typeof blob.size !== 'number' || blob.size <= 0) {
+            reject(new Error('DC콘 이미지 응답이 비어 있습니다.'));
+            return;
+          }
+          resolve(pageWindow.URL.createObjectURL(blob));
+        },
+        ontimeout: () => reject(new Error('DC콘 이미지 요청 시간이 초과되었습니다.')),
+        onerror: () => reject(new Error('DC콘 이미지 요청 중 네트워크 오류가 발생했습니다.'))
+      });
+    }).catch(error => {
+      imageCache.delete(url);
+      throw error;
+    });
+    imageCache.set(url, task);
+    return task;
+  }
+
+  function resolveDcConImage(img) {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.dataset.hhjconDcImageState) return;
+    const source = img.getAttribute('src') || '';
+    if (!isDcConImage(source)) return;
+    img.dataset.hhjconDcImageState = 'loading';
+    img.dataset.hhjconDcImageSource = source;
+    img.removeAttribute('src');
+    fetchDcConImage(source).then(objectUrl => {
+      if (!img.isConnected) return;
+      img.dataset.hhjconDcImageState = 'ready';
+      img.src = objectUrl;
+    }).catch(() => {
+      if (!img.isConnected) return;
+      img.dataset.hhjconDcImageState = 'error';
+      img.src = source;
+    });
+  }
+
+  function scanDcConImages(root) {
+    if (root instanceof HTMLImageElement) resolveDcConImage(root);
+    if (root?.querySelectorAll) root.querySelectorAll('img').forEach(resolveDcConImage);
+  }
+
+  function startImageResolver() {
+    scanDcConImages(document);
+    const observer = new MutationObserver(records => {
+      records.forEach(record => record.addedNodes.forEach(scanDcConImages));
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  if (document.documentElement) startImageResolver();
+  else window.addEventListener('DOMContentLoaded', startImageResolver, { once: true });
 
   function normalizeWriteUrl(raw) {
     let url;

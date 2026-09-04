@@ -1,0 +1,30 @@
+.story-break .story-break-center {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.story-break .story-break-label {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.story-break .story-break-count-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.story-break .story-break-count-input {
+  width: 58px;
+  height: 24px;
+  padding: 1px 5px;
+  text-align: center;
+}

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:;">
   <title>활협전 콘문학 에디터</title>
+  <script src="./src/theme-init.js?v=20260905-1"></script>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./story-multiselect.css">
   <link rel="stylesheet" href="./workspace-enhancements.css">
@@ -14,6 +15,7 @@
   <link rel="stylesheet" href="./story-tail-blank-drop.css?v=20260905-1">
   <link rel="stylesheet" href="./collection-backup.css?v=20260905-1">
   <link rel="stylesheet" href="./library-tab-close-all.css?v=20260905-2">
+  <link rel="stylesheet" href="./theme.css?v=20260905-1">
 </head>
 <body>
   <header class="topbar">
@@ -31,6 +33,7 @@
       </div>
       <button id="exportCollectionBtn">콘묶음 내보내기</button>
       <label class="file-button">콘묶음 불러오기<input id="importCollectionInput" type="file" accept="application/json,.json,.hhjconset" multiple></label>
+      <button id="themeToggleBtn" type="button" aria-label="라이트 모드로 전환">☀ 라이트</button>
     </div>
   </header>
 
@@ -76,6 +79,7 @@
   </main>
 
   <div id="toast" class="toast" aria-live="polite"></div>
+  <script src="./src/theme-toggle.js?v=20260905-1"></script>
   <script type="module" src="./src/layout-resizer.js?v=20260905-1"></script>
   <script type="module" src="./src/story-drag-guard.js"></script>
   <script type="module" src="./src/collection-missing-ui.js?v=20260905-1"></script>

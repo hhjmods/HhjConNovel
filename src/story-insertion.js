@@ -45,15 +45,49 @@ if (storyList && editorActions && addTextButton) {
     return slot;
   }
 
+  function writeStoryDrag(event, row) {
+    if (!event.dataTransfer || !row.dataset.storyId) return false;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
+    event.dataTransfer.setData('text/plain', row.dataset.storyId);
+    row.classList.add('dragging');
+    return true;
+  }
+
+  function addStoryDragHandle(row) {
+    if (row.dataset.storyDragHandleReady === '1') return;
+    const tools = row.querySelector('.story-tools');
+    if (!tools || !row.dataset.storyId) return;
+    row.dataset.storyDragHandleReady = '1';
+
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'icon-button story-drag-handle';
+    handle.textContent = '⠿';
+    handle.title = '드래그해서 이동';
+    handle.setAttribute('aria-label', '드래그해서 이동');
+    handle.draggable = true;
+    handle.addEventListener('click', event => event.stopPropagation());
+    handle.addEventListener('dragstart', event => {
+      event.stopPropagation();
+      writeStoryDrag(event, row);
+    });
+    handle.addEventListener('dragend', event => {
+      event.stopPropagation();
+      row.classList.remove('dragging');
+    });
+    row.prepend(handle);
+  }
+
   function addBreakDrag(row) {
     if (row.dataset.breakDragReady === '1') return;
     row.dataset.breakDragReady = '1';
     row.draggable = true;
     row.addEventListener('dragstart', event => {
-      if (!event.dataTransfer || !row.dataset.storyId) return;
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
+      if (event.target.closest('.story-drag-handle')) return;
+      writeStoryDrag(event, row);
     });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
   }
 
   function decorateSentinelBreak(row) {
@@ -77,7 +111,10 @@ if (storyList && editorActions && addTextButton) {
     observer.disconnect();
     storyList.querySelectorAll(':scope > .story-insert-slot').forEach(slot => slot.remove());
     const items = [...storyList.querySelectorAll(':scope > .story-item')];
-    items.forEach(decorateSentinelBreak);
+    items.forEach(row => {
+      if (row.classList.contains('story-text')) addStoryDragHandle(row);
+      decorateSentinelBreak(row);
+    });
 
     items.forEach((row, index) => {
       const previous = items[index - 1] || null;

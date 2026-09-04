@@ -39,6 +39,12 @@ if (storyList) {
     guide.classList.remove('horizontal', 'vertical');
   }
 
+  function clearLegacyHighlights() {
+    storyList.querySelectorAll(':scope > .story-item.story-drag-target').forEach(row => row.classList.remove('story-drag-target'));
+    storyList.querySelectorAll(':scope > .story-insert-slot.drop-target').forEach(slot => slot.classList.remove('drop-target'));
+    storyList.querySelector(':scope > .story-tail-drop.drop-target')?.classList.remove('drop-target');
+  }
+
   function showHorizontal(top) {
     const marker = ensureGuide();
     const rect = storyList.getBoundingClientRect();
@@ -94,31 +100,21 @@ if (storyList) {
     const previousIsCon = Boolean(previous?.classList.contains('story-con'));
     const nextIsCon = Boolean(next?.classList.contains('story-con'));
 
-    if (activeDragKind === 'con') {
-      if (previousIsCon) {
-        showVerticalAfter(previous);
-        return;
-      }
-      if (nextIsCon) {
-        showVerticalBefore(next);
-        return;
-      }
-      if (next) {
-        showHorizontal(next.getBoundingClientRect().top);
-        return;
-      }
-      if (previous) {
-        showHorizontal(previous.getBoundingClientRect().bottom);
-        return;
-      }
-      hideGuide();
-      return;
-    }
-
     if (previousIsCon && nextIsCon) {
       showVerticalBefore(next);
       return;
     }
+
+    if (activeDragKind === 'con' && previousIsCon) {
+      showVerticalAfter(previous);
+      return;
+    }
+
+    if (activeDragKind === 'con' && nextIsCon) {
+      showVerticalBefore(next);
+      return;
+    }
+
     if (next) {
       showHorizontal(next.getBoundingClientRect().top);
       return;
@@ -142,9 +138,7 @@ if (storyList) {
     const tail = event.target.closest('.story-tail-drop');
     if (tail) {
       const rows = [...storyList.querySelectorAll(':scope > .story-item')];
-      const last = rows.at(-1) || null;
-      if (activeDragKind === 'con') showBoundary(last, null);
-      else showHorizontal(tail.getBoundingClientRect().top);
+      showBoundary(rows.at(-1) || null, null);
       return;
     }
 
@@ -168,10 +162,13 @@ if (storyList) {
     if (!kind) return;
     activeDragKind = kind;
     sourceRow = event.target?.closest?.('.story-item') || null;
-    requestAnimationFrame(() => {
-      if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
-      if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
-    });
+    storyList.classList.add('story-guide-dragging');
+    if (kind === 'con') storyList.classList.add('story-con-dragging');
+    if (kind === 'block') {
+      requestAnimationFrame(() => {
+        if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
+      });
+    }
   }, true);
 
   storyList.addEventListener('dragover', event => {
@@ -181,9 +178,15 @@ if (storyList) {
     showGuideForEvent(event);
   }, true);
 
+  storyList.addEventListener('dragover', () => {
+    if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
+    clearLegacyHighlights();
+  });
+
   function finishDrag() {
     hideGuide();
-    storyList.classList.remove('story-block-dragging', 'story-con-dragging');
+    clearLegacyHighlights();
+    storyList.classList.remove('story-guide-dragging', 'story-block-dragging', 'story-con-dragging');
     activeDragKind = null;
     sourceRow = null;
   }

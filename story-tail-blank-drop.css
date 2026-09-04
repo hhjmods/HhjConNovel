@@ -1,0 +1,11 @@
+.story-list > .story-direct-tail {
+  display: block !important;
+  min-height: 30px;
+  margin: 0 0 8px;
+  border: 0 !important;
+  background: transparent !important;
+  color: transparent !important;
+  font-size: 0 !important;
+}
+.story-list > .story-direct-tail.drop-target { background: transparent !important; }
+.story-list.story-tail-blank-hover { cursor: copy; }

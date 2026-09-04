@@ -23,6 +23,7 @@
 .story-drop-guide.horizontal { min-height: 6px; }
 .story-drop-guide.vertical { min-width: 8px; }
 .story-drop-guide.hidden { display: none !important; }
+.con-grid:not(.collection-order-editing) > .reorder-tail { display: none !important; }
 .collection-edit-delete { color: #ffc3ca; }
 img[src^="https://dcimg5.dcinside.com/dccon.php"] { visibility: hidden; }
 img[data-hhjcon-dc-image-state="loading"] { visibility: hidden; }

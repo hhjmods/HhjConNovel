@@ -27,6 +27,18 @@ if (storyList) {
     }
   }
 
+  function isStoryTransfer(dataTransfer) {
+    const types = [...(dataTransfer?.types || [])];
+    return movingStoryIds.size > 0 || types.includes('application/x-hhjstory-ids');
+  }
+
+  function allowDrop(event) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = isStoryTransfer(event.dataTransfer) ? 'move' : 'copy';
+    }
+  }
+
   function isMoving(row) {
     return Boolean(row?.dataset?.storyId && movingStoryIds.has(row.dataset.storyId));
   }
@@ -113,18 +125,17 @@ if (storyList) {
     }
 
     showZoneFor(point);
-    event.preventDefault();
-    if (event.dataTransfer) {
-      const storyIds = readStoryIds(event.dataTransfer);
-      event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
-    }
+    allowDrop(event);
   }, true);
+
+  hitZone.addEventListener('dragenter', event => {
+    if (!activeConDrag) return;
+    allowDrop(event);
+  });
 
   hitZone.addEventListener('dragover', event => {
     if (!activeConDrag) return;
-    event.preventDefault();
-    const storyIds = readStoryIds(event.dataTransfer);
-    if (event.dataTransfer) event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
+    allowDrop(event);
   });
 
   hitZone.addEventListener('drop', event => {

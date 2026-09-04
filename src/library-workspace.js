@@ -9,6 +9,7 @@ const libraryToolbar = document.querySelector('.library-toolbar');
 const toolbarActions = libraryToolbar?.querySelector('.toolbar-actions');
 const conGrid = document.getElementById('conGrid');
 const searchInput = document.getElementById('searchInput');
+const selectionStatus = document.getElementById('selectionStatus');
 
 if (packageList && collectionList && packagePanel && collectionPanel && libraryPanel && toolbarActions && conGrid) {
   const SIDEBAR_KEY = 'hhjcon-sidebar-mode';
@@ -20,13 +21,18 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   let collections = [];
   let editing = false;
   let editCollectionId = null;
+  let draftItems = [];
+  let draftSelectedIds = new Set();
+  let draftAnchorId = null;
   let pendingOpenCreatedCollection = false;
   let restorePending = true;
 
   function readViews() {
     try {
       const value = JSON.parse(localStorage.getItem(VIEWS_KEY) || '[]');
-      return Array.isArray(value) ? value.filter(item => item && (item.type === 'packages' || item.type === 'collections') && item.id) : [];
+      return Array.isArray(value)
+        ? value.filter(item => item && (item.type === 'packages' || item.type === 'collections') && item.id)
+        : [];
     } catch {
       return [];
     }
@@ -43,14 +49,18 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   editControls.className = 'collection-edit-controls';
   const editButton = document.createElement('button');
   editButton.className = 'small';
-  editButton.textContent = '순서 편집';
+  editButton.textContent = '콘 편집';
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'small danger';
+  deleteButton.textContent = '삭제';
+  deleteButton.title = '선택한 콘을 이 콘묶음에서 삭제';
   const saveButton = document.createElement('button');
   saveButton.className = 'small primary';
   saveButton.textContent = '저장';
   const cancelButton = document.createElement('button');
   cancelButton.className = 'small';
   cancelButton.textContent = '취소';
-  editControls.append(editButton, saveButton, cancelButton);
+  editControls.append(editButton, deleteButton, saveButton, cancelButton);
   toolbarActions.prepend(editControls);
 
   function keyOf(type, id) {
@@ -80,9 +90,29 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     const isCollection = view?.type === 'collections';
     editControls.classList.toggle('hidden', !isCollection);
     editButton.classList.toggle('hidden', !isCollection || editing);
+    deleteButton.classList.toggle('hidden', !isCollection || !editing);
     saveButton.classList.toggle('hidden', !isCollection || !editing);
     cancelButton.classList.toggle('hidden', !isCollection || !editing);
     conGrid.classList.toggle('collection-order-editing', editing);
+  }
+
+  function setDraftSelection(ids, anchorId = null) {
+    draftSelectedIds = new Set(ids);
+    draftAnchorId = anchorId;
+    conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => {
+      card.classList.toggle('selected', draftSelectedIds.has(String(card.dataset.conId)));
+    });
+    if (selectionStatus) selectionStatus.textContent = `${draftSelectedIds.size}개 선택`;
+  }
+
+  function cancelEditState() {
+    editing = false;
+    editCollectionId = null;
+    draftItems = [];
+    draftSelectedIds.clear();
+    draftAnchorId = null;
+    conGrid.classList.remove('collection-order-editing');
+    updateEditControls();
   }
 
   function forwardDrop(target, dataTransfer) {
@@ -135,6 +165,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
         const wasActive = activeViewKey === key;
         openViews.splice(index, 1);
         if (wasActive) {
+          if (editing) cancelEditState();
           const next = openViews[Math.min(index, openViews.length - 1)] || null;
           activeViewKey = next ? keyOf(next.type, next.id) : '';
           persistViews();
@@ -177,21 +208,15 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
 
   function activateView(view) {
     if (!view) return;
-    if (editing && editCollectionId !== view.id) {
-      editing = false;
-      editCollectionId = null;
-      conGrid.classList.remove('collection-order-editing');
-    }
+    if (editing && (view.type !== 'collections' || String(view.id) !== editCollectionId)) cancelEditState();
     activeViewKey = keyOf(view.type, view.id);
     persistViews();
     renderViewTabs();
     const target = findNavElement(view);
     if (target) target.click();
-    setTimeout(() => {
-      applySidebarMode();
-      annotateNavigation();
-      updateEditControls();
-    }, 0);
+    annotateNavigation();
+    applySidebarMode();
+    updateEditControls();
   }
 
   async function refreshData() {
@@ -229,7 +254,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
       const target = view ? findNavElement(view) : null;
       if (view && target) {
         restorePending = false;
-        setTimeout(() => activateView(view), 0);
+        queueMicrotask(() => activateView(view));
       }
     }
   }
@@ -272,18 +297,45 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     return Boolean(event.dataTransfer?.types?.includes('application/x-hhjcon-ids'));
   }
 
-  function moveCards(ids, target) {
+  function orderedDraftSelection(fallbackId = null) {
+    if (fallbackId && !draftSelectedIds.has(fallbackId)) setDraftSelection([fallbackId], fallbackId);
+    return draftItems.filter(id => draftSelectedIds.has(id));
+  }
+
+  function moveDraftCards(ids, target) {
     const movingSet = new Set(ids);
-    const cards = [...conGrid.querySelectorAll('.con-card')];
-    const moving = cards.filter(card => movingSet.has(String(card.dataset.conId)));
+    const targetCard = target?.closest?.('.con-card[data-con-id]') || null;
+    const beforeId = targetCard ? String(targetCard.dataset.conId) : null;
+    if (beforeId && movingSet.has(beforeId)) return;
+
+    const moving = draftItems.filter(id => movingSet.has(id));
     if (!moving.length) return;
-    const targetCard = target?.closest?.('.con-card') || null;
-    if (targetCard && movingSet.has(String(targetCard.dataset.conId))) return;
-    moving.forEach(card => card.remove());
+    const remaining = draftItems.filter(id => !movingSet.has(id));
+    let insertAt = beforeId ? remaining.indexOf(beforeId) : remaining.length;
+    if (insertAt < 0) insertAt = remaining.length;
+    remaining.splice(insertAt, 0, ...moving);
+    draftItems = remaining;
+
+    const cards = new Map(
+      [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => [String(card.dataset.conId), card])
+    );
     const tail = conGrid.querySelector('.reorder-tail');
-    if (targetCard?.isConnected) moving.forEach(card => conGrid.insertBefore(card, targetCard));
-    else if (tail) moving.forEach(card => conGrid.insertBefore(card, tail));
-    else moving.forEach(card => conGrid.append(card));
+    draftItems.forEach(id => {
+      const card = cards.get(id);
+      if (!card) return;
+      if (tail) conGrid.insertBefore(card, tail);
+      else conGrid.append(card);
+    });
+  }
+
+  function deleteDraftSelection() {
+    if (!editing || !draftSelectedIds.size) return;
+    const removing = new Set(draftSelectedIds);
+    draftItems = draftItems.filter(id => !removing.has(id));
+    conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => {
+      if (removing.has(String(card.dataset.conId))) card.remove();
+    });
+    setDraftSelection([]);
   }
 
   editButton.addEventListener('click', () => {
@@ -295,40 +347,85 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     }
     editing = true;
     editCollectionId = String(view.id);
-    conGrid.querySelectorAll('.con-card').forEach(card => { card.draggable = true; });
+    draftItems = [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => String(card.dataset.conId));
+    draftSelectedIds = new Set(
+      [...conGrid.querySelectorAll('.con-card.selected[data-con-id]')].map(card => String(card.dataset.conId))
+    );
+    draftAnchorId = draftItems.find(id => draftSelectedIds.has(id)) || null;
+    conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => { card.draggable = true; });
+    setDraftSelection(draftSelectedIds, draftAnchorId);
     updateEditControls();
   });
 
+  deleteButton.addEventListener('click', deleteDraftSelection);
+
   saveButton.addEventListener('click', async () => {
     if (!editing || !editCollectionId) return;
-    const order = [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => String(card.dataset.conId));
     const all = await getAll('collections');
     const collection = all.find(item => String(item.id) === editCollectionId);
     if (!collection) return;
-    collection.items = order;
+    collection.items = [...draftItems];
     collection.updatedAt = Date.now();
     await putOne('collections', collection);
-    editing = false;
-    editCollectionId = null;
-    updateEditControls();
+    cancelEditState();
     location.reload();
   });
 
   cancelButton.addEventListener('click', () => {
     const view = activeView();
-    editing = false;
-    editCollectionId = null;
-    updateEditControls();
+    cancelEditState();
     if (view) activateView(view);
   });
 
+  conGrid.addEventListener('click', event => {
+    if (!editing) return;
+    const card = event.target.closest('.con-card[data-con-id]');
+    if (!card) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const id = String(card.dataset.conId);
+    const toggle = event.ctrlKey || event.metaKey;
+
+    if (event.shiftKey && draftAnchorId && draftItems.includes(draftAnchorId)) {
+      const a = draftItems.indexOf(draftAnchorId);
+      const b = draftItems.indexOf(id);
+      const range = draftItems.slice(Math.min(a, b), Math.max(a, b) + 1);
+      setDraftSelection(toggle ? new Set([...draftSelectedIds, ...range]) : range, draftAnchorId);
+      return;
+    }
+
+    if (toggle) {
+      const next = new Set(draftSelectedIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      setDraftSelection(next, id);
+      return;
+    }
+
+    setDraftSelection([id], id);
+  }, true);
+
+  conGrid.addEventListener('dblclick', event => {
+    if (!editing || !event.target.closest('.con-card[data-con-id]')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
   conGrid.addEventListener('dragstart', event => {
     if (!editing) return;
-    const card = event.target.closest('.con-card.missing[data-con-id]');
+    const card = event.target.closest('.con-card[data-con-id]');
     if (!card || !event.dataTransfer) return;
     event.stopImmediatePropagation();
+    const id = String(card.dataset.conId);
+    const ids = orderedDraftSelection(id);
     event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-hhjcon-ids', JSON.stringify([String(card.dataset.conId)]));
+    event.dataTransfer.setData('application/x-hhjcon-ids', JSON.stringify(ids));
+    event.dataTransfer.setData('text/plain', ids.join('\n'));
+    card.classList.add('dragging');
+  }, true);
+
+  conGrid.addEventListener('dragend', event => {
+    event.target.closest('.con-card')?.classList.remove('dragging');
   }, true);
 
   conGrid.addEventListener('dragover', event => {
@@ -361,7 +458,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     event.stopImmediatePropagation();
     target.classList.remove('collection-order-target');
     if (!editing) return;
-    moveCards(ids, target);
+    moveDraftCards(ids, target);
   }, true);
 
   document.addEventListener('click', event => {
@@ -382,11 +479,19 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     const id = nav.dataset.viewId;
     const name = nav.dataset.viewName || nav.textContent.trim();
     if (type && id) openView(type, id, name, true);
-    setTimeout(() => {
-      applySidebarMode();
-      updateEditControls();
-    }, 0);
+    applySidebarMode();
+    updateEditControls();
   });
+
+  window.addEventListener('keydown', event => {
+    if (event.key !== 'Delete') return;
+    if (document.activeElement?.matches('textarea, input, [contenteditable="true"]')) return;
+    if (document.querySelector('.story-con.selected')) return;
+    if (activeView()?.type !== 'collections') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (editing) deleteDraftSelection();
+  }, true);
 
   let refreshQueued = false;
   const observer = new MutationObserver(() => {

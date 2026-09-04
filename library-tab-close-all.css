@@ -1,0 +1,6 @@
+.library-view-close-all { position: sticky; right: 0; z-index: 3; flex: 0 0 auto; margin-left: auto; min-height: 30px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px 7px 0 0; background: #202735; color: var(--muted); white-space: nowrap; }
+.library-view-close-all:hover:not(:disabled) { color: var(--text); border-color: #50617e; }
+.library-view-close-all:disabled { opacity: .45; cursor: default; }
+.library-tabs-empty .library-toolbar,
+.library-tabs-empty #libraryEmpty,
+.library-tabs-empty #conGrid { display: none !important; }

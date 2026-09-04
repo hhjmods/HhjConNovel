@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HhjConNovel</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>HhjConNovel</h1>
+      <p>디시콘을 분류해서 사용하는 콘문학 편집기</p>
+    </div>
+    <div class="top-actions">
+      <div class="dc-connect-box">
+        <input id="dcWriteUrlInput" type="url" placeholder="DC 글쓰기 페이지 주소" autocomplete="off" spellcheck="false">
+        <a class="file-button" href="./bridge/hhjcon-dc-bridge.user.js" target="_blank" rel="noopener">DC 브리지 설치</a>
+        <button id="syncDcBtn" class="primary">DC 동기화</button>
+      </div>
+      <button id="exportCollectionBtn">콘묶음 내보내기</button>
+      <label class="file-button">콘묶음 불러오기<input id="importCollectionInput" type="file" accept="application/json,.json,.hhjconset"></label>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel sidebar">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-library-tab="packages">DC콘</button>
+        <button class="tab" data-library-tab="collections">내 콘묶음</button>
+      </div>
+      <section id="packagePanel" class="nav-panel">
+        <div class="panel-title-row"><h2>동기화된 DC콘</h2><span id="syncStatus" class="status">미동기화</span></div>
+        <div id="packageList" class="nav-list"></div>
+      </section>
+      <section id="collectionPanel" class="nav-panel hidden">
+        <div class="panel-title-row"><h2>내 콘묶음</h2><button id="newCollectionBtn" class="small">+ 새 콘묶음</button></div>
+        <div id="collectionList" class="nav-list"></div>
+      </section>
+    </aside>
+
+    <section class="panel library-panel">
+      <div class="library-toolbar">
+        <div><strong id="libraryTitle">콘 라이브러리</strong><span id="selectionStatus" class="muted">0개 선택</span></div>
+        <div class="toolbar-actions">
+          <input id="searchInput" type="search" placeholder="콘 이름 검색">
+          <button id="selectAllBtn">전체 선택</button>
+          <button id="clearSelectionBtn">선택 해제</button>
+        </div>
+      </div>
+      <div id="libraryEmpty" class="empty-state"><strong>아직 불러온 디시콘이 없습니다.</strong><span>DC 브리지를 설치한 뒤 글쓰기 페이지 주소를 입력하고 DC 동기화를 눌러주세요.</span></div>
+      <div id="conGrid" class="con-grid" aria-live="polite"></div>
+    </section>
+
+    <aside class="panel editor-panel">
+      <div class="editor-header">
+        <div><h2>원고</h2><span id="storyStats" class="muted">0블록</span></div>
+        <div><button id="addTextBtn" class="small">+ 대사</button><button id="clearStoryBtn" class="small danger">비우기</button></div>
+      </div>
+      <div id="storyDropZone" class="story-drop-zone">선택한 콘을 여기에 끌어다 놓거나 콘을 더블클릭하세요.</div>
+      <div id="storyList" class="story-list"></div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:;">
   <title>HhjConNovel</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./story-multiselect.css">
   <link rel="stylesheet" href="./workspace-enhancements.css">
+  <link rel="stylesheet" href="./interaction-fixes.css">
 </head>
 <body>
   <header class="topbar">
@@ -74,6 +76,7 @@
   <script type="module" src="./src/collection-missing-ui.js"></script>
   <script type="module" src="./src/app.js"></script>
   <script type="module" src="./src/library-workspace.js"></script>
+  <script type="module" src="./src/collection-edit-guard.js"></script>
   <script type="module" src="./src/story-insertion.js"></script>
 </body>
 </html>

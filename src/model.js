@@ -1,5 +1,5 @@
 export const COLLECTION_FILE_FORMAT = 'hhjcon-collection';
-export const COLLECTION_FILE_VERSION = 1;
+export const COLLECTION_FILE_VERSION = 2;
 
 export function makeId(prefix = 'id') {
   return `${prefix}_${crypto.randomUUID()}`;
@@ -45,7 +45,7 @@ export function normalizeSyncPayload(payload) {
 export function createCollection(name) {
   const trimmed = String(name || '').trim();
   if (!trimmed) throw new Error('콘묶음 이름을 입력하세요.');
-  return { id: makeId('collection'), name: trimmed, items: [], createdAt: Date.now(), updatedAt: Date.now() };
+  return { id: makeId('collection'), name: trimmed, items: [], refMeta: {}, createdAt: Date.now(), updatedAt: Date.now() };
 }
 
 export function addUniqueIds(collection, ids) {
@@ -75,35 +75,100 @@ export function reorderIds(collection, movingIds, beforeId = null) {
 
 export function removeIds(collection, ids) {
   const remove = new Set(ids);
-  return { ...collection, items: collection.items.filter(id => !remove.has(id)), updatedAt: Date.now() };
+  const refMeta = { ...(collection.refMeta || {}) };
+  ids.forEach(id => delete refMeta[id]);
+  return {
+    ...collection,
+    items: collection.items.filter(id => !remove.has(id)),
+    refMeta,
+    updatedAt: Date.now()
+  };
 }
 
 export function exportCollection(collection, consById, packagesById) {
+  const storedMeta = collection.refMeta || {};
   const refs = collection.items.map(id => {
     const con = consById.get(id);
-    const pkg = con ? packagesById.get(con.packageId) : null;
-    return con ? {
-      id: con.id,
-      packageId: con.packageId,
-      sourcePackageId: pkg?.sourcePackageId || con.packageId,
-      sourceNo: con.sourceNo,
-      name: con.name
-    } : { id };
+    const saved = storedMeta[id] || {};
+    const packageId = con?.packageId || saved.packageId || '';
+    const pkg = packageId ? packagesById.get(packageId) : null;
+    return {
+      id,
+      packageId,
+      sourcePackageId: pkg?.sourcePackageId || saved.sourcePackageId || packageId,
+      sourceNo: con?.sourceNo || saved.sourceNo || '',
+      name: con?.name || saved.name || '미보유/미동기화 콘',
+      packageName: pkg?.name || saved.packageName || ''
+    };
   });
+
+  const packages = [];
+  const seenPackages = new Set();
+  refs.forEach(ref => {
+    const key = ref.sourcePackageId || ref.packageId;
+    if (!key || seenPackages.has(key)) return;
+    seenPackages.add(key);
+    packages.push({
+      packageId: ref.packageId,
+      sourcePackageId: ref.sourcePackageId,
+      name: ref.packageName || '이름을 확인할 수 없는 디시콘 묶음'
+    });
+  });
+
   return {
     format: COLLECTION_FILE_FORMAT,
     version: COLLECTION_FILE_VERSION,
     exportedAt: new Date().toISOString(),
     collection: { name: collection.name, items: [...collection.items] },
+    packages,
     refs
   };
 }
 
 export function importCollectionFile(data) {
-  if (!data || data.format !== COLLECTION_FILE_FORMAT || data.version !== COLLECTION_FILE_VERSION) {
+  const version = Number(data?.version);
+  if (!data || data.format !== COLLECTION_FILE_FORMAT || ![1, 2].includes(version)) {
     throw new Error('지원하지 않는 콘묶음 파일입니다.');
   }
+
   const name = String(data.collection?.name || '가져온 콘묶음').trim() || '가져온 콘묶음';
-  const items = Array.isArray(data.collection?.items) ? data.collection.items.filter(id => typeof id === 'string') : [];
-  return { id: makeId('collection'), name, items: [...new Set(items)], createdAt: Date.now(), updatedAt: Date.now() };
+  const items = Array.isArray(data.collection?.items)
+    ? [...new Set(data.collection.items.filter(id => typeof id === 'string'))]
+    : [];
+
+  const packageNames = new Map();
+  if (Array.isArray(data.packages)) {
+    data.packages.forEach(pkg => {
+      if (!pkg || typeof pkg !== 'object') return;
+      const packageName = String(pkg.name || '').trim();
+      if (!packageName) return;
+      if (pkg.packageId != null) packageNames.set(String(pkg.packageId), packageName);
+      if (pkg.sourcePackageId != null) packageNames.set(String(pkg.sourcePackageId), packageName);
+    });
+  }
+
+  const refMeta = {};
+  if (Array.isArray(data.refs)) {
+    data.refs.forEach(ref => {
+      if (!ref || typeof ref !== 'object' || typeof ref.id !== 'string') return;
+      const packageId = String(ref.packageId || '');
+      const sourcePackageId = String(ref.sourcePackageId || packageId);
+      refMeta[ref.id] = {
+        packageId,
+        sourcePackageId,
+        sourceNo: String(ref.sourceNo || ''),
+        name: String(ref.name || '미보유/미동기화 콘'),
+        packageName: String(ref.packageName || packageNames.get(packageId) || packageNames.get(sourcePackageId) || '')
+      };
+    });
+  }
+
+  return {
+    id: makeId('collection'),
+    name,
+    items,
+    refMeta,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
 }

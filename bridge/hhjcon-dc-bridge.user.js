@@ -1,11 +1,15 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.3.0
+// @version      0.4.0
 // @description  HhjConNovel의 디시콘 동기화 기능을 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
+// @match        https://gall.dcinside.com/*
 // @connect      gall.dcinside.com
 // @grant        GM_xmlhttpRequest
+// @grant        GM_cookie
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        unsafeWindow
 // @updateURL    https://hhjmods.github.io/HhjConNovel/bridge/hhjcon-dc-bridge.user.js
 // @downloadURL  https://hhjmods.github.io/HhjConNovel/bridge/hhjcon-dc-bridge.user.js
@@ -15,12 +19,51 @@
 (() => {
   'use strict';
 
+  const CI_CACHE_KEY = 'hhjcon-dc-ci-c';
+
+  function readDocumentCookie(name) {
+    const prefix = `${name}=`;
+    const part = document.cookie.split(';').map(value => value.trim()).find(value => value.startsWith(prefix));
+    return part ? decodeURIComponent(part.slice(prefix.length)) : '';
+  }
+
+  function readCookie(url, name) {
+    return new Promise(resolve => {
+      if (typeof GM_cookie === 'undefined' || typeof GM_cookie.list !== 'function') {
+        resolve('');
+        return;
+      }
+      try {
+        GM_cookie.list({ url, name }, (cookies, error) => {
+          if (error || !Array.isArray(cookies)) {
+            resolve('');
+            return;
+          }
+          resolve(cookies.find(cookie => cookie.name === name)?.value || '');
+        });
+      } catch {
+        resolve('');
+      }
+    });
+  }
+
+  async function cacheDcCookie() {
+    let value = readDocumentCookie('ci_c');
+    if (!value) value = await readCookie(location.href, 'ci_c');
+    if (value) GM_setValue(CI_CACHE_KEY, value);
+  }
+
+  if (location.hostname === 'gall.dcinside.com') {
+    cacheDcCookie();
+    return;
+  }
+
   const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const REQUEST_TYPE = 'HHJCON_DC_SYNC_REQUEST';
   const RESULT_TYPE = 'HHJCON_DC_SYNC_RESULT';
   const PING_TYPE = 'HHJCON_DC_BRIDGE_PING';
   const PONG_TYPE = 'HHJCON_DC_BRIDGE_PONG';
-  const VERSION = '0.3.0';
+  const VERSION = '0.4.0';
   const MAX_PAGE = 30;
 
   function post(message) {
@@ -69,7 +112,7 @@
     return url;
   }
 
-  function findCiToken(html) {
+  async function findCiToken(html, writeUrl) {
     const patterns = [
       /name=["']ci_t["'][^>]*value=["']([^"']+)["']/i,
       /value=["']([^"']+)["'][^>]*name=["']ci_t["']/i,
@@ -78,9 +121,19 @@
     ];
     for (const pattern of patterns) {
       const match = html.match(pattern);
-      if (match?.[1]) return match[1];
+      if (match?.[1] && match[1] !== 'undefined') return match[1];
     }
-    throw new Error('DC 글쓰기 페이지에서 ci_t 값을 찾지 못했습니다. 로그인 상태와 URL을 확인하세요.');
+
+    const cookieValue = await readCookie(writeUrl.href, 'ci_c');
+    if (cookieValue) {
+      GM_setValue(CI_CACHE_KEY, cookieValue);
+      return cookieValue;
+    }
+
+    const cachedValue = GM_getValue(CI_CACHE_KEY, '');
+    if (cachedValue) return cachedValue;
+
+    throw new Error('DC 인증값(ci_c/ci_t)을 찾지 못했습니다. DC 글쓰기 페이지를 새로고침한 뒤 다시 시도해주세요.');
   }
 
   function parseJson(text) {
@@ -182,7 +235,7 @@
 
   async function collect(writeUrl) {
     const writePage = await requestText({ url: writeUrl.href });
-    const ciT = findCiToken(writePage);
+    const ciT = await findCiToken(writePage, writeUrl);
     const listUrl = new URL('/dccon/lists', writeUrl).href;
     const packageMap = new Map();
     const conMap = new Map();

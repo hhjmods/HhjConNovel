@@ -4,6 +4,7 @@ if (storyList) {
   let activeDragKind = null;
   let sourceRow = null;
   let guide = null;
+  let activeBoundary = null;
 
   function ensureGuide() {
     if (guide?.isConnected) return guide;
@@ -34,6 +35,7 @@ if (storyList) {
   }
 
   function hideGuide() {
+    activeBoundary = null;
     if (!guide) return;
     guide.classList.add('hidden');
     guide.classList.remove('horizontal', 'vertical');
@@ -96,7 +98,15 @@ if (storyList) {
     return best;
   }
 
+  function isLowerTailPoint(clientY) {
+    const rows = [...storyList.querySelectorAll(':scope > .story-item')];
+    const last = rows.at(-1);
+    if (!last) return true;
+    return clientY >= last.getBoundingClientRect().bottom;
+  }
+
   function showBoundary(previous, next) {
+    activeBoundary = { previous, next };
     const previousIsCon = Boolean(previous?.classList.contains('story-con'));
     const nextIsCon = Boolean(next?.classList.contains('story-con'));
 
@@ -126,6 +136,51 @@ if (storyList) {
     hideGuide();
   }
 
+  function showBlankPointBoundary(event) {
+    if (isLowerTailPoint(event.clientY)) {
+      const rows = [...storyList.querySelectorAll(':scope > .story-item')];
+      showBoundary(rows.at(-1) || null, null);
+      return;
+    }
+
+    if (activeDragKind === 'con') {
+      const sameLineCons = [...storyList.querySelectorAll(':scope > .story-con')]
+        .filter(row => row !== sourceRow)
+        .filter(row => {
+          const rect = row.getBoundingClientRect();
+          return event.clientY >= rect.top - 4 && event.clientY <= rect.bottom + 4;
+        });
+
+      if (sameLineCons.length) {
+        let nearest = sameLineCons[0];
+        let distance = Infinity;
+        for (const row of sameLineCons) {
+          const rect = row.getBoundingClientRect();
+          const center = rect.left + rect.width / 2;
+          const current = Math.abs(event.clientX - center);
+          if (current < distance) {
+            distance = current;
+            nearest = row;
+          }
+        }
+        const rect = nearest.getBoundingClientRect();
+        if (event.clientX >= rect.left + rect.width / 2) {
+          showBoundary(nearest, nextStoryItem(nearest));
+        } else {
+          showBoundary(previousStoryItem(nearest), nearest);
+        }
+        return;
+      }
+    }
+
+    const row = nearestRow(event.clientX, event.clientY);
+    if (!row) {
+      hideGuide();
+      return;
+    }
+    showBoundary(previousStoryItem(row), row);
+  }
+
   function showGuideForEvent(event) {
     if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
 
@@ -148,6 +203,12 @@ if (storyList) {
       else showHorizontal(row.getBoundingClientRect().top);
       return;
     }
+
+    if (!row && event.target === storyList) {
+      showBlankPointBoundary(event);
+      return;
+    }
+
     if (!row) row = nearestRow(event.clientX, event.clientY);
     if (!row) {
       hideGuide();
@@ -155,6 +216,13 @@ if (storyList) {
     }
 
     showBoundary(previousStoryItem(row), row);
+  }
+
+  function forwardDrop(target, dataTransfer) {
+    if (!target || !dataTransfer) return;
+    const forwarded = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
+    target.dispatchEvent(forwarded);
   }
 
   document.addEventListener('dragstart', event => {
@@ -183,6 +251,15 @@ if (storyList) {
     clearLegacyHighlights();
   });
 
+  storyList.addEventListener('drop', event => {
+    if (event.target !== storyList || !activeBoundary || isLowerTailPoint(event.clientY)) return;
+    const target = activeBoundary.next || storyList.querySelector(':scope > .story-tail-drop');
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    forwardDrop(target, event.dataTransfer);
+  });
+
   function finishDrag() {
     hideGuide();
     clearLegacyHighlights();
@@ -192,5 +269,5 @@ if (storyList) {
   }
 
   document.addEventListener('dragend', finishDrag, true);
-  document.addEventListener('drop', finishDrag, true);
+  document.addEventListener('drop', () => queueMicrotask(finishDrag), true);
 }

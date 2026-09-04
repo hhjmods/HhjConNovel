@@ -82,6 +82,7 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
   let conCount = 0;
   let dialogueCount = 0;
   let breakCount = 0;
+  let imageCount = 0;
 
   const flushCons = () => {
     if (!conBuffer.length) return;
@@ -110,6 +111,7 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
     }
 
     if (source === IMAGE_SENTINEL) {
+      imageCount += 1;
       htmlParts.push(`<p><span style="font-size:32px;color:#ff0000;background-color:#ffff00;font-weight:700;">${escapeHtml(IMAGE_PLACEHOLDER_TEXT)}</span></p>`);
       continue;
     }
@@ -128,6 +130,7 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
     htmlCharCount: html.length,
     conCount,
     dialogueCount,
-    breakCount
+    breakCount,
+    imageCount
   };
 }

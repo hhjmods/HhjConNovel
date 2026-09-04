@@ -35,6 +35,7 @@ if (storyList && editorActions && addTextButton) {
     if (draggingTextBlock) {
       return previousIsCon && nextIsCon ? 'inline' : 'block';
     }
+    if (next) return previousIsCon && nextIsCon ? 'inline' : 'block';
     return previousIsCon ? 'inline' : 'block';
   }
 
@@ -136,7 +137,7 @@ if (storyList && editorActions && addTextButton) {
 
     items.forEach((row, index) => {
       const previous = items[index - 1] || null;
-      const defaultMode = previous?.classList.contains('story-con') ? 'inline' : 'block';
+      const defaultMode = previous?.classList.contains('story-con') && row.classList.contains('story-con') ? 'inline' : 'block';
       storyList.insertBefore(makeInsertSlot(row, previous, row, defaultMode), row);
     });
 

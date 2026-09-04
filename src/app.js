@@ -21,6 +21,8 @@ const state = {
   activeCollectionId: null,
   selectedIds: new Set(),
   selectionAnchorId: null,
+  storySelectedIds: new Set(),
+  storySelectionAnchorId: null,
   story: { id: 'current', items: [], updatedAt: Date.now() },
   search: ''
 };
@@ -30,12 +32,24 @@ const el = Object.fromEntries([
   'packagePanel', 'collectionPanel', 'packageList', 'collectionList', 'newCollectionBtn',
   'libraryTitle', 'selectionStatus', 'searchInput', 'selectAllBtn', 'clearSelectionBtn',
   'libraryEmpty', 'conGrid', 'storyList', 'storyDropZone', 'storyStats', 'addTextBtn',
-  'clearStoryBtn', 'syncStatus', 'toast'
+  'addSelectedConsBtn', 'clearStoryBtn', 'syncStatus', 'toast'
 ].map(id => [id, document.getElementById(id)]));
 
 function mapById(items) { return new Map(items.map(item => [item.id, item])); }
 function activeCollection() { return state.collections.find(item => item.id === state.activeCollectionId) || null; }
 function activePackage() { return state.packages.find(item => item.id === state.activePackageId) || null; }
+function makeStoryItemId() { return `story_${crypto.randomUUID()}`; }
+
+function ensureStoryItemIds() {
+  let changed = false;
+  state.story.items.forEach(item => {
+    if (!item.id) {
+      item.id = makeStoryItemId();
+      changed = true;
+    }
+  });
+  return changed;
+}
 
 function toast(message) {
   el.toast.textContent = message;
@@ -44,7 +58,10 @@ function toast(message) {
   toast.timer = setTimeout(() => el.toast.classList.remove('show'), 1800);
 }
 
-function fileNameSafe(name) { return String(name || 'collection').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80); }
+function fileNameSafe(name) {
+  return String(name || 'collection').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
+}
+
 function downloadJson(name, value) {
   const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -65,6 +82,7 @@ async function loadState() {
   state.cons = cons;
   state.collections = collections.sort((a, b) => a.createdAt - b.createdAt);
   state.story = story || state.story;
+  if (ensureStoryItemIds()) await putOne('documents', state.story);
   state.activePackageId = state.packages[0]?.id || null;
   state.activeCollectionId = state.collections[0]?.id || null;
   el.dcWriteUrlInput.value = localStorage.getItem(DC_WRITE_URL_KEY) || '';
@@ -99,7 +117,11 @@ function visibleCons() {
     if (pkg) list = state.cons.filter(con => con.packageId === pkg.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   } else {
     const collection = activeCollection();
-    if (collection) list = collection.items.map(id => consById.get(id) || ({ id, name: '미보유/미동기화 콘', packageId: '', thumbnailUrl: '', missing: true }));
+    if (collection) {
+      list = collection.items.map(id => consById.get(id) || ({
+        id, name: '미보유/미동기화 콘', packageId: '', thumbnailUrl: '', missing: true
+      }));
+    }
   }
   const query = state.search.trim().toLowerCase();
   if (query) list = list.filter(con => `${con.name} ${con.id}`.toLowerCase().includes(query));
@@ -125,7 +147,8 @@ function handleCardSelection(event, id) {
   }
   if (toggle) {
     const next = new Set(state.selectedIds);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelection(next, id);
     return;
   }
@@ -133,7 +156,7 @@ function handleCardSelection(event, id) {
 }
 
 function dragIdsFor(id) {
-  if (state.selectedIds.has(id)) return [...state.selectedIds];
+  if (state.selectedIds.has(id)) return visibleCons().map(con => con.id).filter(conId => state.selectedIds.has(conId));
   setSelection([id], id);
   return [id];
 }
@@ -153,8 +176,24 @@ function readDragData(event) {
   }
 }
 
+function writeStoryDragData(event, ids) {
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify(ids));
+}
+
+function readStoryDragData(event) {
+  try {
+    const raw = event.dataTransfer.getData('application/x-hhjstory-ids');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 function renderTabs() {
-  document.querySelectorAll('[data-library-tab]').forEach(button => button.classList.toggle('active', button.dataset.libraryTab === state.activeTab));
+  document.querySelectorAll('[data-library-tab]').forEach(button => {
+    button.classList.toggle('active', button.dataset.libraryTab === state.activeTab);
+  });
   el.packagePanel.classList.toggle('hidden', state.activeTab !== 'packages');
   el.collectionPanel.classList.toggle('hidden', state.activeTab !== 'collections');
 }
@@ -294,12 +333,99 @@ function renderSelectionStatus() {
   el.selectionStatus.textContent = `${state.selectedIds.size}개 선택`;
 }
 
+function storyConIds() {
+  return state.story.items.filter(item => item.type === 'con').map(item => item.id);
+}
+
+function setStorySelection(ids, anchorId = null, rerender = true) {
+  state.storySelectedIds = new Set(ids);
+  state.storySelectionAnchorId = anchorId;
+  if (rerender) renderStory();
+  else {
+    el.storyList.querySelectorAll('.story-con').forEach(row => {
+      row.classList.toggle('selected', state.storySelectedIds.has(row.dataset.storyId));
+    });
+    updateStoryStats();
+  }
+}
+
+function handleStorySelection(event, itemId) {
+  if (event.target.closest('.story-tools')) return;
+  const ids = storyConIds();
+  const toggle = event.ctrlKey || event.metaKey;
+  if (event.shiftKey && state.storySelectionAnchorId && ids.includes(state.storySelectionAnchorId)) {
+    const a = ids.indexOf(state.storySelectionAnchorId);
+    const b = ids.indexOf(itemId);
+    const range = ids.slice(Math.min(a, b), Math.max(a, b) + 1);
+    setStorySelection(toggle ? new Set([...state.storySelectedIds, ...range]) : new Set(range), state.storySelectionAnchorId);
+    return;
+  }
+  if (toggle) {
+    const next = new Set(state.storySelectedIds);
+    if (next.has(itemId)) next.delete(itemId);
+    else next.add(itemId);
+    setStorySelection(next, itemId);
+    return;
+  }
+  setStorySelection([itemId], itemId);
+}
+
+function storyDragIdsFor(itemId) {
+  if (state.storySelectedIds.has(itemId)) {
+    return state.story.items.filter(item => state.storySelectedIds.has(item.id)).map(item => item.id);
+  }
+  setStorySelection([itemId], itemId);
+  return [itemId];
+}
+
+function updateStoryStats() {
+  const selected = state.storySelectedIds.size;
+  el.storyStats.textContent = selected ? `${state.story.items.length}블록 · ${selected}개 선택` : `${state.story.items.length}블록`;
+}
+
+function makeStoryTools(item) {
+  const tools = document.createElement('div');
+  tools.className = 'story-tools';
+  tools.append(
+    storyTool('↑', '위로', () => moveStorySelection(-1, item.id)),
+    storyTool('↓', '아래로', () => moveStorySelection(1, item.id)),
+    storyTool('×', '삭제', () => removeStorySelection(item.id))
+  );
+  return tools;
+}
+
+function addStoryDropHandlers(row, itemId) {
+  row.addEventListener('dragover', event => {
+    const storyIds = readStoryDragData(event);
+    const conIds = readDragData(event);
+    if (!storyIds.length && !conIds.length) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
+    row.classList.add('story-drag-target');
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('story-drag-target'));
+  row.addEventListener('drop', async event => {
+    event.preventDefault();
+    row.classList.remove('story-drag-target');
+    const storyIds = readStoryDragData(event);
+    if (storyIds.length) {
+      await reorderStoryItems(storyIds, itemId);
+      return;
+    }
+    const conIds = readDragData(event);
+    if (conIds.length) await addConBlocks(conIds, itemId);
+  });
+}
+
 function renderStory() {
   const consById = mapById(state.cons);
   el.storyList.replaceChildren();
-  state.story.items.forEach((item, index) => {
+  state.story.items.forEach(item => {
     const row = document.createElement('div');
     row.className = `story-item story-${item.type}`;
+    row.dataset.storyId = item.id;
+    addStoryDropHandlers(row, item.id);
+
     if (item.type === 'text') {
       const textarea = document.createElement('textarea');
       textarea.rows = 2;
@@ -309,27 +435,52 @@ function renderStory() {
         item.text = textarea.value;
         await saveStory();
       });
-      row.append(textarea);
+      row.append(textarea, makeStoryTools(item));
     } else if (item.type === 'con') {
       const con = consById.get(item.conId);
+      row.draggable = true;
+      row.classList.toggle('selected', state.storySelectedIds.has(item.id));
       const img = document.createElement('img');
       if (con?.thumbnailUrl) img.src = con.thumbnailUrl;
       img.alt = con?.name || '미보유 콘';
       const label = document.createElement('span');
       label.textContent = con?.name || `미보유: ${item.conId}`;
-      row.append(img, label);
+      row.append(img, label, makeStoryTools(item));
+      row.addEventListener('click', event => handleStorySelection(event, item.id));
+      row.addEventListener('dragstart', event => {
+        writeStoryDragData(event, storyDragIdsFor(item.id));
+        row.classList.add('dragging');
+      });
+      row.addEventListener('dragend', () => row.classList.remove('dragging'));
     }
-    const tools = document.createElement('div');
-    tools.className = 'story-tools';
-    tools.append(
-      storyTool('↑', '위로', () => moveStory(index, -1)),
-      storyTool('↓', '아래로', () => moveStory(index, 1)),
-      storyTool('×', '삭제', () => removeStory(index))
-    );
-    row.append(tools);
     el.storyList.append(row);
   });
-  el.storyStats.textContent = `${state.story.items.length}블록`;
+
+  const tail = document.createElement('div');
+  tail.className = 'story-tail-drop';
+  tail.textContent = state.story.items.length ? '여기에 놓으면 원고 맨 뒤로 이동' : '';
+  tail.addEventListener('dragover', event => {
+    const storyIds = readStoryDragData(event);
+    const conIds = readDragData(event);
+    if (!storyIds.length && !conIds.length) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
+    tail.classList.add('drop-target');
+  });
+  tail.addEventListener('dragleave', () => tail.classList.remove('drop-target'));
+  tail.addEventListener('drop', async event => {
+    event.preventDefault();
+    tail.classList.remove('drop-target');
+    const storyIds = readStoryDragData(event);
+    if (storyIds.length) {
+      await reorderStoryItems(storyIds, null);
+      return;
+    }
+    const conIds = readDragData(event);
+    if (conIds.length) await addConBlocks(conIds);
+  });
+  el.storyList.append(tail);
+  updateStoryStats();
 }
 
 function storyTool(text, title, action) {
@@ -337,34 +488,94 @@ function storyTool(text, title, action) {
   button.className = 'icon-button';
   button.textContent = text;
   button.title = title;
-  button.addEventListener('click', action);
+  button.addEventListener('click', event => {
+    event.stopPropagation();
+    action();
+  });
   return button;
 }
 
 async function saveStory() {
   state.story.updatedAt = Date.now();
   await putOne('documents', state.story);
-  el.storyStats.textContent = `${state.story.items.length}블록`;
+  updateStoryStats();
 }
 
-async function addConBlocks(ids) {
+async function addConBlocks(ids, beforeStoryId = null) {
   const consById = mapById(state.cons);
-  ids.filter(id => consById.has(id)).forEach(id => state.story.items.push({ type: 'con', conId: id }));
+  const newItems = ids.filter(id => consById.has(id)).map(conId => ({
+    id: makeStoryItemId(),
+    type: 'con',
+    conId
+  }));
+  if (!newItems.length) return;
+  let insertAt = beforeStoryId ? state.story.items.findIndex(item => item.id === beforeStoryId) : state.story.items.length;
+  if (insertAt < 0) insertAt = state.story.items.length;
+  state.story.items.splice(insertAt, 0, ...newItems);
+  state.storySelectedIds = new Set(newItems.map(item => item.id));
+  state.storySelectionAnchorId = newItems[0]?.id || null;
   await saveStory();
   renderStory();
 }
 
-async function moveStory(index, delta) {
-  const next = index + delta;
-  if (next < 0 || next >= state.story.items.length) return;
-  const [item] = state.story.items.splice(index, 1);
-  state.story.items.splice(next, 0, item);
+async function reorderStoryItems(movingIds, beforeId = null) {
+  const moving = new Set(movingIds);
+  const movingItems = state.story.items.filter(item => moving.has(item.id));
+  if (!movingItems.length) return;
+  const remaining = state.story.items.filter(item => !moving.has(item.id));
+  let insertAt = beforeId ? remaining.findIndex(item => item.id === beforeId) : remaining.length;
+  if (insertAt < 0) insertAt = remaining.length;
+  remaining.splice(insertAt, 0, ...movingItems);
+  state.story.items = remaining;
+  state.storySelectedIds = new Set(movingItems.filter(item => item.type === 'con').map(item => item.id));
+  state.storySelectionAnchorId = movingItems.find(item => item.type === 'con')?.id || null;
   await saveStory();
   renderStory();
 }
 
-async function removeStory(index) {
-  state.story.items.splice(index, 1);
+async function moveStorySelection(delta, fallbackId) {
+  const selected = state.storySelectedIds.has(fallbackId)
+    ? new Set(state.storySelectedIds)
+    : new Set([fallbackId]);
+  const selectedItems = state.story.items.filter(item => selected.has(item.id));
+  if (!selectedItems.length) return;
+
+  const firstIndex = state.story.items.findIndex(item => selected.has(item.id));
+  let lastIndex = -1;
+  state.story.items.forEach((item, index) => {
+    if (selected.has(item.id)) lastIndex = index;
+  });
+
+  if (delta < 0) {
+    let targetIndex = firstIndex - 1;
+    while (targetIndex >= 0 && selected.has(state.story.items[targetIndex].id)) targetIndex -= 1;
+    if (targetIndex < 0) return;
+    await reorderStoryItems([...selected], state.story.items[targetIndex].id);
+    return;
+  }
+
+  let targetIndex = lastIndex + 1;
+  while (targetIndex < state.story.items.length && selected.has(state.story.items[targetIndex].id)) targetIndex += 1;
+  if (targetIndex >= state.story.items.length) return;
+
+  const targetId = state.story.items[targetIndex].id;
+  const remaining = state.story.items.filter(item => !selected.has(item.id));
+  const targetPos = remaining.findIndex(item => item.id === targetId);
+  remaining.splice(targetPos + 1, 0, ...selectedItems);
+  state.story.items = remaining;
+  state.storySelectedIds = new Set(selectedItems.filter(item => item.type === 'con').map(item => item.id));
+  state.storySelectionAnchorId = selectedItems.find(item => item.type === 'con')?.id || null;
+  await saveStory();
+  renderStory();
+}
+
+async function removeStorySelection(fallbackId) {
+  const selected = state.storySelectedIds.has(fallbackId)
+    ? new Set(state.storySelectedIds)
+    : new Set([fallbackId]);
+  state.story.items = state.story.items.filter(item => !selected.has(item.id));
+  state.storySelectedIds.clear();
+  state.storySelectionAnchorId = null;
   await saveStory();
   renderStory();
 }
@@ -416,12 +627,64 @@ function renderAll() {
 }
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  })[char]);
 }
 
 function escapeAttr(value) {
   return escapeHtml(value);
 }
+
+const selectionBox = document.createElement('div');
+selectionBox.className = 'story-selection-box hidden';
+document.body.append(selectionBox);
+let boxSelection = null;
+
+el.storyList.addEventListener('pointerdown', event => {
+  if (event.button !== 0 || event.target.closest('.story-item, button, textarea')) return;
+  const additive = event.ctrlKey || event.metaKey;
+  boxSelection = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    base: additive ? new Set(state.storySelectedIds) : new Set()
+  };
+  el.storyList.setPointerCapture(event.pointerId);
+  selectionBox.classList.remove('hidden');
+  event.preventDefault();
+});
+
+el.storyList.addEventListener('pointermove', event => {
+  if (!boxSelection || boxSelection.pointerId !== event.pointerId) return;
+  const left = Math.min(boxSelection.startX, event.clientX);
+  const top = Math.min(boxSelection.startY, event.clientY);
+  const right = Math.max(boxSelection.startX, event.clientX);
+  const bottom = Math.max(boxSelection.startY, event.clientY);
+  selectionBox.style.left = `${left}px`;
+  selectionBox.style.top = `${top}px`;
+  selectionBox.style.width = `${right - left}px`;
+  selectionBox.style.height = `${bottom - top}px`;
+
+  const next = new Set(boxSelection.base);
+  el.storyList.querySelectorAll('.story-con').forEach(row => {
+    const rect = row.getBoundingClientRect();
+    const intersects = rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top;
+    if (intersects) next.add(row.dataset.storyId);
+  });
+  const anchor = [...next][0] || null;
+  setStorySelection(next, anchor, false);
+});
+
+function finishBoxSelection(event) {
+  if (!boxSelection || boxSelection.pointerId !== event.pointerId) return;
+  if (el.storyList.hasPointerCapture(event.pointerId)) el.storyList.releasePointerCapture(event.pointerId);
+  boxSelection = null;
+  selectionBox.classList.add('hidden');
+}
+
+el.storyList.addEventListener('pointerup', finishBoxSelection);
+el.storyList.addEventListener('pointercancel', finishBoxSelection);
 
 document.querySelectorAll('[data-library-tab]').forEach(button => button.addEventListener('click', () => {
   state.activeTab = button.dataset.libraryTab;
@@ -506,8 +769,19 @@ el.importCollectionInput.addEventListener('change', async () => {
   }
 });
 
+el.addSelectedConsBtn.addEventListener('click', async () => {
+  const ids = visibleCons().map(con => con.id).filter(id => state.selectedIds.has(id) && state.cons.some(con => con.id === id));
+  if (!ids.length) {
+    toast('먼저 콘 라이브러리에서 넣을 디시콘을 선택해주세요.');
+    return;
+  }
+  await addConBlocks(ids);
+});
+
 el.addTextBtn.addEventListener('click', async () => {
-  state.story.items.push({ type: 'text', text: '' });
+  state.story.items.push({ id: makeStoryItemId(), type: 'text', text: '' });
+  state.storySelectedIds.clear();
+  state.storySelectionAnchorId = null;
   await saveStory();
   renderStory();
   el.storyList.querySelector('.story-text:last-of-type textarea')?.focus();
@@ -516,13 +790,18 @@ el.addTextBtn.addEventListener('click', async () => {
 el.clearStoryBtn.addEventListener('click', async () => {
   if (state.story.items.length && !confirm('현재 원고를 모두 비울까요?')) return;
   state.story.items = [];
+  state.storySelectedIds.clear();
+  state.storySelectionAnchorId = null;
   await saveStory();
   renderStory();
 });
 
 el.storyDropZone.addEventListener('dragover', event => {
+  const storyIds = readStoryDragData(event);
+  const conIds = readDragData(event);
+  if (!storyIds.length && !conIds.length) return;
   event.preventDefault();
-  event.dataTransfer.dropEffect = 'copy';
+  event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
   el.storyDropZone.classList.add('drop-target');
 });
 
@@ -531,11 +810,25 @@ el.storyDropZone.addEventListener('dragleave', () => el.storyDropZone.classList.
 el.storyDropZone.addEventListener('drop', async event => {
   event.preventDefault();
   el.storyDropZone.classList.remove('drop-target');
-  await addConBlocks(readDragData(event));
+  const storyIds = readStoryDragData(event);
+  if (storyIds.length) {
+    await reorderStoryItems(storyIds, state.story.items[0]?.id || null);
+    return;
+  }
+  const conIds = readDragData(event);
+  if (conIds.length) await addConBlocks(conIds);
 });
 
 window.addEventListener('keydown', event => {
-  if (event.key === 'Delete' && state.activeTab === 'collections' && document.activeElement?.tagName !== 'TEXTAREA') {
+  if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
+
+  if (event.key === 'Delete' && state.storySelectedIds.size) {
+    event.preventDefault();
+    removeStorySelection([...state.storySelectedIds][0]);
+    return;
+  }
+
+  if (event.key === 'Delete' && state.activeTab === 'collections') {
     removeSelectedFromCollection();
   }
 });

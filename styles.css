@@ -27,10 +27,12 @@ input[type="search"] { min-width: 180px; }
 .topbar h1 { font-size: 20px; margin: 0 0 3px; }
 .topbar p { margin: 0; color: var(--muted); font-size: 12px; }
 .top-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.dc-connect-box { display: flex; flex-wrap: wrap; gap: 8px; }
+.dc-connect-box { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .dc-connect-box input { width: min(330px, 45vw); }
 .file-button { display: inline-flex; align-items: center; text-decoration: none; }
 .file-button input { display: none; }
+.helper-link { color: var(--muted); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
+.helper-link:hover { color: var(--accent-2); }
 .layout { height: calc(100vh - 73px); display: grid; grid-template-columns: 250px minmax(420px, 1fr) 360px; gap: 1px; background: var(--line); }
 .panel { min-width: 0; background: var(--panel); overflow: hidden; }
 .sidebar, .editor-panel { display: flex; flex-direction: column; }

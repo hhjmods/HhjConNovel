@@ -1,0 +1,7 @@
+.story-con { cursor: pointer; }
+.story-con.selected { outline: 2px solid var(--accent); background: #25334e; }
+.story-con.dragging { opacity: .45; }
+.story-item.story-drag-target { box-shadow: inset 4px 0 var(--accent); }
+.story-selection-box { position: fixed; z-index: 1000; pointer-events: none; border: 1px solid var(--accent); background: rgb(122 162 255 / 16%); }
+.story-tail-drop { min-height: 36px; margin: 0 0 8px; display: grid; place-items: center; border: 1px dashed transparent; border-radius: 8px; color: var(--muted); font-size: 11px; }
+.story-tail-drop.drop-target { border-color: var(--accent); background: #202d47; color: var(--accent-2); }

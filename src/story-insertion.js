@@ -22,24 +22,46 @@ if (storyList && editorActions && addTextButton) {
     target.dispatchEvent(forwarded);
   }
 
-  function makeInsertSlot(target, mode) {
+  function setSlotMode(slot, mode) {
+    slot.classList.toggle('inline', mode === 'inline');
+    slot.classList.toggle('block', mode === 'block');
+  }
+
+  function slotModeForDrag(dataTransfer, previous, next) {
+    const previousIsCon = Boolean(previous?.classList.contains('story-con'));
+    const nextIsCon = Boolean(next?.classList.contains('story-con'));
+    const draggingTextBlock = Boolean(dataTransfer?.types?.includes('application/x-hhjstory-block'));
+
+    if (draggingTextBlock) {
+      return previousIsCon && nextIsCon ? 'inline' : 'block';
+    }
+    return previousIsCon ? 'inline' : 'block';
+  }
+
+  function makeInsertSlot(target, previous, next, defaultMode) {
     const slot = document.createElement('div');
-    slot.className = `story-insert-slot ${mode}`;
+    slot.className = `story-insert-slot ${defaultMode}`;
     slot.title = '이 위치에 삽입';
     slot.addEventListener('dragenter', event => {
       event.preventDefault();
+      setSlotMode(slot, slotModeForDrag(event.dataTransfer, previous, next));
       slot.classList.add('drop-target');
     });
     slot.addEventListener('dragover', event => {
       event.preventDefault();
+      setSlotMode(slot, slotModeForDrag(event.dataTransfer, previous, next));
       event.dataTransfer.dropEffect = event.dataTransfer.types.includes('application/x-hhjstory-ids') ? 'move' : 'copy';
       slot.classList.add('drop-target');
     });
-    slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'));
+    slot.addEventListener('dragleave', () => {
+      slot.classList.remove('drop-target');
+      setSlotMode(slot, defaultMode);
+    });
     slot.addEventListener('drop', event => {
       event.preventDefault();
       event.stopPropagation();
       slot.classList.remove('drop-target');
+      setSlotMode(slot, defaultMode);
       forwardDrop(target, event.dataTransfer);
     });
     return slot;
@@ -49,6 +71,7 @@ if (storyList && editorActions && addTextButton) {
     if (!event.dataTransfer || !row.dataset.storyId) return false;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
+    event.dataTransfer.setData('application/x-hhjstory-block', '1');
     event.dataTransfer.setData('text/plain', row.dataset.storyId);
     row.classList.add('dragging');
     return true;
@@ -118,8 +141,8 @@ if (storyList && editorActions && addTextButton) {
 
     items.forEach((row, index) => {
       const previous = items[index - 1] || null;
-      const mode = previous?.classList.contains('story-con') ? 'inline' : 'block';
-      storyList.insertBefore(makeInsertSlot(row, mode), row);
+      const defaultMode = previous?.classList.contains('story-con') ? 'inline' : 'block';
+      storyList.insertBefore(makeInsertSlot(row, previous, row, defaultMode), row);
     });
 
     const tail = storyList.querySelector(':scope > .story-tail-drop');
@@ -127,7 +150,7 @@ if (storyList && editorActions && addTextButton) {
       const last = items.at(-1) || null;
       tail.classList.add('story-direct-tail');
       if (last?.classList.contains('story-con')) {
-        storyList.insertBefore(makeInsertSlot(tail, 'inline'), tail);
+        storyList.insertBefore(makeInsertSlot(tail, last, null, 'inline'), tail);
         tail.classList.add('story-tail-hidden');
         tail.textContent = '';
       } else {

@@ -273,6 +273,13 @@ if (storyList) {
     if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
     if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
     showGuideForEvent(event);
+    if (activeBoundary) {
+      event.preventDefault();
+      const types = event.dataTransfer?.types;
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = types?.includes('application/x-hhjstory-ids') ? 'move' : 'copy';
+      }
+    }
   }, true);
 
   storyList.addEventListener('dragover', () => {

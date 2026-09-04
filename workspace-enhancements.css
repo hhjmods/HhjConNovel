@@ -1,0 +1,24 @@
+.library-view-tabs { display: flex; gap: 4px; min-height: 40px; padding: 6px 8px 0; overflow-x: auto; border-bottom: 1px solid var(--line); background: #151a23; }
+.library-view-tab { flex: 0 0 auto; display: inline-flex; align-items: center; max-width: 220px; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: #171d27; }
+.library-view-tab.active { background: var(--panel-2); border-color: #50617e; box-shadow: inset 0 -2px var(--accent); }
+.library-view-tab.collection-tab::before { content: "묶음"; margin-left: 8px; color: var(--muted); font-size: 9px; }
+.library-view-tab.drop-target { outline: 2px solid var(--accent); outline-offset: -2px; background: #22304a; }
+.library-view-tab-main, .library-view-tab-close { border: 0; border-radius: 0; background: transparent; }
+.library-view-tab-main { min-width: 0; max-width: 170px; padding: 8px 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library-view-tab-close { padding: 7px 8px; color: var(--muted); }
+.library-view-tab-close:hover { color: var(--text); }
+.collection-edit-controls { display: inline-flex; gap: 5px; }
+.collection-order-editing { outline: 2px solid #526b97; outline-offset: -2px; }
+.collection-order-editing .con-card { cursor: grab; }
+.collection-order-editing .con-card:active { cursor: grabbing; }
+.collection-order-target { box-shadow: inset 5px 0 var(--accent) !important; }
+.legacy-story-drop-zone { display: none !important; }
+.story-list { position: relative; padding-top: 8px; }
+.story-insert-slot { height: 7px; margin: -3px 4px 1px; border-radius: 5px; transition: height .1s ease, background .1s ease, box-shadow .1s ease; }
+.story-insert-slot.drop-target { height: 14px; background: #283c62; box-shadow: inset 0 0 0 2px var(--accent); }
+.story-direct-tail { min-height: 30px; margin: 2px 0 8px; display: grid; place-items: center; border: 1px dashed #44516a; border-radius: 8px; color: var(--muted); font-size: 11px; }
+.story-direct-tail.drop-target { border-color: var(--accent); background: #202d47; color: var(--accent-2); }
+.story-break { width: 100%; min-height: 30px; display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; padding: 4px 8px !important; border-style: dashed !important; background: #171c25 !important; }
+.story-break-label { align-self: center; color: var(--muted); font-size: 11px; text-align: center; }
+.story-break-remove { align-self: center; }
+@media (max-width: 760px) { .library-view-tabs { max-width: 100%; } .library-view-tab-main { max-width: 130px; } }

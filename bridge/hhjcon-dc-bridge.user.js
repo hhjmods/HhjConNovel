@@ -1,23 +1,34 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.2.0
+// @version      0.3.0
 // @description  HhjConNovel의 디시콘 동기화 기능을 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @connect      gall.dcinside.com
 // @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @updateURL    https://hhjmods.github.io/HhjConNovel/bridge/hhjcon-dc-bridge.user.js
+// @downloadURL  https://hhjmods.github.io/HhjConNovel/bridge/hhjcon-dc-bridge.user.js
 // @run-at       document-start
 // ==/UserScript==
 
 (() => {
   'use strict';
 
+  const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const REQUEST_TYPE = 'HHJCON_DC_SYNC_REQUEST';
   const RESULT_TYPE = 'HHJCON_DC_SYNC_RESULT';
+  const PING_TYPE = 'HHJCON_DC_BRIDGE_PING';
+  const PONG_TYPE = 'HHJCON_DC_BRIDGE_PONG';
+  const VERSION = '0.3.0';
   const MAX_PAGE = 30;
 
+  function post(message) {
+    pageWindow.postMessage(message, '*');
+  }
+
   function sendResult(requestId, payload = null, error = null) {
-    window.postMessage({ type: RESULT_TYPE, requestId, payload, error }, '*');
+    post({ type: RESULT_TYPE, requestId, payload, error });
   }
 
   function requestText({ method = 'GET', url, data = null, headers = {} }) {
@@ -210,10 +221,16 @@
     };
   }
 
-  window.addEventListener('message', event => {
-    if (event.source !== window) return;
+  pageWindow.addEventListener('message', event => {
     const data = event.data;
-    if (!data || data.type !== REQUEST_TYPE || !data.requestId) return;
+    if (!data || !data.requestId) return;
+
+    if (data.type === PING_TYPE) {
+      post({ type: PONG_TYPE, requestId: data.requestId, version: VERSION });
+      return;
+    }
+
+    if (data.type !== REQUEST_TYPE) return;
 
     (async () => {
       try {

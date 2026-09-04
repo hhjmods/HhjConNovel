@@ -7,6 +7,7 @@ export const IMAGE_PLACEHOLDER_TEXT = '【이미지 자료 삽입 위치 - 이 �
 const RICH_DOC_ID = 'rich-text-v1';
 const CON_DISPLAY_DOC_ID = 'con-display-v1';
 const BREAK_COUNT_DOC_ID = 'break-count-v1';
+const IMAGE_MEMO_DOC_ID = 'image-marker-memo-v1';
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -29,6 +30,12 @@ function breakCountFor(row, breakDoc, storyId) {
   if (Number.isInteger(live) && live >= 1) return live;
   const saved = Number(breakDoc?.items?.[storyId]?.count);
   return Number.isInteger(saved) && saved >= 1 ? saved : 1;
+}
+
+function imageMemoFor(row, memoDoc, storyId) {
+  const liveInput = row?.querySelector('.story-image-memo-input');
+  if (liveInput) return String(liveInput.value || '').trim();
+  return String(memoDoc?.items?.[storyId]?.text || '').trim();
 }
 
 function dialogueFor(row, item, richDoc) {
@@ -66,12 +73,13 @@ function conHtml(item, con, big) {
 }
 
 export async function buildStoryHtmlSnapshot(root = document.getElementById('storyList')) {
-  const [story, cons, richDoc, displayDoc, breakDoc] = await Promise.all([
+  const [story, cons, richDoc, displayDoc, breakDoc, memoDoc] = await Promise.all([
     getOne('documents', 'current'),
     getAll('cons'),
     getOne('documents', RICH_DOC_ID),
     getOne('documents', CON_DISPLAY_DOC_ID),
-    getOne('documents', BREAK_COUNT_DOC_ID)
+    getOne('documents', BREAK_COUNT_DOC_ID),
+    getOne('documents', IMAGE_MEMO_DOC_ID)
   ]);
 
   const items = Array.isArray(story?.items) ? story.items : [];
@@ -112,7 +120,12 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
 
     if (source === IMAGE_SENTINEL) {
       imageCount += 1;
-      htmlParts.push(`<p><span style="font-size:32px;color:#ff0000;background-color:#ffff00;font-weight:700;">${escapeHtml(IMAGE_PLACEHOLDER_TEXT)}</span></p>`);
+      const memo = imageMemoFor(row, memoDoc, item.id);
+      const marker = `<span style="font-size:32px;color:#ff0000;background-color:#ffff00;font-weight:700;">${escapeHtml(IMAGE_PLACEHOLDER_TEXT)}</span>`;
+      const memoHtml = memo
+        ? `<br><span style="color:#ff0000;background-color:#ffff00;font-weight:700;">${escapeHtml(memo)}</span>`
+        : '';
+      htmlParts.push(`<p>${marker}${memoHtml}</p>`);
       continue;
     }
 

@@ -95,12 +95,12 @@ if (storyList) {
     const nextIsCon = Boolean(next?.classList.contains('story-con'));
 
     if (activeDragKind === 'con') {
-      if (nextIsCon && (!previous || previousIsCon)) {
-        showVerticalBefore(next);
+      if (previousIsCon) {
+        showVerticalAfter(previous);
         return;
       }
-      if (!next && previousIsCon) {
-        showVerticalAfter(previous);
+      if (nextIsCon) {
+        showVerticalBefore(next);
         return;
       }
       if (next) {

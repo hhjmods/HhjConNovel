@@ -1,0 +1,11 @@
+.story-insert-slot.inline { display: inline-block !important; width: 10px !important; height: 112px !important; margin: 0 1px 8px !important; vertical-align: top; }
+.story-insert-slot.inline.drop-target { width: 15px !important; height: 112px !important; box-shadow: inset 2px 0 var(--accent), inset -2px 0 var(--accent) !important; }
+.story-insert-slot.block { display: block !important; width: 100% !important; height: 8px !important; margin: -3px 0 2px !important; }
+.story-insert-slot.block.drop-target { width: 100% !important; height: 14px !important; box-shadow: inset 0 2px var(--accent), inset 0 -2px var(--accent) !important; }
+.story-tail-hidden { display: none !important; }
+.story-break-source { display: none !important; }
+.story-break { width: 100%; min-height: 30px; display: inline-grid !important; grid-template-columns: minmax(0, 1fr) auto !important; padding: 4px 8px !important; border-style: dashed !important; background: #171c25 !important; }
+.collection-edit-delete { color: #ffc3ca; }
+img[src^="https://dcimg5.dcinside.com/dccon.php"] { visibility: hidden; }
+img[data-hhjcon-dc-image-state="loading"] { visibility: hidden; }
+img[data-hhjcon-dc-image-state="ready"], img[data-hhjcon-dc-image-state="error"] { visibility: visible; }

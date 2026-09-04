@@ -117,7 +117,7 @@ function ensureImageMemoInput(row, label) {
     input = document.createElement('input');
     input.type = 'text';
     input.className = 'story-image-memo-input';
-    input.placeholder = '어떤 이미지인지 메모를 입력하세요.';
+    input.placeholder = '어떤 이미지를 넣을지 구분하기 위한 메모를 입력하세요.';
     input.setAttribute('aria-label', '이미지 자료 메모');
     input.autocomplete = 'off';
     input.draggable = false;

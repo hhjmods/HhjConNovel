@@ -2,6 +2,8 @@ const storyList = document.getElementById('storyList');
 
 if (storyList) {
   let activeDragKind = null;
+  let sourceRow = null;
+  let proxySlot = null;
 
   function previousStoryItem(slot) {
     let node = slot.previousElementSibling;
@@ -20,6 +22,10 @@ if (storyList) {
     slot.classList.toggle('block', mode === 'block');
   }
 
+  function defaultMode(slot) {
+    return previousStoryItem(slot)?.classList.contains('story-con') ? 'inline' : 'block';
+  }
+
   function modeFor(slot, kind) {
     const previousIsCon = Boolean(previousStoryItem(slot)?.classList.contains('story-con'));
     const nextIsCon = Boolean(nextStoryItem(slot)?.classList.contains('story-con'));
@@ -27,10 +33,20 @@ if (storyList) {
     return previousIsCon ? 'inline' : 'block';
   }
 
-  function applyModes(kind = activeDragKind) {
-    storyList.querySelectorAll(':scope > .story-insert-slot').forEach(slot => {
-      setMode(slot, modeFor(slot, kind));
-    });
+  function clearProxy() {
+    if (!proxySlot) return;
+    proxySlot.classList.remove('drop-target');
+    setMode(proxySlot, defaultMode(proxySlot));
+    proxySlot = null;
+  }
+
+  function precedingSlot(row) {
+    let node = row?.previousElementSibling || null;
+    while (node && !node.classList.contains('story-item')) {
+      if (node.classList.contains('story-insert-slot')) return node;
+      node = node.previousElementSibling;
+    }
+    return null;
   }
 
   function dragKindFromTarget(target) {
@@ -45,17 +61,38 @@ if (storyList) {
     const kind = dragKindFromTarget(event.target);
     if (!kind) return;
     activeDragKind = kind;
-    applyModes(kind);
+    sourceRow = event.target?.closest?.('.story-item') || null;
   }, true);
 
-  storyList.addEventListener('dragover', () => {
-    if (activeDragKind) applyModes(activeDragKind);
+  storyList.addEventListener('dragover', event => {
+    if (!activeDragKind) return;
+    if (event.target.closest('.story-insert-slot')) {
+      clearProxy();
+      return;
+    }
+
+    const row = event.target.closest('.story-item');
+    if (!row || row === sourceRow) {
+      clearProxy();
+      return;
+    }
+
+    const slot = precedingSlot(row);
+    if (!slot) {
+      clearProxy();
+      return;
+    }
+
+    if (proxySlot !== slot) clearProxy();
+    setMode(slot, modeFor(slot, activeDragKind));
+    slot.classList.add('drop-target');
+    proxySlot = slot;
   }, true);
 
   function finishDrag() {
-    if (!activeDragKind) return;
+    clearProxy();
     activeDragKind = null;
-    setTimeout(() => applyModes(null), 0);
+    sourceRow = null;
   }
 
   document.addEventListener('dragend', finishDrag, true);

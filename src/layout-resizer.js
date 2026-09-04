@@ -9,8 +9,9 @@ const editorPanel = document.querySelector('.editor-panel');
 const splitter = document.getElementById('workspaceSplitter');
 
 if (layout && libraryPanel && editorPanel && splitter) {
-  let ratio = Number(localStorage.getItem(STORAGE_KEY));
-  if (!Number.isFinite(ratio)) ratio = DEFAULT_RATIO;
+  const storedRatio = localStorage.getItem(STORAGE_KEY);
+  const parsedRatio = storedRatio == null || storedRatio.trim() === '' ? NaN : Number(storedRatio);
+  let ratio = Number.isFinite(parsedRatio) ? parsedRatio : DEFAULT_RATIO;
   let dragging = false;
 
   const clampRatio = value => Math.min(MAX_RATIO, Math.max(MIN_RATIO, value));

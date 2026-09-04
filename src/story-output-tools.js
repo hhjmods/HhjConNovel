@@ -1,4 +1,4 @@
-import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js';
+import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-2';
 
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');
@@ -10,7 +10,7 @@ const toolbar = document.querySelector('.text-format-toolbar');
 const style = document.createElement('style');
 style.id = 'story-output-tools-style';
 style.textContent = `
-.story-image-source{display:none!important}.story-image-placeholder{width:100%;display:inline-grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center;padding:7px 8px!important;background:rgba(255,184,77,.10)!important;border-color:#765d32!important}.story-image-placeholder>.story-drag-handle{grid-column:1;grid-row:1;min-width:24px;width:24px;align-self:stretch;cursor:grab;color:var(--muted)}.story-image-placeholder>.story-image-label{grid-column:2;grid-row:1;padding:8px 12px;border-radius:7px;background:rgba(255,184,77,.08);font-weight:700;text-align:center;color:#ffd58c}.story-image-placeholder>.story-tools{grid-column:3;grid-row:1}.story-html-toggle{margin-left:auto;white-space:nowrap}.text-format-toolbar.html-preview-active>:not(.story-html-toggle){opacity:.4;pointer-events:none}.editor-panel.html-preview-mode>.story-list,.editor-panel.html-preview-mode>.story-drop-zone{display:none!important}.story-html-preview{flex:1;min-height:180px;margin:10px;padding:12px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:#0f141b;color:var(--text);font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;tab-size:2;user-select:text}.story-html-preview[hidden]{display:none!important}.story-detail-stats{min-height:34px;padding:7px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:12px}.story-detail-stats strong{color:var(--text);font-weight:600}:root[data-theme="light"] .story-image-placeholder{background:#fff8e8!important;border-color:#d7b66b!important}:root[data-theme="light"] .story-image-placeholder>.story-image-label{background:#fff2cf;color:#815800}:root[data-theme="light"] .story-html-preview{background:#fff;color:var(--text)}
+.story-image-source{display:none!important}.story-image-placeholder{width:100%;display:inline-grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center;padding:7px 8px!important;background:rgba(255,184,77,.10)!important;border-color:#765d32!important}.story-image-placeholder>.story-drag-handle{grid-column:1;grid-row:1;min-width:24px;width:24px;align-self:stretch;cursor:grab;color:var(--muted)}.story-image-placeholder>.story-image-label{grid-column:2;grid-row:1;padding:8px 12px;border-radius:7px;background:rgba(255,184,77,.08);display:flex;flex-direction:column;gap:4px;text-align:center;color:#ffd58c}.story-image-placeholder>.story-image-label strong{font-weight:700}.story-image-placeholder>.story-image-label small{font-size:10px;line-height:1.4;font-weight:400;color:var(--muted)}.story-image-placeholder>.story-tools{grid-column:3;grid-row:1}.story-html-toggle{margin-left:auto;white-space:nowrap}.text-format-toolbar.html-preview-active>:not(.story-html-toggle){opacity:.4;pointer-events:none}.editor-panel.html-preview-mode>.story-list,.editor-panel.html-preview-mode>.story-drop-zone{display:none!important}.story-html-preview{flex:1;min-height:180px;margin:10px;padding:12px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:#0f141b;color:var(--text);font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;tab-size:2;user-select:text}.story-html-preview[hidden]{display:none!important}.story-detail-stats{min-height:34px;padding:7px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:12px}.story-detail-stats strong{color:var(--text);font-weight:600}:root[data-theme="light"] .story-image-placeholder{background:#fff8e8!important;border-color:#d7b66b!important}:root[data-theme="light"] .story-image-placeholder>.story-image-label{background:#fff2cf;color:#815800}:root[data-theme="light"] .story-html-preview{background:#fff;color:var(--text)}
 `;
 document.head.append(style);
 
@@ -95,7 +95,11 @@ function decorateImageRow(row) {
   if (!row.querySelector(':scope > .story-image-label')) {
     const label = document.createElement('div');
     label.className = 'story-image-label';
-    label.textContent = '이미지 자료 삽입 위치';
+    const title = document.createElement('strong');
+    title.textContent = '이미지 자료 위치 마커';
+    const help = document.createElement('small');
+    help.textContent = '(이후 dc 글쓰기 에디터에서 해당 위치에 삽입되는 위치표시용 문구를 지우고 이미지를 삽입하시면 됩니다.)';
+    label.append(title, help);
     row.insertBefore(label, row.querySelector(':scope > .story-tools') || null);
   }
   row.title = IMAGE_PLACEHOLDER_TEXT;
@@ -110,7 +114,7 @@ if (storyList && editorActions && addTextButton) {
   const imageButton = document.createElement('button');
   imageButton.type = 'button';
   imageButton.className = 'small';
-  imageButton.textContent = '+ 이미지 위치';
+  imageButton.textContent = '+ 이미지 마커';
   imageButton.title = 'DC에서 이미지를 첨부할 위치 표시';
   editorActions.insertBefore(imageButton, clearStoryButton || null);
 
@@ -144,7 +148,7 @@ storyList.insertAdjacentElement('afterend', preview);
 
 const detailStats = document.createElement('div');
 detailStats.className = 'story-detail-stats';
-detailStats.innerHTML = '<span>글자 <strong data-stat="text">0</strong>자</span><span>HTML <strong data-stat="html">0</strong>자</span><span>콘 <strong data-stat="con">0</strong>개</span><span>대사 <strong data-stat="dialogue">0</strong>개</span><span>줄바꿈 <strong data-stat="break">0</strong>줄</span>';
+detailStats.innerHTML = '<span>글자 <strong data-stat="text">0</strong>자</span><span>HTML <strong data-stat="html">0</strong>자</span><span>콘 <strong data-stat="con">0</strong>개</span><span>대사 <strong data-stat="dialogue">0</strong>개</span><span>줄바꿈 <strong data-stat="break">0</strong>줄</span><span>이미지 <strong data-stat="image">0</strong>개</span>';
 preview.insertAdjacentElement('afterend', detailStats);
 
 async function refreshSnapshot() {
@@ -156,6 +160,7 @@ async function refreshSnapshot() {
   detailStats.querySelector('[data-stat="con"]').textContent = numberFormat.format(snapshot.conCount);
   detailStats.querySelector('[data-stat="dialogue"]').textContent = numberFormat.format(snapshot.dialogueCount);
   detailStats.querySelector('[data-stat="break"]').textContent = numberFormat.format(snapshot.breakCount);
+  detailStats.querySelector('[data-stat="image"]').textContent = numberFormat.format(snapshot.imageCount);
   if (previewMode) preview.textContent = snapshot.html || '<!-- 빈 원고 -->';
 }
 

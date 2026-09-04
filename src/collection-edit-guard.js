@@ -24,8 +24,14 @@ if (conGrid && toolbar) {
   function ensureControls() {
     const group = controls();
     if (!group) return;
+
     const edit = editButton();
-    if (edit) edit.textContent = '콘 편집';
+    if (edit && edit.textContent.trim() !== '콘 편집') edit.textContent = '콘 편집';
+
+    if (!deleteButton || !deleteButton.isConnected) {
+      deleteButton = group.querySelector('.collection-edit-delete');
+    }
+
     if (!deleteButton) {
       deleteButton = document.createElement('button');
       deleteButton.className = 'small collection-edit-delete hidden';
@@ -38,12 +44,19 @@ if (conGrid && toolbar) {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
       });
     }
-    deleteButton.classList.toggle('hidden', !isEditing());
+
+    const shouldHide = !isEditing();
+    if (deleteButton.classList.contains('hidden') !== shouldHide) {
+      deleteButton.classList.toggle('hidden', shouldHide);
+    }
   }
 
-  const observer = new MutationObserver(ensureControls);
-  observer.observe(toolbar, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-  observer.observe(conGrid, { attributes: true, attributeFilter: ['class'] });
+  const toolbarObserver = new MutationObserver(ensureControls);
+  toolbarObserver.observe(toolbar, { childList: true, subtree: true });
+
+  const gridObserver = new MutationObserver(ensureControls);
+  gridObserver.observe(conGrid, { attributes: true, attributeFilter: ['class'] });
+
   ensureControls();
 
   window.addEventListener('keydown', event => {

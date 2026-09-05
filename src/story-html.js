@@ -86,31 +86,63 @@ function normalizeDialogueHtml(html) {
 
   const template = document.createElement('template');
   template.innerHTML = clean;
-  const output = document.createElement('div');
   const nodes = [...template.content.childNodes];
   const hasTopBlock = nodes.some(node =>
     node.nodeType === Node.ELEMENT_NODE && ['P', 'DIV'].includes(node.tagName)
   );
-  let inlineParagraph = null;
+  if (!hasTopBlock) return `<p>${clean}</p>`;
 
-  const flushInline = () => {
-    if (!inlineParagraph) return;
-    output.append(inlineParagraph);
-    inlineParagraph = null;
+  const output = document.createElement('div');
+  let paragraph = null;
+  let paragraphStyleKey = null;
+  let lineStarted = false;
+
+  const flushParagraph = () => {
+    if (!paragraph) return;
+    if (!paragraph.childNodes.length) paragraph.append(document.createElement('br'));
+    output.append(paragraph);
+    paragraph = null;
+    paragraphStyleKey = null;
+    lineStarted = false;
+  };
+
+  const ensureParagraph = styleSource => {
+    const styleKey = styleSource?.getAttribute?.('style') || '';
+    if (paragraph && paragraphStyleKey === styleKey) return;
+    flushParagraph();
+    paragraph = document.createElement('p');
+    paragraphStyleKey = styleKey;
+    if (styleSource) copySafeStyle(styleSource, paragraph);
+  };
+
+  const isEmptyBlockPlaceholder = block => {
+    const significant = [...block.childNodes].filter(node =>
+      !(node.nodeType === Node.TEXT_NODE && !node.data.trim())
+    );
+    if (!significant.length) return true;
+    return significant.length === 1
+      && significant[0].nodeType === Node.ELEMENT_NODE
+      && significant[0].tagName === 'BR';
   };
 
   nodes.forEach(node => {
     const isBlock = node.nodeType === Node.ELEMENT_NODE && ['P', 'DIV'].includes(node.tagName);
     if (isBlock) {
-      flushInline();
-      output.append(node.cloneNode(true));
+      ensureParagraph(node);
+      if (lineStarted) paragraph.append(document.createElement('br'));
+      lineStarted = true;
+      if (!isEmptyBlockPlaceholder(node)) {
+        [...node.childNodes].forEach(child => paragraph.append(child.cloneNode(true)));
+      }
       return;
     }
-    if (hasTopBlock && node.nodeType === Node.TEXT_NODE && !node.data.trim()) return;
-    if (!inlineParagraph) inlineParagraph = document.createElement('p');
-    inlineParagraph.append(node.cloneNode(true));
+
+    if (node.nodeType === Node.TEXT_NODE && !node.data.trim()) return;
+    ensureParagraph(null);
+    paragraph.append(node.cloneNode(true));
+    lineStarted = true;
   });
-  flushInline();
+  flushParagraph();
 
   return output.innerHTML || '<p><br></p>';
 }

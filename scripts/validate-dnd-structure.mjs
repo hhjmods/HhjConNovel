@@ -73,7 +73,7 @@ const requiredHelpers = [
   ['src/story-insertion.js', files.insertion, 'STORY_IDS_MIME'],
   ['src/story-insertion.js', files.insertion, 'transferHasType'],
   ['src/story-insertion.js', files.insertion, 'writeStoryTransfer'],
-  ['src/story-insertion.js', files.insertion, 'forwardDrop'],
+  ['src/story-insertion.js', files.insertion, 'applyStoryDropTransfer'],
   ['src/story-slot-mode.js', files.slot, 'applyStoryDropTransfer'],
   ['src/story-slot-mode.js', files.slot, 'CON_IDS_MIME'],
   ['src/story-slot-mode.js', files.slot, 'STORY_IDS_MIME'],
@@ -125,11 +125,16 @@ for (const [path, source] of [
 }
 
 const directAppImport = './app.js?v=20260906-16';
-if (!files.slot.includes(directAppImport)) {
-  fail('story-slot-mode.js does not import the canonical direct app mutation API module version');
+for (const [path, source] of [
+  ['src/story-insertion.js', files.insertion],
+  ['src/story-slot-mode.js', files.slot]
+]) {
+  if (!source.includes(directAppImport)) {
+    fail(`${path} does not import the canonical direct app mutation API module version`);
+  }
 }
 if (!index.includes('./src/app.js?v=20260906-16')) {
-  fail('index.html does not load the same app.js module version used by story-slot-mode.js');
+  fail('index.html does not load the same app.js module version used by direct DnD mutation clients');
 }
 
 for (const [path, source] of [
@@ -146,8 +151,13 @@ if (!files.utils.includes("new Event('drop'")) {
   fail('story-dnd-utils.js lost the centralized compatibility synthetic drop implementation before all legacy routers migrate');
 }
 
-if (files.slot.includes('forwardDrop(')) {
-  fail('story-slot-mode.js still uses synthetic drop forwarding after direct mutation migration');
+for (const [path, source] of [
+  ['src/story-insertion.js', files.insertion],
+  ['src/story-slot-mode.js', files.slot]
+]) {
+  if (source.includes('forwardDrop(')) {
+    fail(`${path} still uses synthetic drop forwarding after direct mutation migration`);
+  }
 }
 if (!files.insertion.includes('story-insert-slot')) {
   fail('story-insertion.js lost current real drop hit slots before their replacement exists');

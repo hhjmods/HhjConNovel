@@ -11,7 +11,7 @@ if (storyList) {
   let frameId = null;
 
   function isSupportedDrag(target) {
-    return Boolean(target?.closest?.('.story-item, .con-card'));
+    return Boolean(target?.closest?.('.story-item, .con-card, [data-story-create-kind]'));
   }
 
   function pointerWithinScrollLane(rect) {

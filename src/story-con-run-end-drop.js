@@ -1,3 +1,5 @@
+import { forwardDrop, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-1';
+
 const storyList = document.getElementById('storyList');
 
 if (storyList) {
@@ -17,25 +19,10 @@ if (storyList) {
   });
   document.body.append(hitZone);
 
-  function readStoryIds(dataTransfer) {
-    try {
-      const raw = dataTransfer?.getData('application/x-hhjstory-ids');
-      const ids = raw ? JSON.parse(raw) : [];
-      return Array.isArray(ids) ? ids.filter(Boolean) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function isStoryTransfer(dataTransfer) {
-    const types = [...(dataTransfer?.types || [])];
-    return movingStoryIds.size > 0 || types.includes('application/x-hhjstory-ids');
-  }
-
   function allowDrop(event) {
     event.preventDefault();
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = isStoryTransfer(event.dataTransfer) ? 'move' : 'copy';
+      event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
     }
   }
 
@@ -55,13 +42,6 @@ if (storyList) {
   function hideZone() {
     hitZone.style.display = 'none';
     targetStoryId = null;
-  }
-
-  function forwardDrop(target, dataTransfer) {
-    if (!target || !dataTransfer) return;
-    const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-    Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-    target.dispatchEvent(forwarded);
   }
 
   function findTrailingRunEnd(clientX, clientY) {

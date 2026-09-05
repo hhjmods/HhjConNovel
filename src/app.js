@@ -9,6 +9,13 @@ import {
   reorderIds
 } from './model.js';
 import { requestDcSync } from './dc-adapter.js';
+import {
+  CON_IDS_MIME,
+  STORY_IDS_MIME,
+  readTransferIds,
+  writeConTransfer,
+  writeStoryTransfer
+} from './story-dnd-utils.js?v=20260906-2';
 
 const DC_WRITE_URL_KEY = 'hhjcon-dc-write-url';
 
@@ -162,32 +169,19 @@ function dragIdsFor(id) {
 }
 
 function writeDragData(event, ids) {
-  event.dataTransfer.effectAllowed = 'copyMove';
-  event.dataTransfer.setData('application/x-hhjcon-ids', JSON.stringify(ids));
-  event.dataTransfer.setData('text/plain', ids.join('\n'));
+  return writeConTransfer(event.dataTransfer, ids);
 }
 
 function readDragData(event) {
-  try {
-    const raw = event.dataTransfer.getData('application/x-hhjcon-ids');
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return readTransferIds(event.dataTransfer, CON_IDS_MIME);
 }
 
 function writeStoryDragData(event, ids) {
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify(ids));
+  return writeStoryTransfer(event.dataTransfer, ids);
 }
 
 function readStoryDragData(event) {
-  try {
-    const raw = event.dataTransfer.getData('application/x-hhjstory-ids');
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return readTransferIds(event.dataTransfer, STORY_IDS_MIME);
 }
 
 function renderTabs() {
@@ -521,7 +515,7 @@ async function addConBlocks(ids, beforeStoryId = null) {
 async function reorderStoryItems(movingIds, beforeId = null) {
   const moving = new Set(movingIds);
   const movingItems = state.story.items.filter(item => moving.has(item.id));
-  if (!movingItems.length) return;
+  if (!movingItems.length) return false;
   const remaining = state.story.items.filter(item => !moving.has(item.id));
   let insertAt = beforeId ? remaining.findIndex(item => item.id === beforeId) : remaining.length;
   if (insertAt < 0) insertAt = remaining.length;
@@ -531,14 +525,20 @@ async function reorderStoryItems(movingIds, beforeId = null) {
   state.storySelectionAnchorId = movingItems.find(item => item.type === 'con')?.id || null;
   await saveStory();
   renderStory();
+  return true;
+}
+
+export async function moveStoryItemsBefore(movingIds, beforeId = null) {
+  const ids = Array.isArray(movingIds) ? movingIds.filter(id => typeof id === 'string' && id) : [];
+  if (!ids.length) return false;
+  return reorderStoryItems(ids, beforeId);
 }
 
 export async function applyStoryDropTransfer(dataTransfer, beforeId = null) {
   if (!dataTransfer) return false;
   const storyIds = readStoryDragData({ dataTransfer });
   if (storyIds.length) {
-    await reorderStoryItems(storyIds, beforeId);
-    return true;
+    return moveStoryItemsBefore(storyIds, beforeId);
   }
   const conIds = readDragData({ dataTransfer });
   if (conIds.length) {

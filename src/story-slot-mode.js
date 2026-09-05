@@ -3,10 +3,12 @@ import {
   CON_IDS_MIME,
   STORY_IDS_MIME,
   storyAreaDropEffect,
-  transferHasType
+  transferHasType,
+  writeStoryTransfer
 } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
+const storyDropZone = document.getElementById('storyDropZone');
 
 if (storyList) {
   let activeDragKind = null;
@@ -62,15 +64,22 @@ if (storyList) {
     return null;
   }
 
+  function storyConDragIds(row) {
+    if (!row?.dataset.storyId) return [];
+    if (!row.classList.contains('selected')) return [row.dataset.storyId];
+    const selected = [...storyList.querySelectorAll(':scope > .story-con.selected[data-story-id]')]
+      .map(item => item.dataset.storyId)
+      .filter(Boolean);
+    return selected.length ? selected : [row.dataset.storyId];
+  }
+
   function captureMovingRows(kind, row) {
     movingStoryIds = new Set();
     if (!row?.dataset.storyId) return;
 
-    if (kind === 'con' && row.classList.contains('selected')) {
-      storyList.querySelectorAll(':scope > .story-con.selected[data-story-id]').forEach(item => {
-        movingStoryIds.add(item.dataset.storyId);
-      });
-      if (movingStoryIds.size) return;
+    if (kind === 'con') {
+      storyConDragIds(row).forEach(id => movingStoryIds.add(id));
+      return;
     }
 
     movingStoryIds.add(row.dataset.storyId);
@@ -244,7 +253,7 @@ if (storyList) {
       return;
     }
 
-    let row = event.target?.closest?.('.story-item') || null;
+    const row = event.target?.closest?.('.story-item') || null;
     if (isMovingRow(row)) {
       showBoundary(previousStoryItem(row), nextStoryItem(row));
       return;
@@ -259,6 +268,7 @@ if (storyList) {
   }
 
   function finishDrag() {
+    sourceRow?.classList.remove('dragging');
     hideGuide();
     clearLegacyHighlights();
     storyList.classList.remove('story-guide-dragging', 'story-block-dragging', 'story-con-dragging');
@@ -273,6 +283,17 @@ if (storyList) {
     activeDragKind = kind;
     sourceRow = event.target?.closest?.('.story-item') || null;
     captureMovingRows(kind, sourceRow);
+
+    if (sourceRow?.classList.contains('story-con') && event.dataTransfer) {
+      const ids = storyConDragIds(sourceRow);
+      if (!writeStoryTransfer(event.dataTransfer, ids)) {
+        finishDrag();
+        return;
+      }
+      sourceRow.classList.add('dragging');
+      event.stopPropagation();
+    }
+
     storyList.classList.add('story-guide-dragging');
     if (kind === 'con') storyList.classList.add('story-con-dragging');
     if (kind === 'block') {
@@ -284,15 +305,21 @@ if (storyList) {
 
   document.addEventListener('dragover', event => {
     if ((activeDragKind !== 'block' && activeDragKind !== 'con') || !hasStoryPayload(event.dataTransfer)) return;
+
+    if (storyDropZone && (event.target === storyDropZone || storyDropZone.contains(event.target))) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
+      hideGuide();
+      return;
+    }
+
     if (!pointInsideStoryList(event.clientX, event.clientY)) {
       hideGuide();
       return;
     }
 
     event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
-    }
+    event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
     if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
     if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
     showGuideForEvent(event);
@@ -313,7 +340,7 @@ if (storyList) {
     event.stopImmediatePropagation();
 
     if (isMovingRow(directRow)) {
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+      event.dataTransfer.dropEffect = 'none';
       queueMicrotask(finishDrag);
       return;
     }

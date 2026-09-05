@@ -15,11 +15,8 @@ const expectedOrder = [
   './src/app.js',
   './src/drag-start-fix.js',
   './src/story-insertion.js',
-  './src/story-con-run-end-drop.js',
   './src/story-slot-mode.js',
   './src/story-drag-autoscroll.js',
-  './src/story-drag-stability.js',
-  './src/story-tail-blank-drop.js',
   './src/story-output-tools.js'
 ];
 
@@ -34,8 +31,14 @@ for (const path of expectedOrder) {
   lastIndex = indexOfPath;
 }
 
-for (const term of ['story-create-drag.js', 'application/x-hhjstory-new-block']) {
-  if (index.includes(term)) fail(`index.html contains retired experimental DnD term: ${term}`);
+for (const term of [
+  'story-create-drag.js',
+  'application/x-hhjstory-new-block',
+  'story-con-run-end-drop.js',
+  'story-tail-blank-drop.js',
+  'story-drag-stability.js'
+]) {
+  if (index.includes(term)) fail(`index.html contains retired DnD term: ${term}`);
 }
 
 const files = {
@@ -44,9 +47,6 @@ const files = {
   dragStart: read('src/drag-start-fix.js'),
   insertion: read('src/story-insertion.js'),
   slot: read('src/story-slot-mode.js'),
-  stability: read('src/story-drag-stability.js'),
-  runEnd: read('src/story-con-run-end-drop.js'),
-  tail: read('src/story-tail-blank-drop.js'),
   outputTools: read('src/story-output-tools.js'),
   utils: read('src/story-dnd-utils.js')
 };
@@ -76,14 +76,8 @@ const requiredHelpers = [
   ['src/story-slot-mode.js', files.slot, 'applyStoryDropTransfer'],
   ['src/story-slot-mode.js', files.slot, 'CON_IDS_MIME'],
   ['src/story-slot-mode.js', files.slot, 'STORY_IDS_MIME'],
+  ['src/story-slot-mode.js', files.slot, 'storyAreaDropEffect'],
   ['src/story-slot-mode.js', files.slot, 'transferHasType'],
-  ['src/story-drag-stability.js', files.stability, 'readTransferIds'],
-  ['src/story-drag-stability.js', files.stability, 'writeStoryTransfer'],
-  ['src/story-con-run-end-drop.js', files.runEnd, 'storyAreaDropEffect'],
-  ['src/story-con-run-end-drop.js', files.runEnd, 'applyStoryDropTransfer'],
-  ['src/story-tail-blank-drop.js', files.tail, 'hasStoryAreaPayload'],
-  ['src/story-tail-blank-drop.js', files.tail, 'storyAreaDropEffect'],
-  ['src/story-tail-blank-drop.js', files.tail, 'applyStoryDropTransfer'],
   ['src/story-output-tools.js', files.outputTools, 'writeStoryTransfer'],
   ['src/story-output-tools.js', files.outputTools, 'moveStoryItemsBefore']
 ];
@@ -111,9 +105,6 @@ for (const [path, source] of [
   ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
-  ['src/story-drag-stability.js', files.stability],
-  ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail],
   ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
@@ -126,9 +117,6 @@ for (const [path, source] of [
   ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
-  ['src/story-drag-stability.js', files.stability],
-  ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail],
   ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
@@ -138,8 +126,6 @@ const directAppImport = './app.js?v=20260906-17';
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
-  ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail],
   ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (!source.includes(directAppImport)) {
@@ -153,8 +139,6 @@ if (!index.includes('./src/app.js?v=20260906-17')) {
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
-  ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail],
   ['src/story-output-tools.js', files.outputTools],
   ['src/story-dnd-utils.js', files.utils]
 ]) {
@@ -175,14 +159,14 @@ for (const [path, source] of [
   }
 }
 
+if (!files.slot.includes("document.addEventListener('drop'")) {
+  fail('story-slot-mode.js no longer owns document-level story drop execution');
+}
+if (!files.slot.includes('pointInsideStoryList')) {
+  fail('story-slot-mode.js lost coordinate-based story area routing');
+}
 if (!files.insertion.includes('story-insert-slot')) {
-  fail('story-insertion.js lost current real drop hit slots before their replacement exists');
-}
-if (!files.runEnd.includes('hitZone')) {
-  fail('story-con-run-end-drop.js lost current inline run-end hit zone');
-}
-if (!files.tail.includes('isLowerBlankPoint')) {
-  fail('story-tail-blank-drop.js lost lower blank-area boundary protection');
+  fail('story-insertion.js lost current real drop hit slots before their replacement phase');
 }
 
 if (!process.exitCode) console.log('DnD structure contracts OK');

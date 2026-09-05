@@ -533,6 +533,21 @@ async function reorderStoryItems(movingIds, beforeId = null) {
   renderStory();
 }
 
+export async function applyStoryDropTransfer(dataTransfer, beforeId = null) {
+  if (!dataTransfer) return false;
+  const storyIds = readStoryDragData({ dataTransfer });
+  if (storyIds.length) {
+    await reorderStoryItems(storyIds, beforeId);
+    return true;
+  }
+  const conIds = readDragData({ dataTransfer });
+  if (conIds.length) {
+    await addConBlocks(conIds, beforeId);
+    return true;
+  }
+  return false;
+}
+
 async function moveStorySelection(delta, fallbackId) {
   const selected = state.storySelectedIds.has(fallbackId)
     ? new Set(state.storySelectedIds)

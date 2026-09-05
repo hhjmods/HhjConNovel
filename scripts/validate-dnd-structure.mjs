@@ -59,9 +59,7 @@ const requiredContracts = [
   ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-ids'],
   ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-block'],
   ['src/app.js', files.app, 'application/x-hhjcon-ids'],
-  ['src/app.js', files.app, 'application/x-hhjstory-ids'],
-  ['src/story-slot-mode.js', files.slot, 'application/x-hhjstory-ids'],
-  ['src/story-slot-mode.js', files.slot, 'application/x-hhjcon-ids']
+  ['src/app.js', files.app, 'application/x-hhjstory-ids']
 ];
 
 for (const [path, source, token] of requiredContracts) {
@@ -76,6 +74,10 @@ const requiredHelpers = [
   ['src/story-insertion.js', files.insertion, 'transferHasType'],
   ['src/story-insertion.js', files.insertion, 'writeStoryTransfer'],
   ['src/story-insertion.js', files.insertion, 'forwardDrop'],
+  ['src/story-slot-mode.js', files.slot, 'CON_IDS_MIME'],
+  ['src/story-slot-mode.js', files.slot, 'STORY_IDS_MIME'],
+  ['src/story-slot-mode.js', files.slot, 'transferHasType'],
+  ['src/story-slot-mode.js', files.slot, 'forwardDrop'],
   ['src/story-drag-stability.js', files.stability, 'readTransferIds'],
   ['src/story-drag-stability.js', files.stability, 'writeStoryTransfer'],
   ['src/story-con-run-end-drop.js', files.runEnd, 'storyAreaDropEffect'],
@@ -99,6 +101,7 @@ for (const [path, source] of [
   ['src/story-drag-guard.js', files.guard],
   ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
+  ['src/story-slot-mode.js', files.slot],
   ['src/story-drag-stability.js', files.stability]
 ]) {
   if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
@@ -109,6 +112,7 @@ for (const [path, source] of [
   ['src/story-drag-guard.js', files.guard],
   ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
+  ['src/story-slot-mode.js', files.slot],
   ['src/story-drag-stability.js', files.stability],
   ['src/story-con-run-end-drop.js', files.runEnd],
   ['src/story-tail-blank-drop.js', files.tail]
@@ -116,8 +120,22 @@ for (const [path, source] of [
   if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
 }
 
+for (const [path, source] of [
+  ['src/story-insertion.js', files.insertion],
+  ['src/story-slot-mode.js', files.slot],
+  ['src/story-con-run-end-drop.js', files.runEnd],
+  ['src/story-tail-blank-drop.js', files.tail]
+]) {
+  if (source.includes("new Event('drop'") || source.includes('new Event("drop"')) {
+    fail(`${path} creates a synthetic drop outside the centralized compatibility helper`);
+  }
+}
+if (!files.utils.includes("new Event('drop'")) {
+  fail('story-dnd-utils.js lost the single centralized compatibility synthetic drop implementation');
+}
+
 if (!files.slot.includes('forwardDrop(')) {
-  fail('story-slot-mode.js lost the current compatibility forwardDrop path before direct mutation API exists');
+  fail('story-slot-mode.js lost the current centralized compatibility forwardDrop path before direct mutation API exists');
 }
 if (!files.insertion.includes('story-insert-slot')) {
   fail('story-insertion.js lost current real drop hit slots before their replacement exists');

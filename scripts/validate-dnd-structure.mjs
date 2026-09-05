@@ -60,7 +60,6 @@ const requiredContracts = [
   ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-block'],
   ['src/app.js', files.app, 'application/x-hhjcon-ids'],
   ['src/app.js', files.app, 'application/x-hhjstory-ids'],
-  ['src/story-insertion.js', files.insertion, 'application/x-hhjstory-block'],
   ['src/story-slot-mode.js', files.slot, 'application/x-hhjstory-ids'],
   ['src/story-slot-mode.js', files.slot, 'application/x-hhjcon-ids']
 ];
@@ -72,6 +71,11 @@ for (const [path, source, token] of requiredContracts) {
 const requiredHelpers = [
   ['src/story-drag-guard.js', files.guard, 'writeStoryTransfer'],
   ['src/drag-start-fix.js', files.dragStart, 'writeConTransfer'],
+  ['src/story-insertion.js', files.insertion, 'STORY_BLOCK_MIME'],
+  ['src/story-insertion.js', files.insertion, 'STORY_IDS_MIME'],
+  ['src/story-insertion.js', files.insertion, 'transferHasType'],
+  ['src/story-insertion.js', files.insertion, 'writeStoryTransfer'],
+  ['src/story-insertion.js', files.insertion, 'forwardDrop'],
   ['src/story-drag-stability.js', files.stability, 'readTransferIds'],
   ['src/story-drag-stability.js', files.stability, 'writeStoryTransfer'],
   ['src/story-con-run-end-drop.js', files.runEnd, 'storyAreaDropEffect'],
@@ -94,9 +98,22 @@ for (const [name, source] of Object.entries(files)) {
 for (const [path, source] of [
   ['src/story-drag-guard.js', files.guard],
   ['src/drag-start-fix.js', files.dragStart],
+  ['src/story-insertion.js', files.insertion],
   ['src/story-drag-stability.js', files.stability]
 ]) {
   if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
+}
+
+const sharedUtilsImport = './story-dnd-utils.js?v=20260906-2';
+for (const [path, source] of [
+  ['src/story-drag-guard.js', files.guard],
+  ['src/drag-start-fix.js', files.dragStart],
+  ['src/story-insertion.js', files.insertion],
+  ['src/story-drag-stability.js', files.stability],
+  ['src/story-con-run-end-drop.js', files.runEnd],
+  ['src/story-tail-blank-drop.js', files.tail]
+]) {
+  if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
 }
 
 if (!files.slot.includes('forwardDrop(')) {

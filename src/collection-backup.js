@@ -3,6 +3,8 @@ import { exportCollection, importCollectionFile } from './model.js';
 
 const BUNDLE_FORMAT = 'hhjcon-collections';
 const BUNDLE_VERSION = 1;
+const STORY_FORMATS = new Set(['hhjcon-story-save', 'hhjcon-story-saves']);
+const EDITOR_FORMAT = 'hhjcon-editor-backup';
 const IMPORT_TOAST_KEY = 'hhjcon-collection-import-toast';
 
 const exportButton = document.getElementById('exportCollectionBtn');
@@ -176,6 +178,12 @@ async function handleExport(event) {
 }
 
 function importData(data) {
+  if (STORY_FORMATS.has(data?.format)) {
+    throw new Error('해당 파일은 원고 백업파일입니다. 원고 불러오기를 이용해주세요.');
+  }
+  if (data?.format === EDITOR_FORMAT) {
+    throw new Error('해당 파일은 에디터 백업파일입니다. 에디터 백업 불러오기를 이용해주세요.');
+  }
   if (data?.format === BUNDLE_FORMAT) {
     if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.collections) || !data.collections.length) {
       throw new Error('지원하지 않는 콘묶음 백업 파일입니다.');

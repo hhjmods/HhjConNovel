@@ -1,5 +1,5 @@
 import { getOne, putOne } from './db.js';
-import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { moveStoryItemsBefore } from './app.js?v=20260906-17';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-8';
 
@@ -73,9 +73,7 @@ function waitForNewText(existingIds, timeout = 2500) {
 
 async function moveStoryItemBefore(itemId, beforeId) {
   if (!itemId || !beforeId || itemId === beforeId) return;
-  const transfer = new DataTransfer();
-  if (!writeStoryTransfer(transfer, [itemId])) return;
-  await applyStoryDropTransfer(transfer, beforeId);
+  await moveStoryItemsBefore([itemId], beforeId);
 }
 
 function ensureImageDragHandle(row) {

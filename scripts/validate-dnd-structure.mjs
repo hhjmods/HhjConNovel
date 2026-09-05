@@ -45,31 +45,58 @@ for (const term of forbiddenIndexTerms) {
 const files = {
   app: read('src/app.js'),
   guard: read('src/story-drag-guard.js'),
+  dragStart: read('src/drag-start-fix.js'),
   insertion: read('src/story-insertion.js'),
   slot: read('src/story-slot-mode.js'),
   stability: read('src/story-drag-stability.js'),
   runEnd: read('src/story-con-run-end-drop.js'),
-  tail: read('src/story-tail-blank-drop.js')
+  tail: read('src/story-tail-blank-drop.js'),
+  utils: read('src/story-dnd-utils.js')
 };
 
 const requiredContracts = [
+  ['src/story-dnd-utils.js', files.utils, 'application/x-hhjcon-ids'],
+  ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-ids'],
+  ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-block'],
   ['src/app.js', files.app, 'application/x-hhjcon-ids'],
   ['src/app.js', files.app, 'application/x-hhjstory-ids'],
-  ['src/story-drag-guard.js', files.guard, 'application/x-hhjstory-ids'],
   ['src/story-insertion.js', files.insertion, 'application/x-hhjstory-block'],
   ['src/story-slot-mode.js', files.slot, 'application/x-hhjstory-ids'],
-  ['src/story-slot-mode.js', files.slot, 'application/x-hhjcon-ids'],
-  ['src/story-drag-stability.js', files.stability, 'application/x-hhjstory-ids']
+  ['src/story-slot-mode.js', files.slot, 'application/x-hhjcon-ids']
 ];
 
 for (const [path, source, token] of requiredContracts) {
   if (!source.includes(token)) fail(`${path} no longer contains required DnD contract ${token}`);
 }
 
+const requiredHelpers = [
+  ['src/story-drag-guard.js', files.guard, 'writeStoryTransfer'],
+  ['src/drag-start-fix.js', files.dragStart, 'writeConTransfer'],
+  ['src/story-drag-stability.js', files.stability, 'readTransferIds'],
+  ['src/story-drag-stability.js', files.stability, 'writeStoryTransfer'],
+  ['src/story-con-run-end-drop.js', files.runEnd, 'storyAreaDropEffect'],
+  ['src/story-con-run-end-drop.js', files.runEnd, 'forwardDrop'],
+  ['src/story-tail-blank-drop.js', files.tail, 'hasStoryAreaPayload'],
+  ['src/story-tail-blank-drop.js', files.tail, 'storyAreaDropEffect'],
+  ['src/story-tail-blank-drop.js', files.tail, 'forwardDrop']
+];
+
+for (const [path, source, helper] of requiredHelpers) {
+  if (!source.includes(helper)) fail(`${path} stopped using shared DnD helper ${helper}`);
+}
+
 for (const [name, source] of Object.entries(files)) {
   if (source.includes('application/x-hhjstory-new-block')) {
     fail(`${name} reintroduced retired application/x-hhjstory-new-block`);
   }
+}
+
+for (const [path, source] of [
+  ['src/story-drag-guard.js', files.guard],
+  ['src/drag-start-fix.js', files.dragStart],
+  ['src/story-drag-stability.js', files.stability]
+]) {
+  if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
 }
 
 if (!files.slot.includes('forwardDrop(')) {

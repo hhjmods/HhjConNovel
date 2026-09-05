@@ -1,16 +1,8 @@
+import { readTransferIds, STORY_IDS_MIME, writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
+
 const storyList = document.getElementById('storyList');
 
 if (storyList) {
-  function readStoryIds(dataTransfer) {
-    try {
-      const raw = dataTransfer?.getData('application/x-hhjstory-ids');
-      const ids = raw ? JSON.parse(raw) : [];
-      return Array.isArray(ids) ? ids.filter(id => typeof id === 'string' && id) : [];
-    } catch {
-      return [];
-    }
-  }
-
   function beforeIdForTarget(target) {
     const row = target?.closest?.('.story-item');
     if (row?.dataset.storyId) return row.dataset.storyId;
@@ -38,15 +30,12 @@ if (storyList) {
     if (!handle || !row?.dataset.storyId || !event.dataTransfer) return;
     if (!row.classList.contains('story-text') && !row.classList.contains('story-break') && !row.classList.contains('story-image-placeholder')) return;
 
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
-    event.dataTransfer.setData('application/x-hhjstory-block', '1');
-    event.dataTransfer.setData('text/plain', row.dataset.storyId);
+    writeStoryTransfer(event.dataTransfer, [row.dataset.storyId], { block: true, plainText: true });
     row.classList.add('dragging');
   }, true);
 
   storyList.addEventListener('drop', event => {
-    const movingIds = readStoryIds(event.dataTransfer);
+    const movingIds = readTransferIds(event.dataTransfer, STORY_IDS_MIME);
     if (!movingIds.length) return;
     const beforeId = beforeIdForTarget(event.target);
     if (!beforeId || !movingIds.includes(beforeId)) return;

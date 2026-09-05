@@ -1,3 +1,5 @@
+import { writeConTransfer } from './story-dnd-utils.js?v=20260906-2';
+
 const conGrid = document.getElementById('conGrid');
 const selectionStatus = document.getElementById('selectionStatus');
 
@@ -28,9 +30,7 @@ if (conGrid) {
 
     event.stopImmediatePropagation();
     const ids = selectedIdsForDrag(card);
-    event.dataTransfer.effectAllowed = 'copyMove';
-    event.dataTransfer.setData('application/x-hhjcon-ids', JSON.stringify(ids));
-    event.dataTransfer.setData('text/plain', ids.join('\n'));
+    writeConTransfer(event.dataTransfer, ids);
     card.classList.add('dragging');
   }, true);
 

@@ -1,3 +1,5 @@
+import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
+
 const storyList = document.getElementById('storyList');
 const storyDropZone = document.getElementById('storyDropZone');
 let markedTarget = null;
@@ -19,8 +21,7 @@ storyList?.addEventListener('dragstart', event => {
     selectedRows.forEach(item => item.classList.remove('selected'));
     row.classList.add('selected');
   }
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify(ids));
+  writeStoryTransfer(event.dataTransfer, ids);
   event.stopPropagation();
 }, true);
 

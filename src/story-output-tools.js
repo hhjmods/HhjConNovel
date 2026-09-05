@@ -1,4 +1,6 @@
 import { getOne, putOne } from './db.js';
+import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-8';
 
 const storyList = document.getElementById('storyList');
@@ -43,13 +45,6 @@ function savedImageMemo(storyId) {
   return String(imageMemoDoc.items?.[storyId]?.text || '');
 }
 
-function forwardDrop(target, dataTransfer) {
-  if (!target || !dataTransfer) return;
-  const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-  Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-  target.dispatchEvent(forwarded);
-}
-
 function currentItemRows() {
   return [...storyList.querySelectorAll(':scope > .story-item')];
 }
@@ -76,14 +71,11 @@ function waitForNewText(existingIds, timeout = 2500) {
   });
 }
 
-function moveStoryItemBefore(itemId, beforeId) {
+async function moveStoryItemBefore(itemId, beforeId) {
   if (!itemId || !beforeId || itemId === beforeId) return;
-  const target = storyList.querySelector(`:scope > .story-item[data-story-id="${CSS.escape(beforeId)}"]`);
-  if (!target) return;
   const transfer = new DataTransfer();
-  transfer.effectAllowed = 'move';
-  transfer.setData('application/x-hhjstory-ids', JSON.stringify([itemId]));
-  forwardDrop(target, transfer);
+  if (!writeStoryTransfer(transfer, [itemId])) return;
+  await applyStoryDropTransfer(transfer, beforeId);
 }
 
 function ensureImageDragHandle(row) {
@@ -99,10 +91,7 @@ function ensureImageDragHandle(row) {
   handle.addEventListener('dragstart', event => {
     if (!event.dataTransfer) return;
     event.stopPropagation();
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
-    event.dataTransfer.setData('application/x-hhjstory-block', '1');
-    event.dataTransfer.setData('text/plain', row.dataset.storyId);
+    if (!writeStoryTransfer(event.dataTransfer, [row.dataset.storyId], { block: true, plainText: true })) return;
     row.classList.add('dragging');
   });
   handle.addEventListener('dragend', () => row.classList.remove('dragging'));
@@ -183,7 +172,7 @@ if (storyList && editorActions && addTextButton) {
     textarea.value = IMAGE_SENTINEL;
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
     decorateImageRow(newRow);
-    if (beforeId) moveStoryItemBefore(newId, beforeId);
+    if (beforeId) await moveStoryItemBefore(newId, beforeId);
   });
 }
 
@@ -235,7 +224,7 @@ if (toolbar && editorPanel) {
     toolbar.classList.toggle('html-preview-active', previewMode);
     preview.hidden = !previewMode;
     toggle.textContent = previewMode ? '블록 보기' : 'HTML 보기';
-    toggle.title = previewMode ? '블록 편집 화면으로 돌아가기' : '현재 작성된 원고의 HTML 코드 보기';
+    toggle.title = previewMode ? '블록 편집 화면으로 돌아가기' : '현재 작성된 원고 HTML 코드 보기';
     if (previewMode) scheduleRefresh(0);
   });
 }

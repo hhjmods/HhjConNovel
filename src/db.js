@@ -52,3 +52,19 @@ export async function putMany(storeName, values) {
 }
 export async function deleteOne(storeName, key) { return withStore(storeName, 'readwrite', store => requestAsPromise(store.delete(key))); }
 export async function clearStore(storeName) { return withStore(storeName, 'readwrite', store => requestAsPromise(store.clear())); }
+export async function replaceStores(storeValues) {
+  const names = Object.keys(storeValues);
+  if (!names.length) return;
+  const db = await openDb();
+  const tx = db.transaction(names, 'readwrite');
+  names.forEach(name => {
+    const store = tx.objectStore(name);
+    store.clear();
+    storeValues[name].forEach(value => store.put(value));
+  });
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}

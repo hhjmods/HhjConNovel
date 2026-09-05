@@ -4,6 +4,33 @@ const storyList = document.getElementById('storyList');
 if (toolbar && storyList) {
   let activeEditor = null;
   let savedRange = null;
+  const colorInput = toolbar.querySelector('[data-format="color"]');
+  const backgroundInput = toolbar.querySelector('[data-format="background"]');
+  let pendingColor = colorInput?.value || '#000000';
+  let pendingBackground = backgroundInput?.value || '#ffffff';
+
+  function addConfirmButton(input, kind, title) {
+    if (!input) return null;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'format-color-confirm';
+    button.dataset.colorConfirm = kind;
+    button.textContent = '확인';
+    button.title = title;
+    button.disabled = true;
+    const label = input.closest('.format-color');
+    if (label) label.insertAdjacentElement('afterend', button);
+    else input.insertAdjacentElement('afterend', button);
+    return button;
+  }
+
+  const colorConfirm = addConfirmButton(colorInput, 'color', '선택한 글자색 적용');
+  const backgroundConfirm = addConfirmButton(backgroundInput, 'background', '선택한 배경색 적용');
+
+  function setConfirmEnabled(enabled) {
+    if (colorConfirm) colorConfirm.disabled = !enabled;
+    if (backgroundConfirm) backgroundConfirm.disabled = !enabled;
+  }
 
   function rangeInsideEditor(range, editor) {
     return Boolean(range && editor && editor.contains(range.commonAncestorContainer));
@@ -39,6 +66,7 @@ if (toolbar && storyList) {
     if (editor) {
       activeEditor = editor;
       captureSelection();
+      setConfirmEnabled(true);
     }
   });
 
@@ -51,7 +79,11 @@ if (toolbar && storyList) {
   }, true);
 
   toolbar.addEventListener('input', event => {
-    if (event.target.matches('input[type="color"]')) event.stopImmediatePropagation();
+    const control = event.target;
+    if (!(control instanceof HTMLInputElement) || !control.matches('input[type="color"]')) return;
+    event.stopImmediatePropagation();
+    if (control.matches('[data-format="color"]')) pendingColor = control.value;
+    if (control.matches('[data-format="background"]')) pendingBackground = control.value;
   }, true);
 
   toolbar.addEventListener('change', event => {
@@ -72,13 +104,27 @@ if (toolbar && storyList) {
 
     if (control.matches('[data-format="color"]')) {
       event.stopImmediatePropagation();
-      applyCommand('foreColor', control.value);
+      pendingColor = control.value;
       return;
     }
 
     if (control.matches('[data-format="background"]')) {
       event.stopImmediatePropagation();
-      applyCommand('hiliteColor', control.value, 'backColor');
+      pendingBackground = control.value;
+    }
+  }, true);
+
+  toolbar.addEventListener('click', event => {
+    const button = event.target.closest('button[data-color-confirm]');
+    if (!button) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (button.dataset.colorConfirm === 'color') {
+      applyCommand('foreColor', pendingColor);
+      return;
+    }
+    if (button.dataset.colorConfirm === 'background') {
+      applyCommand('hiliteColor', pendingBackground, 'backColor');
     }
   }, true);
 }

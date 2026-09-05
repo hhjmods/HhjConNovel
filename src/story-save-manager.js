@@ -2,6 +2,8 @@ import { deleteOne, getAll, getOne, putOne } from './db.js';
 
 const FORMAT = 'hhjcon-story-save';
 const VERSION = 1;
+const BUNDLE_FORMAT = 'hhjcon-story-saves';
+const BUNDLE_VERSION = 1;
 const PREFIX = 'story-save:';
 const DOCS = {
   rich: 'rich-text-v1',
@@ -43,6 +45,12 @@ function defaultName() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
   return `콘문학 ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+function backupFileName() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `콘문학_백업_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.hhjconstories.json`;
 }
 
 function filtered(items, ids) {
@@ -122,6 +130,15 @@ function exportSave(save) {
   };
 }
 
+function exportBundle(saves) {
+  return {
+    format: BUNDLE_FORMAT,
+    version: BUNDLE_VERSION,
+    exportedAt: new Date().toISOString(),
+    saves: saves.map(exportSave)
+  };
+}
+
 function parseSave(data) {
   if (!data || data.format !== FORMAT || Number(data.version) !== VERSION || !Array.isArray(data.story?.items) || !data.story.items.length) {
     throw new Error('지원하지 않는 콘문학 원고 파일입니다.');
@@ -149,6 +166,35 @@ function parseSave(data) {
     },
     conRefs: clone(asObject(data.conRefs))
   };
+}
+
+function parseImportData(data) {
+  if (data?.format === BUNDLE_FORMAT) {
+    if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || !data.saves.length) {
+      throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
+    }
+    return data.saves.map(parseSave);
+  }
+  return [parseSave(data)];
+}
+
+async function storeImportedSave(parsed, names) {
+  let name = parsed.name;
+  let n = 2;
+  while (names.has(name)) name = `${parsed.name} (${n++})`;
+  names.add(name);
+  const now = Date.now();
+  await putOne('documents', {
+    id: `${PREFIX}${crypto.randomUUID()}`,
+    format: FORMAT,
+    version: VERSION,
+    name,
+    createdAt: now,
+    updatedAt: now,
+    story: parsed.story,
+    metadata: parsed.metadata,
+    conRefs: parsed.conRefs
+  });
 }
 
 function doc(id, items) {
@@ -215,18 +261,27 @@ function makeDialog() {
   const close = document.createElement('button');
   close.type = 'button'; close.className = 'icon-button'; close.textContent = '×'; close.title = '닫기';
   head.append(close);
+
   const tools = document.createElement('div');
   tools.className = 'story-save-tools';
   const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = '현재 원고 저장';
   const label = document.createElement('label'); label.className = 'file-button'; label.textContent = '파일 불러오기';
-  const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = 'application/json,.json';
+  const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = 'application/json,.json,.hhjconstory,.hhjconstories';
   label.append(input); tools.append(save, label);
+
+  const selectionTools = document.createElement('div');
+  selectionTools.className = 'story-save-selection-tools';
+  const selectAll = document.createElement('button'); selectAll.type = 'button'; selectAll.textContent = '전체 선택';
+  const clearAll = document.createElement('button'); clearAll.type = 'button'; clearAll.textContent = '선택 해제';
+  const exportSelected = document.createElement('button'); exportSelected.type = 'button'; exportSelected.className = 'primary'; exportSelected.textContent = '선택 내보내기';
+  selectionTools.append(selectAll, clearAll, exportSelected);
+
   const list = document.createElement('div'); list.className = 'story-save-list';
-  dialog.append(head, tools, list); document.body.append(dialog);
+  dialog.append(head, tools, selectionTools, list); document.body.append(dialog);
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
-  return { dialog, list, save, input };
+  return { dialog, list, save, input, selectAll, clearAll, exportSelected };
 }
 
 async function renderList(list) {
@@ -237,6 +292,7 @@ async function renderList(list) {
   }
   saves.forEach(save => {
     const row = document.createElement('div'); row.className = 'story-save-row';
+    const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'story-save-check'; check.value = save.id; check.setAttribute('aria-label', `${save.name} 선택`);
     const info = document.createElement('div'); info.className = 'story-save-info';
     const name = document.createElement('strong'); name.textContent = save.name;
     const meta = document.createElement('small'); meta.textContent = stats(save); info.append(name, meta);
@@ -244,7 +300,7 @@ async function renderList(list) {
     const load = document.createElement('button'); load.type = 'button'; load.className = 'primary'; load.textContent = '불러오기';
     const exp = document.createElement('button'); exp.type = 'button'; exp.textContent = '내보내기';
     const del = document.createElement('button'); del.type = 'button'; del.className = 'danger'; del.textContent = '삭제';
-    actions.append(load, exp, del); row.append(info, actions); list.append(row);
+    actions.append(load, exp, del); row.append(check, info, actions); list.append(row);
     load.addEventListener('click', () => loadSave(save).catch(error => alert(`원고를 불러올 수 없습니다.\n${error.message || error}`)));
     exp.addEventListener('click', () => downloadJson(`${safeName(save.name)}.hhjconstory.json`, exportSave(save)));
     del.addEventListener('click', async () => {
@@ -254,19 +310,35 @@ async function renderList(list) {
   });
 }
 
+async function exportSelectedSaves(list) {
+  const selectedIds = new Set([...list.querySelectorAll('.story-save-check:checked')].map(input => input.value));
+  if (!selectedIds.size) return alert('내보낼 콘문학을 하나 이상 선택하세요.');
+  const selected = (await getSaves()).filter(save => selectedIds.has(save.id));
+  if (!selected.length) return;
+  if (selected.length === 1) {
+    downloadJson(`${safeName(selected[0].name)}.hhjconstory.json`, exportSave(selected[0]));
+  } else {
+    downloadJson(backupFileName(), exportBundle(selected));
+  }
+  showToast(`${selected.length}개 콘문학 원고를 내보냈습니다.`);
+}
+
 async function openManager() {
   const ui = makeDialog();
   ui.save.addEventListener('click', async () => { if (await saveCurrent()) await renderList(ui.list); });
+  ui.selectAll.addEventListener('click', () => ui.list.querySelectorAll('.story-save-check').forEach(input => { input.checked = true; }));
+  ui.clearAll.addEventListener('click', () => ui.list.querySelectorAll('.story-save-check').forEach(input => { input.checked = false; }));
+  ui.exportSelected.addEventListener('click', () => exportSelectedSaves(ui.list).catch(error => alert(`원고를 내보낼 수 없습니다.\n${error.message || error}`)));
   ui.input.addEventListener('change', async () => {
     const files = [...(ui.input.files || [])]; ui.input.value = ''; if (!files.length) return;
     const names = new Set((await getSaves()).map(v => v.name)); let ok = 0; const failures = [];
     for (const file of files) {
       try {
-        const parsed = parseSave(JSON.parse(await file.text()));
-        let name = parsed.name; let n = 2; while (names.has(name)) name = `${parsed.name} (${n++})`; names.add(name);
-        const now = Date.now();
-        await putOne('documents', { id: `${PREFIX}${crypto.randomUUID()}`, format: FORMAT, version: VERSION, name, createdAt: now, updatedAt: now, story: parsed.story, metadata: parsed.metadata, conRefs: parsed.conRefs });
-        ok += 1;
+        const parsedSaves = parseImportData(JSON.parse(await file.text()));
+        for (const parsed of parsedSaves) {
+          await storeImportedSave(parsed, names);
+          ok += 1;
+        }
       } catch (error) { failures.push(`${file.name}: ${error.message}`); }
     }
     if (failures.length) alert(`${ok ? `${ok}개 원고를 불러왔습니다.\n\n` : ''}불러오지 못한 파일이 있습니다.\n${failures.map(v => `- ${v}`).join('\n')}`);
@@ -277,7 +349,7 @@ async function openManager() {
 
 if (storyList && editorActions) {
   const style = document.createElement('style');
-  style.textContent = '.editor-header>div:last-child{flex-wrap:wrap;justify-content:flex-end}.story-save-dialog{width:min(760px,calc(100vw - 28px));max-height:78vh;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009}.story-save-dialog::backdrop{background:#0009}.story-save-head,.story-save-tools{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.story-save-head{justify-content:space-between}.story-save-tools input{display:none}.story-save-list{max-height:58vh;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px}.story-save-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}.story-save-info{min-width:0;display:flex;flex-direction:column;gap:4px}.story-save-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.story-save-info small{color:var(--muted)}.story-save-actions{display:flex;flex-wrap:wrap;gap:6px}.story-save-empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:650px){.story-save-row{align-items:stretch;flex-direction:column}}';
+  style.textContent = '.editor-header>div:last-child{flex-wrap:wrap;justify-content:flex-end}.story-save-dialog{width:min(820px,calc(100vw - 28px));max-height:82vh;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009}.story-save-dialog::backdrop{background:#0009}.story-save-head,.story-save-tools,.story-save-selection-tools{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.story-save-head{justify-content:space-between}.story-save-tools,.story-save-selection-tools{flex-wrap:wrap}.story-save-tools input{display:none}.story-save-selection-tools{padding-top:8px;padding-bottom:8px}.story-save-list{max-height:58vh;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px}.story-save-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}.story-save-check{width:18px;height:18px;margin:0}.story-save-info{min-width:0;display:flex;flex-direction:column;gap:4px}.story-save-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.story-save-info small{color:var(--muted)}.story-save-actions{display:flex;flex-wrap:wrap;gap:6px}.story-save-empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:650px){.story-save-row{grid-template-columns:auto minmax(0,1fr)}.story-save-actions{grid-column:1/-1}}';
   document.head.append(style);
   const save = document.createElement('button'); save.type = 'button'; save.className = 'small'; save.textContent = '원고 저장';
   const manage = document.createElement('button'); manage.type = 'button'; manage.className = 'small'; manage.textContent = '저장된 원고';

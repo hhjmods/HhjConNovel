@@ -265,16 +265,17 @@ function makeDialog() {
   const tools = document.createElement('div');
   tools.className = 'story-save-tools';
   const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = '현재 원고 저장';
-  const label = document.createElement('label'); label.className = 'file-button'; label.textContent = '파일 불러오기';
-  const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = 'application/json,.json,.hhjconstory,.hhjconstories';
-  label.append(input); tools.append(save, label);
+  tools.append(save);
 
   const selectionTools = document.createElement('div');
   selectionTools.className = 'story-save-selection-tools';
   const selectAll = document.createElement('button'); selectAll.type = 'button'; selectAll.textContent = '전체 선택';
   const clearAll = document.createElement('button'); clearAll.type = 'button'; clearAll.textContent = '선택 해제';
-  const exportSelected = document.createElement('button'); exportSelected.type = 'button'; exportSelected.className = 'primary'; exportSelected.textContent = '선택 내보내기';
-  selectionTools.append(selectAll, clearAll, exportSelected);
+  const exportSelected = document.createElement('button'); exportSelected.type = 'button'; exportSelected.className = 'primary'; exportSelected.textContent = '선택 원고 내보내기';
+  const label = document.createElement('label'); label.className = 'file-button'; label.textContent = '원고 불러오기';
+  const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = 'application/json,.json,.hhjconstory,.hhjconstories';
+  label.append(input);
+  selectionTools.append(selectAll, clearAll, exportSelected, label);
 
   const list = document.createElement('div'); list.className = 'story-save-list';
   dialog.append(head, tools, selectionTools, list); document.body.append(dialog);
@@ -349,12 +350,12 @@ async function openManager() {
 
 if (storyList && editorActions) {
   const style = document.createElement('style');
-  style.textContent = '.editor-header>div:last-child{flex-wrap:wrap;justify-content:flex-end}.story-save-dialog{width:min(820px,calc(100vw - 28px));max-height:82vh;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009}.story-save-dialog::backdrop{background:#0009}.story-save-head,.story-save-tools,.story-save-selection-tools{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.story-save-head{justify-content:space-between}.story-save-tools,.story-save-selection-tools{flex-wrap:wrap}.story-save-tools input{display:none}.story-save-selection-tools{padding-top:8px;padding-bottom:8px}.story-save-list{max-height:58vh;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px}.story-save-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}.story-save-check{width:18px;height:18px;margin:0}.story-save-info{min-width:0;display:flex;flex-direction:column;gap:4px}.story-save-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.story-save-info small{color:var(--muted)}.story-save-actions{display:flex;flex-wrap:wrap;gap:6px}.story-save-empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:650px){.story-save-row{grid-template-columns:auto minmax(0,1fr)}.story-save-actions{grid-column:1/-1}}';
+  style.textContent = '.editor-header>div:last-child{flex-wrap:wrap;justify-content:flex-end}.story-save-dialog{width:min(820px,calc(100vw - 28px));max-height:82vh;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009}.story-save-dialog::backdrop{background:#0009}.story-save-head,.story-save-tools,.story-save-selection-tools{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.story-save-head{justify-content:space-between}.story-save-tools,.story-save-selection-tools{flex-wrap:wrap}.story-save-selection-tools input{display:none}.story-save-selection-tools{padding-top:8px;padding-bottom:8px}.story-save-list{max-height:58vh;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px}.story-save-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}.story-save-check{width:18px;height:18px;margin:0}.story-save-info{min-width:0;display:flex;flex-direction:column;gap:4px}.story-save-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.story-save-info small{color:var(--muted)}.story-save-actions{display:flex;flex-wrap:wrap;gap:6px}.story-save-empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:650px){.story-save-row{grid-template-columns:auto minmax(0,1fr)}.story-save-actions{grid-column:1/-1}}';
   document.head.append(style);
   const save = document.createElement('button'); save.type = 'button'; save.className = 'small'; save.textContent = '원고 저장';
-  const manage = document.createElement('button'); manage.type = 'button'; manage.className = 'small'; manage.textContent = '저장된 원고';
+  const manage = document.createElement('button'); manage.type = 'button'; manage.className = 'small'; manage.textContent = '원고 목록';
   editorActions.insertBefore(save, clearButton || null); editorActions.insertBefore(manage, clearButton || null);
   save.addEventListener('click', saveCurrent);
-  manage.addEventListener('click', () => openManager().catch(error => alert(`저장된 원고를 열 수 없습니다.\n${error.message || error}`)));
+  manage.addEventListener('click', () => openManager().catch(error => alert(`원고 목록을 열 수 없습니다.\n${error.message || error}`)));
   const message = sessionStorage.getItem(TOAST_KEY); if (message) { sessionStorage.removeItem(TOAST_KEY); setTimeout(() => showToast(message), 100); }
 }

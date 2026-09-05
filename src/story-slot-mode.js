@@ -1,3 +1,5 @@
+import { CON_IDS_MIME, STORY_IDS_MIME, forwardDrop, transferHasType } from './story-dnd-utils.js?v=20260906-2';
+
 const storyList = document.getElementById('storyList');
 
 if (storyList) {
@@ -6,7 +8,6 @@ if (storyList) {
   let movingStoryIds = new Set();
   let guide = null;
   let activeBoundary = null;
-  let forwardingDrop = false;
 
   function ensureGuide() {
     if (guide?.isConnected) return guide;
@@ -246,13 +247,6 @@ if (storyList) {
     showBoundary(previousStoryItem(row), row);
   }
 
-  function forwardDrop(target, dataTransfer) {
-    if (!target || !dataTransfer) return;
-    const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-    Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-    target.dispatchEvent(forwarded);
-  }
-
   document.addEventListener('dragstart', event => {
     const kind = dragKindFromTarget(event.target);
     if (!kind) return;
@@ -281,9 +275,8 @@ if (storyList) {
   });
 
   storyList.addEventListener('drop', event => {
-    if (forwardingDrop || !activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
-    const types = event.dataTransfer?.types;
-    if (!types?.includes('application/x-hhjstory-ids') && !types?.includes('application/x-hhjcon-ids')) return;
+    if (!activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
+    if (!transferHasType(event.dataTransfer, STORY_IDS_MIME) && !transferHasType(event.dataTransfer, CON_IDS_MIME)) return;
 
     const directRow = event.target.closest?.('.story-item');
     if (isMovingRow(directRow)) return;
@@ -295,12 +288,7 @@ if (storyList) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    forwardingDrop = true;
-    try {
-      forwardDrop(target, event.dataTransfer);
-    } finally {
-      forwardingDrop = false;
-    }
+    forwardDrop(target, event.dataTransfer);
   }, true);
 
   function finishDrag() {

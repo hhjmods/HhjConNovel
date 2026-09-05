@@ -84,7 +84,7 @@ const requiredHelpers = [
   ['src/story-con-run-end-drop.js', files.runEnd, 'applyStoryDropTransfer'],
   ['src/story-tail-blank-drop.js', files.tail, 'hasStoryAreaPayload'],
   ['src/story-tail-blank-drop.js', files.tail, 'storyAreaDropEffect'],
-  ['src/story-tail-blank-drop.js', files.tail, 'forwardDrop']
+  ['src/story-tail-blank-drop.js', files.tail, 'applyStoryDropTransfer']
 ];
 
 for (const [path, source, helper] of requiredHelpers) {
@@ -107,7 +107,8 @@ for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
   ['src/story-drag-stability.js', files.stability],
-  ['src/story-con-run-end-drop.js', files.runEnd]
+  ['src/story-con-run-end-drop.js', files.runEnd],
+  ['src/story-tail-blank-drop.js', files.tail]
 ]) {
   if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
 }
@@ -129,7 +130,8 @@ const directAppImport = './app.js?v=20260906-16';
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
-  ['src/story-con-run-end-drop.js', files.runEnd]
+  ['src/story-con-run-end-drop.js', files.runEnd],
+  ['src/story-tail-blank-drop.js', files.tail]
 ]) {
   if (!source.includes(directAppImport)) {
     fail(`${path} does not import the canonical direct app mutation API module version`);
@@ -150,13 +152,14 @@ for (const [path, source] of [
   }
 }
 if (!files.utils.includes("new Event('drop'")) {
-  fail('story-dnd-utils.js lost the centralized compatibility synthetic drop implementation before all legacy routers migrate');
+  fail('story-dnd-utils.js lost the centralized compatibility synthetic drop implementation before all compatibility users migrate');
 }
 
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
-  ['src/story-con-run-end-drop.js', files.runEnd]
+  ['src/story-con-run-end-drop.js', files.runEnd],
+  ['src/story-tail-blank-drop.js', files.tail]
 ]) {
   if (source.includes('forwardDrop(')) {
     fail(`${path} still uses synthetic drop forwarding after direct mutation migration`);

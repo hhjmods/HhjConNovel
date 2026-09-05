@@ -1,4 +1,5 @@
-import { forwardDrop, hasStoryAreaPayload, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
+import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { hasStoryAreaPayload, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 
@@ -46,7 +47,10 @@ if (storyList) {
     event.preventDefault();
     event.stopPropagation();
     storyList.classList.remove('story-tail-blank-hover');
-    forwardDrop(tail, event.dataTransfer);
+
+    void applyStoryDropTransfer(event.dataTransfer, null).catch(error => {
+      console.error('원고 하단 drop 적용 중 오류가 발생했습니다.', error);
+    });
   });
 
   document.addEventListener('dragend', () => storyList.classList.remove('story-tail-blank-hover'), true);

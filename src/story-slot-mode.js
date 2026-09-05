@@ -1,5 +1,10 @@
 import { applyStoryDropTransfer } from './app.js?v=20260906-17';
-import { CON_IDS_MIME, STORY_IDS_MIME, transferHasType } from './story-dnd-utils.js?v=20260906-2';
+import {
+  CON_IDS_MIME,
+  STORY_IDS_MIME,
+  storyAreaDropEffect,
+  transferHasType
+} from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 
@@ -16,6 +21,15 @@ if (storyList) {
     guide.className = 'story-drop-guide hidden';
     document.body.append(guide);
     return guide;
+  }
+
+  function hasStoryPayload(dataTransfer) {
+    return transferHasType(dataTransfer, STORY_IDS_MIME) || transferHasType(dataTransfer, CON_IDS_MIME);
+  }
+
+  function pointInsideStoryList(clientX, clientY) {
+    const rect = storyList.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   }
 
   function isMovingRow(row) {
@@ -164,7 +178,9 @@ if (storyList) {
       showHorizontal(previous.getBoundingClientRect().bottom);
       return;
     }
-    hideGuide();
+
+    const rect = storyList.getBoundingClientRect();
+    showHorizontal(rect.top + 8);
   }
 
   function showBlankPointBoundary(event) {
@@ -206,7 +222,7 @@ if (storyList) {
 
     const row = nearestRow(event.clientX, event.clientY);
     if (!row) {
-      hideGuide();
+      showBoundary(null, null);
       return;
     }
     showBoundary(previousStoryItem(row), row);
@@ -215,37 +231,40 @@ if (storyList) {
   function showGuideForEvent(event) {
     if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
 
-    const slot = event.target.closest('.story-insert-slot');
+    const slot = event.target?.closest?.('.story-insert-slot');
     if (slot) {
       showBoundary(previousStoryItem(slot), nextStoryItem(slot));
       return;
     }
 
-    const tail = event.target.closest('.story-tail-drop');
+    const tail = event.target?.closest?.('.story-tail-drop');
     if (tail) {
       const rows = logicalRows();
       showBoundary(rows.at(-1) || null, null);
       return;
     }
 
-    let row = event.target.closest('.story-item');
+    let row = event.target?.closest?.('.story-item') || null;
     if (isMovingRow(row)) {
       showBoundary(previousStoryItem(row), nextStoryItem(row));
       return;
     }
 
-    if (!row && event.target === storyList) {
+    if (!row) {
       showBlankPointBoundary(event);
       return;
     }
 
-    if (!row) row = nearestRow(event.clientX, event.clientY);
-    if (!row) {
-      hideGuide();
-      return;
-    }
-
     showBoundary(previousStoryItem(row), row);
+  }
+
+  function finishDrag() {
+    hideGuide();
+    clearLegacyHighlights();
+    storyList.classList.remove('story-guide-dragging', 'story-block-dragging', 'story-con-dragging');
+    activeDragKind = null;
+    sourceRow = null;
+    movingStoryIds = new Set();
   }
 
   document.addEventListener('dragstart', event => {
@@ -263,47 +282,49 @@ if (storyList) {
     }
   }, true);
 
-  storyList.addEventListener('dragover', event => {
-    if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
+  document.addEventListener('dragover', event => {
+    if ((activeDragKind !== 'block' && activeDragKind !== 'con') || !hasStoryPayload(event.dataTransfer)) return;
+    if (!pointInsideStoryList(event.clientX, event.clientY)) {
+      hideGuide();
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
+    }
     if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
     if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
     showGuideForEvent(event);
   }, true);
 
-  storyList.addEventListener('dragover', () => {
+  document.addEventListener('dragover', () => {
     if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
     clearLegacyHighlights();
   });
 
-  storyList.addEventListener('drop', event => {
+  document.addEventListener('drop', event => {
     if (!activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
-    if (!transferHasType(event.dataTransfer, STORY_IDS_MIME) && !transferHasType(event.dataTransfer, CON_IDS_MIME)) return;
+    if (!hasStoryPayload(event.dataTransfer) || !pointInsideStoryList(event.clientX, event.clientY)) return;
 
-    const directRow = event.target.closest?.('.story-item');
-    if (isMovingRow(directRow)) return;
-
-    const target = activeBoundary.next || storyList.querySelector(':scope > .story-tail-drop');
-    if (!target) return;
-    if (event.target === target || target.contains(event.target)) return;
-
-    const beforeId = activeBoundary.next?.dataset?.storyId || null;
+    const directRow = event.target?.closest?.('.story-item') || null;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    void applyStoryDropTransfer(event.dataTransfer, beforeId).catch(error => {
+
+    if (isMovingRow(directRow)) {
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+      queueMicrotask(finishDrag);
+      return;
+    }
+
+    const beforeId = activeBoundary.next?.dataset?.storyId || null;
+    const transfer = event.dataTransfer;
+    queueMicrotask(finishDrag);
+    void applyStoryDropTransfer(transfer, beforeId).catch(error => {
       console.error('원고 drop 적용 중 오류가 발생했습니다.', error);
     });
   }, true);
 
-  function finishDrag() {
-    hideGuide();
-    clearLegacyHighlights();
-    storyList.classList.remove('story-guide-dragging', 'story-block-dragging', 'story-con-dragging');
-    activeDragKind = null;
-    sourceRow = null;
-    movingStoryIds = new Set();
-  }
-
   document.addEventListener('dragend', finishDrag, true);
-  document.addEventListener('drop', () => queueMicrotask(finishDrag), true);
 }

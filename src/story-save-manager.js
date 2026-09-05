@@ -4,6 +4,8 @@ const FORMAT = 'hhjcon-story-save';
 const VERSION = 1;
 const BUNDLE_FORMAT = 'hhjcon-story-saves';
 const BUNDLE_VERSION = 1;
+const COLLECTION_FORMATS = new Set(['hhjcon-collection', 'hhjcon-collections']);
+const EDITOR_FORMAT = 'hhjcon-editor-backup';
 const PREFIX = 'story-save:';
 const DOCS = {
   rich: 'rich-text-v1',
@@ -169,6 +171,12 @@ function parseSave(data) {
 }
 
 function parseImportData(data) {
+  if (COLLECTION_FORMATS.has(data?.format)) {
+    throw new Error('해당 파일은 콘묶음 백업파일입니다. 콘묶음 불러오기를 이용해주세요.');
+  }
+  if (data?.format === EDITOR_FORMAT) {
+    throw new Error('해당 파일은 에디터 백업파일입니다. 에디터 백업 불러오기를 이용해주세요.');
+  }
   if (data?.format === BUNDLE_FORMAT) {
     if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || !data.saves.length) {
       throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
@@ -280,7 +288,7 @@ function makeDialog() {
   const list = document.createElement('div'); list.className = 'story-save-list';
   const warning = document.createElement('div');
   warning.className = 'story-save-warning';
-  warning.textContent = '(저장한 원고는 브라우저데이터를 삭제시 지워집니다. 원고 내보내기로 백업을 해주십시오.)';
+  warning.textContent = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해주십시오.)';
   dialog.append(head, tools, selectionTools, list, warning); document.body.append(dialog);
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });

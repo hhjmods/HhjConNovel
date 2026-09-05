@@ -1,4 +1,4 @@
-import { getAll, replaceStores } from './db.js';
+import { getAll, replaceStores } from './db.js?v=20260906-1';
 
 const FORMAT = 'hhjcon-editor-backup';
 const VERSION = 1;

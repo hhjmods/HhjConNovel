@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.6.0
+// @version      0.6.1
 // @description  HhjConNovel의 디시콘 동기화 기능을 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
@@ -64,7 +64,7 @@
   const RESULT_TYPE = 'HHJCON_DC_SYNC_RESULT';
   const PING_TYPE = 'HHJCON_DC_BRIDGE_PING';
   const PONG_TYPE = 'HHJCON_DC_BRIDGE_PONG';
-  const VERSION = '0.6.0';
+  const VERSION = '0.6.1';
   const MAX_PAGE = 30;
   const IMAGE_CACHE_NAME = 'hhjcon-dccon-images-v1';
   const IMAGE_NETWORK_LIMIT = 4;
@@ -368,6 +368,9 @@
         ]), baseUrl);
         const sourceNo = readSourceNo(imageUrl);
         if (!sourceNo) return;
+        const detailId = firstString(detail, [
+          'detail_idx', 'detailIdx', 'detail_id', 'detailId', 'detail_no', 'detailNo'
+        ]);
 
         const key = `${packageId}\u0000${sourceNo}`;
         if (conMap.has(key)) return;
@@ -375,6 +378,7 @@
         conMap.set(key, {
           packageId,
           sourceNo,
+          detailId,
           name: firstString(detail, [
             'title', 'name', 'dccon_name', 'alt', 'detail_name'
           ]) || String(index + 1),

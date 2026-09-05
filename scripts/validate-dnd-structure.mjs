@@ -34,11 +34,7 @@ for (const path of expectedOrder) {
   lastIndex = indexOfPath;
 }
 
-const forbiddenIndexTerms = [
-  'story-create-drag.js',
-  'application/x-hhjstory-new-block'
-];
-for (const term of forbiddenIndexTerms) {
+for (const term of ['story-create-drag.js', 'application/x-hhjstory-new-block']) {
   if (index.includes(term)) fail(`index.html contains retired experimental DnD term: ${term}`);
 }
 
@@ -55,19 +51,20 @@ const files = {
   utils: read('src/story-dnd-utils.js')
 };
 
-const requiredContracts = [
-  ['src/story-dnd-utils.js', files.utils, 'application/x-hhjcon-ids'],
-  ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-ids'],
-  ['src/story-dnd-utils.js', files.utils, 'application/x-hhjstory-block'],
-  ['src/app.js', files.app, 'application/x-hhjcon-ids'],
-  ['src/app.js', files.app, 'application/x-hhjstory-ids']
-];
-
-for (const [path, source, token] of requiredContracts) {
-  if (!source.includes(token)) fail(`${path} no longer contains required DnD contract ${token}`);
+for (const token of [
+  'application/x-hhjcon-ids',
+  'application/x-hhjstory-ids',
+  'application/x-hhjstory-block'
+]) {
+  if (!files.utils.includes(token)) fail(`src/story-dnd-utils.js no longer contains required DnD contract ${token}`);
 }
 
 const requiredHelpers = [
+  ['src/app.js', files.app, 'CON_IDS_MIME'],
+  ['src/app.js', files.app, 'STORY_IDS_MIME'],
+  ['src/app.js', files.app, 'readTransferIds'],
+  ['src/app.js', files.app, 'writeConTransfer'],
+  ['src/app.js', files.app, 'writeStoryTransfer'],
   ['src/story-drag-guard.js', files.guard, 'writeStoryTransfer'],
   ['src/drag-start-fix.js', files.dragStart, 'writeConTransfer'],
   ['src/story-insertion.js', files.insertion, 'STORY_BLOCK_MIME'],
@@ -75,6 +72,7 @@ const requiredHelpers = [
   ['src/story-insertion.js', files.insertion, 'transferHasType'],
   ['src/story-insertion.js', files.insertion, 'writeStoryTransfer'],
   ['src/story-insertion.js', files.insertion, 'applyStoryDropTransfer'],
+  ['src/story-insertion.js', files.insertion, 'moveStoryItemsBefore'],
   ['src/story-slot-mode.js', files.slot, 'applyStoryDropTransfer'],
   ['src/story-slot-mode.js', files.slot, 'CON_IDS_MIME'],
   ['src/story-slot-mode.js', files.slot, 'STORY_IDS_MIME'],
@@ -87,7 +85,7 @@ const requiredHelpers = [
   ['src/story-tail-blank-drop.js', files.tail, 'storyAreaDropEffect'],
   ['src/story-tail-blank-drop.js', files.tail, 'applyStoryDropTransfer'],
   ['src/story-output-tools.js', files.outputTools, 'writeStoryTransfer'],
-  ['src/story-output-tools.js', files.outputTools, 'applyStoryDropTransfer']
+  ['src/story-output-tools.js', files.outputTools, 'moveStoryItemsBefore']
 ];
 
 for (const [path, source, helper] of requiredHelpers) {
@@ -97,6 +95,9 @@ for (const [path, source, helper] of requiredHelpers) {
 if (!files.app.includes('export async function applyStoryDropTransfer')) {
   fail('src/app.js no longer exposes the direct story drop mutation API');
 }
+if (!files.app.includes('export async function moveStoryItemsBefore')) {
+  fail('src/app.js no longer exposes the direct story id move command');
+}
 
 for (const [name, source] of Object.entries(files)) {
   if (source.includes('application/x-hhjstory-new-block')) {
@@ -105,6 +106,7 @@ for (const [name, source] of Object.entries(files)) {
 }
 
 for (const [path, source] of [
+  ['src/app.js', files.app],
   ['src/story-drag-guard.js', files.guard],
   ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
@@ -119,6 +121,7 @@ for (const [path, source] of [
 
 const sharedUtilsImport = './story-dnd-utils.js?v=20260906-2';
 for (const [path, source] of [
+  ['src/app.js', files.app],
   ['src/story-drag-guard.js', files.guard],
   ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
@@ -131,7 +134,7 @@ for (const [path, source] of [
   if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
 }
 
-const directAppImport = './app.js?v=20260906-16';
+const directAppImport = './app.js?v=20260906-17';
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
@@ -143,7 +146,7 @@ for (const [path, source] of [
     fail(`${path} does not import the canonical direct app mutation API module version`);
   }
 }
-if (!index.includes('./src/app.js?v=20260906-16')) {
+if (!index.includes('./src/app.js?v=20260906-17')) {
   fail('index.html does not load the same app.js module version used by direct DnD mutation clients');
 }
 
@@ -160,6 +163,15 @@ for (const [path, source] of [
   }
   if (source.includes('forwardDrop(')) {
     fail(`${path} reintroduced retired synthetic drop forwarding`);
+  }
+}
+
+for (const [path, source] of [
+  ['src/story-insertion.js', files.insertion],
+  ['src/story-output-tools.js', files.outputTools]
+]) {
+  if (source.includes('new DataTransfer(')) {
+    fail(`${path} creates a fake DataTransfer for a non-DnD story mutation`);
   }
 }
 

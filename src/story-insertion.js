@@ -1,4 +1,11 @@
 import { getOne, putOne } from './db.js';
+import {
+  STORY_BLOCK_MIME,
+  STORY_IDS_MIME,
+  forwardDrop,
+  transferHasType,
+  writeStoryTransfer
+} from './story-dnd-utils.js?v=20260906-2';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const storyList = document.getElementById('storyList');
@@ -15,13 +22,6 @@ if (storyList && editorActions && addTextButton) {
 
   if (storyDropZone) storyDropZone.classList.add('legacy-story-drop-zone');
 
-  function forwardDrop(target, dataTransfer) {
-    if (!target || !dataTransfer) return;
-    const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-    Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-    target.dispatchEvent(forwarded);
-  }
-
   function setSlotMode(slot, mode) {
     slot.classList.toggle('inline', mode === 'inline');
     slot.classList.toggle('block', mode === 'block');
@@ -30,7 +30,7 @@ if (storyList && editorActions && addTextButton) {
   function slotModeForDrag(dataTransfer, previous, next) {
     const previousIsCon = Boolean(previous?.classList.contains('story-con'));
     const nextIsCon = Boolean(next?.classList.contains('story-con'));
-    const draggingTextBlock = Boolean(dataTransfer?.types?.includes('application/x-hhjstory-block'));
+    const draggingTextBlock = transferHasType(dataTransfer, STORY_BLOCK_MIME);
 
     if (draggingTextBlock) {
       return previousIsCon && nextIsCon ? 'inline' : 'block';
@@ -51,7 +51,7 @@ if (storyList && editorActions && addTextButton) {
     slot.addEventListener('dragover', event => {
       event.preventDefault();
       setSlotMode(slot, slotModeForDrag(event.dataTransfer, previous, next));
-      event.dataTransfer.dropEffect = event.dataTransfer.types.includes('application/x-hhjstory-ids') ? 'move' : 'copy';
+      event.dataTransfer.dropEffect = transferHasType(event.dataTransfer, STORY_IDS_MIME) ? 'move' : 'copy';
       slot.classList.add('drop-target');
     });
     slot.addEventListener('dragleave', () => {
@@ -70,10 +70,7 @@ if (storyList && editorActions && addTextButton) {
 
   function writeStoryDrag(event, row) {
     if (!event.dataTransfer || !row.dataset.storyId) return false;
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-hhjstory-ids', JSON.stringify([row.dataset.storyId]));
-    event.dataTransfer.setData('application/x-hhjstory-block', '1');
-    event.dataTransfer.setData('text/plain', row.dataset.storyId);
+    if (!writeStoryTransfer(event.dataTransfer, [row.dataset.storyId], { block: true, plainText: true })) return false;
     row.classList.add('dragging');
     return true;
   }
@@ -201,8 +198,7 @@ if (storyList && editorActions && addTextButton) {
     const target = storyList.querySelector(`.story-item[data-story-id="${CSS.escape(beforeId)}"]`);
     if (!target) return;
     const transfer = new DataTransfer();
-    transfer.effectAllowed = 'move';
-    transfer.setData('application/x-hhjstory-ids', JSON.stringify([itemId]));
+    if (!writeStoryTransfer(transfer, [itemId])) return;
     forwardDrop(target, transfer);
   }
 

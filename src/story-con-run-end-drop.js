@@ -1,4 +1,4 @@
-import { forwardDrop, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-1';
+import { forwardDrop, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 

@@ -152,27 +152,17 @@ for (const [path, source] of [
   ['src/story-slot-mode.js', files.slot],
   ['src/story-con-run-end-drop.js', files.runEnd],
   ['src/story-tail-blank-drop.js', files.tail],
-  ['src/story-output-tools.js', files.outputTools]
+  ['src/story-output-tools.js', files.outputTools],
+  ['src/story-dnd-utils.js', files.utils]
 ]) {
   if (source.includes("new Event('drop'") || source.includes('new Event("drop"')) {
-    fail(`${path} creates a synthetic drop outside the centralized compatibility helper`);
+    fail(`${path} creates a retired synthetic drop`);
   }
-}
-if (!files.utils.includes("new Event('drop'")) {
-  fail('story-dnd-utils.js lost the centralized compatibility synthetic drop implementation before all compatibility users migrate');
+  if (source.includes('forwardDrop(')) {
+    fail(`${path} reintroduced retired synthetic drop forwarding`);
+  }
 }
 
-for (const [path, source] of [
-  ['src/story-insertion.js', files.insertion],
-  ['src/story-slot-mode.js', files.slot],
-  ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail],
-  ['src/story-output-tools.js', files.outputTools]
-]) {
-  if (source.includes('forwardDrop(')) {
-    fail(`${path} still uses synthetic drop forwarding after direct mutation migration`);
-  }
-}
 if (!files.insertion.includes('story-insert-slot')) {
   fail('story-insertion.js lost current real drop hit slots before their replacement exists');
 }

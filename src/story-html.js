@@ -80,17 +80,39 @@ function sanitizeRichHtml(html) {
   return output.innerHTML;
 }
 
+function replaceLiteralNewlines(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const targets = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (!/[\r\n]/.test(node.data)) continue;
+    if (node.parentNode === root && !node.data.trim()) continue;
+    targets.push(node);
+  }
+
+  targets.forEach(node => {
+    const parts = node.data.replace(/\r\n?/g, '\n').split('\n');
+    const fragment = document.createDocumentFragment();
+    parts.forEach((part, index) => {
+      if (index) fragment.append(document.createElement('br'));
+      if (part) fragment.append(document.createTextNode(part));
+    });
+    node.replaceWith(fragment);
+  });
+}
+
 function normalizeDialogueHtml(html) {
   const clean = sanitizeRichHtml(html);
   if (!clean) return '<p><br></p>';
 
   const template = document.createElement('template');
   template.innerHTML = clean;
+  replaceLiteralNewlines(template.content);
   const nodes = [...template.content.childNodes];
   const hasTopBlock = nodes.some(node =>
     node.nodeType === Node.ELEMENT_NODE && ['P', 'DIV'].includes(node.tagName)
   );
-  if (!hasTopBlock) return `<p>${clean}</p>`;
+  if (!hasTopBlock) return `<p>${template.innerHTML}</p>`;
 
   const output = document.createElement('div');
   let paragraph = null;

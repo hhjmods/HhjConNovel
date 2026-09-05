@@ -79,21 +79,6 @@ if (storyList) {
     pointerY = event.clientY;
   }, true);
 
-  document.addEventListener('wheel', event => {
-    if (!dragging) return;
-    const rect = storyList.getBoundingClientRect();
-    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
-
-    const scale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 :
-      event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? storyList.clientHeight : 1;
-    const delta = event.deltaY * scale;
-    if (!delta) return;
-
-    const before = storyList.scrollTop;
-    storyList.scrollTop += delta;
-    if (storyList.scrollTop !== before) event.preventDefault();
-  }, { capture: true, passive: false });
-
   document.addEventListener('dragend', finishDrag, true);
   document.addEventListener('drop', () => queueMicrotask(finishDrag), true);
 }

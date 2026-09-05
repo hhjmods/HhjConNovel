@@ -1,5 +1,5 @@
 import { getOne, putOne } from './db.js';
-import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-4';
+import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-5';
 
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');

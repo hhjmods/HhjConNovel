@@ -1,10 +1,7 @@
 const storyList = document.getElementById('storyList');
-const NEW_BLOCK_MIME = 'application/x-hhjstory-new-block';
-const NEW_BLOCK_DROP_EVENT = 'hhjcon:story-create-drop';
 
 if (storyList) {
   let activeDragKind = null;
-  let activeCreateKind = null;
   let sourceRow = null;
   let movingStoryIds = new Set();
   let guide = null;
@@ -42,7 +39,6 @@ if (storyList) {
   }
 
   function dragKindFromTarget(target) {
-    if (target?.closest?.('[data-story-create-kind]')) return 'block';
     const storyItem = target?.closest?.('.story-item');
     if (storyItem?.classList.contains('story-con')) return 'con';
     if (storyItem?.classList.contains('story-text') || storyItem?.classList.contains('story-image-placeholder')) return 'block';
@@ -166,11 +162,6 @@ if (storyList) {
       showHorizontal(previous.getBoundingClientRect().bottom);
       return;
     }
-    if (activeCreateKind) {
-      const rect = storyList.getBoundingClientRect();
-      showHorizontal(rect.top + 12);
-      return;
-    }
     hideGuide();
   }
 
@@ -213,8 +204,7 @@ if (storyList) {
 
     const row = nearestRow(event.clientX, event.clientY);
     if (!row) {
-      if (activeCreateKind) showBoundary(null, null);
-      else hideGuide();
+      hideGuide();
       return;
     }
     showBoundary(previousStoryItem(row), row);
@@ -249,8 +239,7 @@ if (storyList) {
 
     if (!row) row = nearestRow(event.clientX, event.clientY);
     if (!row) {
-      if (activeCreateKind) showBoundary(null, null);
-      else hideGuide();
+      hideGuide();
       return;
     }
 
@@ -268,7 +257,6 @@ if (storyList) {
     const kind = dragKindFromTarget(event.target);
     if (!kind) return;
     activeDragKind = kind;
-    activeCreateKind = event.target?.closest?.('[data-story-create-kind]')?.dataset.storyCreateKind || null;
     sourceRow = event.target?.closest?.('.story-item') || null;
     captureMovingRows(kind, sourceRow);
     storyList.classList.add('story-guide-dragging');
@@ -302,19 +290,7 @@ if (storyList) {
   storyList.addEventListener('drop', event => {
     if (forwardingDrop || !activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
     const types = event.dataTransfer?.types;
-    const creatingBlock = Boolean(types?.includes(NEW_BLOCK_MIME));
-    if (!types?.includes('application/x-hhjstory-ids') && !types?.includes('application/x-hhjcon-ids') && !creatingBlock) return;
-
-    if (creatingBlock) {
-      const kind = event.dataTransfer?.getData(NEW_BLOCK_MIME) || activeCreateKind;
-      if (!kind) return;
-      const beforeId = activeBoundary.next?.dataset.storyId || null;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      window.dispatchEvent(new CustomEvent(NEW_BLOCK_DROP_EVENT, { detail: { kind, beforeId } }));
-      return;
-    }
+    if (!types?.includes('application/x-hhjstory-ids') && !types?.includes('application/x-hhjcon-ids')) return;
 
     const directRow = event.target.closest?.('.story-item');
     if (isMovingRow(directRow)) return;
@@ -339,7 +315,6 @@ if (storyList) {
     clearLegacyHighlights();
     storyList.classList.remove('story-guide-dragging', 'story-block-dragging', 'story-con-dragging');
     activeDragKind = null;
-    activeCreateKind = null;
     sourceRow = null;
     movingStoryIds = new Set();
   }

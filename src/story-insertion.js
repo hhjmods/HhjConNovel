@@ -151,7 +151,7 @@ if (storyList && editorActions && addTextButton) {
         tail.textContent = '';
       } else {
         tail.classList.remove('story-tail-hidden');
-        tail.textContent = items.length ? '여기에 놓으면 맨 뒤에 삽입' : '여기에 놓아 삽입';
+        tail.textContent = items.length ? '여기에 놓으면 맨 뒤에 삽입' : '여기에 콘을 놓아 삽입';
       }
     }
     observer.observe(storyList, { childList: true });

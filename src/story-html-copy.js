@@ -9,8 +9,8 @@ if (storyList && toolbar) {
   const copyButton = document.createElement('button');
   copyButton.type = 'button';
   copyButton.className = 'story-html-copy';
-  copyButton.textContent = 'HTML 복사';
-  copyButton.title = '현재 원고를 DC 글쓰기 에디터에 붙여넣을 수 있는 형식으로 복사';
+  copyButton.textContent = '작성내용 복사';
+  copyButton.title = '현재 작성내용을 DC 글쓰기 에디터에 바로 붙여넣을 수 있는 형식으로 복사';
 
   const style = document.createElement('style');
   style.id = 'story-html-copy-style';
@@ -136,13 +136,13 @@ if (storyList && toolbar) {
       const copied = await copyStoryHtml(snapshot.html, plain);
       if (!copied) throw new Error('clipboard copy failed');
       if (snapshot.missingConCount > 0) {
-        showToast(`HTML을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`);
+        showToast(`작성내용을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`);
       } else {
-        showToast('HTML을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.');
+        showToast('작성내용을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.');
       }
     } catch (error) {
-      console.error('HTML clipboard copy failed', error);
-      showToast('HTML 복사에 실패했습니다. HTML 보기에서 내용을 확인해주세요.');
+      console.error('Story clipboard copy failed', error);
+      showToast('작성내용 복사에 실패했습니다. HTML 보기에서 내용을 확인해주세요.');
     } finally {
       copying = false;
       copyButton.disabled = false;

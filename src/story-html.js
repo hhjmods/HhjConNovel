@@ -194,15 +194,24 @@ function validDcConSource(value) {
   }
 }
 
+function validDetailId(value) {
+  const detailId = String(value ?? '').trim();
+  return /^\d+$/.test(detailId) ? detailId : '';
+}
+
 function conHtml(item, con, big) {
   const src = validDcConSource(con?.imageUrl || con?.thumbnailUrl || '');
   if (!src) {
     return '<span style="color:#ff0000;background-color:#ffff00;font-weight:700;">【미보유/미동기화 디시콘】</span>';
   }
+  const detailId = validDetailId(con?.detailId);
+  if (!detailId) {
+    return '<span style="color:#ff0000;background-color:#ffff00;font-weight:700;">【디시콘 게시정보 없음 - DC 재동기화 필요】</span>';
+  }
   const label = String(con?.name || con?.sourceNo || item.conId || '디시콘');
-  const className = big ? 'written_dccon bigdccon' : 'written_dccon';
+  const className = big ? 'written_dccon bigdccon' : 'written_dccon ';
   const attr = escapeAttr(label);
-  return `<img class="${className}" src="${escapeAttr(src)}" conalt="${attr}" alt="${attr}" con_alt="${attr}" title="${attr}">`;
+  return `<img class="${className}" src="${escapeAttr(src)}" conalt="${attr}" alt="${attr}" con_alt="${attr}" title="${attr}" detail="${escapeAttr(detailId)}">`;
 }
 
 export async function buildStoryHtmlSnapshot(root = document.getElementById('storyList')) {
@@ -238,7 +247,7 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
       conCount += 1;
       const con = consById.get(item.conId);
       const big = row?.classList.contains('story-con-big') || Boolean(displayDoc?.items?.[item.id]?.big);
-      if (!validDcConSource(con?.imageUrl || con?.thumbnailUrl || '')) missingConCount += 1;
+      if (!validDcConSource(con?.imageUrl || con?.thumbnailUrl || '') || !validDetailId(con?.detailId)) missingConCount += 1;
       conBuffer.push(conHtml(item, con, big));
       continue;
     }

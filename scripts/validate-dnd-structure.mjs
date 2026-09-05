@@ -51,6 +51,7 @@ const files = {
   stability: read('src/story-drag-stability.js'),
   runEnd: read('src/story-con-run-end-drop.js'),
   tail: read('src/story-tail-blank-drop.js'),
+  outputTools: read('src/story-output-tools.js'),
   utils: read('src/story-dnd-utils.js')
 };
 
@@ -84,7 +85,9 @@ const requiredHelpers = [
   ['src/story-con-run-end-drop.js', files.runEnd, 'applyStoryDropTransfer'],
   ['src/story-tail-blank-drop.js', files.tail, 'hasStoryAreaPayload'],
   ['src/story-tail-blank-drop.js', files.tail, 'storyAreaDropEffect'],
-  ['src/story-tail-blank-drop.js', files.tail, 'applyStoryDropTransfer']
+  ['src/story-tail-blank-drop.js', files.tail, 'applyStoryDropTransfer'],
+  ['src/story-output-tools.js', files.outputTools, 'writeStoryTransfer'],
+  ['src/story-output-tools.js', files.outputTools, 'applyStoryDropTransfer']
 ];
 
 for (const [path, source, helper] of requiredHelpers) {
@@ -108,7 +111,8 @@ for (const [path, source] of [
   ['src/story-slot-mode.js', files.slot],
   ['src/story-drag-stability.js', files.stability],
   ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail]
+  ['src/story-tail-blank-drop.js', files.tail],
+  ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
 }
@@ -121,7 +125,8 @@ for (const [path, source] of [
   ['src/story-slot-mode.js', files.slot],
   ['src/story-drag-stability.js', files.stability],
   ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail]
+  ['src/story-tail-blank-drop.js', files.tail],
+  ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
 }
@@ -131,7 +136,8 @@ for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
   ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail]
+  ['src/story-tail-blank-drop.js', files.tail],
+  ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (!source.includes(directAppImport)) {
     fail(`${path} does not import the canonical direct app mutation API module version`);
@@ -145,7 +151,8 @@ for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
   ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail]
+  ['src/story-tail-blank-drop.js', files.tail],
+  ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (source.includes("new Event('drop'") || source.includes('new Event("drop"')) {
     fail(`${path} creates a synthetic drop outside the centralized compatibility helper`);
@@ -159,7 +166,8 @@ for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
   ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-tail-blank-drop.js', files.tail]
+  ['src/story-tail-blank-drop.js', files.tail],
+  ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (source.includes('forwardDrop(')) {
     fail(`${path} still uses synthetic drop forwarding after direct mutation migration`);

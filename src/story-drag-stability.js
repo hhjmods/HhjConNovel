@@ -1,6 +1,14 @@
 const storyList = document.getElementById('storyList');
 
 if (storyList) {
+  let activeDropOperation = null;
+
+  function operationFromDragSource(target) {
+    if (target?.closest?.('.story-item')) return 'move';
+    if (target?.closest?.('.con-card')) return 'copy';
+    return null;
+  }
+
   function readStoryIds(dataTransfer) {
     try {
       const raw = dataTransfer?.getData('application/x-hhjstory-ids');
@@ -32,6 +40,16 @@ if (storyList) {
     });
   }
 
+  document.addEventListener('dragstart', event => {
+    activeDropOperation = operationFromDragSource(event.target);
+  }, true);
+
+  storyList.addEventListener('dragover', event => {
+    if (!activeDropOperation || !event.dataTransfer) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = activeDropOperation;
+  });
+
   storyList.addEventListener('dragstart', event => {
     const handle = event.target.closest?.('.story-drag-handle');
     const row = handle?.closest?.('.story-item');
@@ -58,5 +76,11 @@ if (storyList) {
     clearDragDecorations();
   }, true);
 
-  document.addEventListener('dragend', clearDragDecorations, true);
+  document.addEventListener('dragend', () => {
+    activeDropOperation = null;
+    clearDragDecorations();
+  }, true);
+  document.addEventListener('drop', () => queueMicrotask(() => {
+    activeDropOperation = null;
+  }), true);
 }

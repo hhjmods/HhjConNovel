@@ -1,4 +1,4 @@
-import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { applyStoryDropTransfer } from './app.js?v=20260906-17';
 import { CON_IDS_MIME, STORY_IDS_MIME, transferHasType } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');

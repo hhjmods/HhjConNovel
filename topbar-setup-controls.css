@@ -3,3 +3,21 @@
   border-radius: 7px;
   font-size: 12px;
 }
+
+.collection-transfer-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.collection-transfer-row button,
+.collection-transfer-row .file-button {
+  width: 100%;
+  justify-content: center;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  white-space: nowrap;
+}

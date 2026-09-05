@@ -65,7 +65,7 @@ function getMarkers() {
   return {
     package: makeSpacer(packageList, 'package'),
     collection: makeSpacer(collectionList, 'collection'),
-    library: makeSpacer(libraryContent, 'library'),
+    library: libraryContent,
     editor: makeSpacer(storyDropZone, 'editor')
   };
 }
@@ -78,23 +78,24 @@ function markerTop(panel, marker) {
 function syncTopHeights() {
   alignFrame = 0;
   const markers = getMarkers();
+  const adjustable = [markers.package, markers.collection, markers.editor].filter(Boolean);
   if (!desktopQuery.matches) {
-    Object.values(markers).forEach(marker => { if (marker) marker.style.height = '0px'; });
+    adjustable.forEach(marker => { marker.style.height = '0px'; });
     return;
   }
 
   const sidebarMarker = collectionPanel && !collectionPanel.classList.contains('hidden') ? markers.collection : markers.package;
   const entries = [
-    [sidebar, sidebarMarker],
-    [libraryPanel, markers.library],
-    [editorPanel, markers.editor]
+    [sidebar, sidebarMarker, sidebarMarker],
+    [libraryPanel, markers.library, null],
+    [editorPanel, markers.editor, markers.editor]
   ].filter(([, marker]) => marker);
   if (!entries.length) return;
 
   const tops = entries.map(([panel, marker]) => markerTop(panel, marker));
   const target = Math.max(...tops);
-  entries.forEach(([, marker], index) => {
-    marker.style.height = `${Math.max(0, Math.ceil(target - tops[index]))}px`;
+  entries.forEach(([, , spacer], index) => {
+    if (spacer) spacer.style.height = `${Math.max(0, Math.ceil(target - tops[index]))}px`;
   });
   const inactive = sidebarMarker === markers.collection ? markers.package : markers.collection;
   if (inactive) inactive.style.height = '0px';
@@ -108,24 +109,24 @@ function scheduleTopSync() {
 if (header) {
   const style = document.createElement('style');
   style.textContent = `
-:root{--workspace-row-main:44px;--workspace-row-actions:44px;--workspace-row-tools:38px}
+:root{--workspace-row-height:42px}
 :root[data-theme="dark"]{--workspace-control-bg:#202735}
 :root[data-theme="light"]{--workspace-control-bg:#e2e7ee}
 .sidebar>.tabs,.sidebar .panel-title-row,.collection-transfer-row,.library-view-tabs-shell,.library-view-tabs,.library-toolbar,.editor-header,.text-format-toolbar,.workspace-top-align-spacer{background:var(--workspace-control-bg)!important}
 .workspace-top-align-spacer{flex:0 0 auto;min-height:0;box-shadow:inset 0 -1px var(--line)}
-.sidebar>.tabs,.library-view-tabs-shell,.story-header-top{min-height:var(--workspace-row-main)!important}
-.sidebar>.tabs .tab{padding:8px 10px}
-.library-view-tabs-shell{height:var(--workspace-row-main)}
-.library-view-tabs-shell .library-view-tabs{min-height:0!important;height:calc(var(--workspace-row-main) - 1px);padding:4px 8px 0}
+.sidebar>.tabs,.library-view-tabs-shell,.story-header-top,.sidebar .panel-title-row,.collection-transfer-row,.story-header-edit-actions,.text-format-toolbar{height:var(--workspace-row-height)!important;min-height:var(--workspace-row-height)!important}
+.sidebar>.tabs .tab{padding:7px 10px}
+.library-view-tabs-shell{align-items:stretch}
+.library-view-tabs-shell .library-view-tabs{min-height:0!important;height:100%!important;padding:4px 8px 0}
 .library-view-tab-main{padding-top:6px;padding-bottom:6px}
 .library-view-tab-close{padding-top:5px;padding-bottom:5px}
-.library-view-close-all{min-height:0;height:calc(var(--workspace-row-main) - 1px);padding:4px 10px}
-.sidebar .panel-title-row,.library-toolbar,.story-header-edit-actions{min-height:var(--workspace-row-actions)!important;padding:5px 10px!important}
-.library-toolbar{gap:8px}
+.library-view-close-all{min-height:0!important;height:100%!important;padding:4px 10px}
+.library-toolbar{height:calc(var(--workspace-row-height) * 2)!important;min-height:calc(var(--workspace-row-height) * 2)!important;padding:8px 10px!important;gap:8px}
 .library-toolbar .toolbar-actions{align-items:center}
 .library-toolbar input{padding:6px 9px}
 .library-toolbar button{padding:6px 9px}
-.collection-transfer-row,.text-format-toolbar{min-height:var(--workspace-row-tools)!important;padding:4px 10px!important}
+.sidebar .panel-title-row,.story-header-edit-actions{padding:5px 10px!important}
+.collection-transfer-row,.text-format-toolbar{padding:4px 10px!important}
 .collection-transfer-row button,.collection-transfer-row .file-button{padding:5px 7px}
 .text-format-toolbar select,.text-format-toolbar button{min-height:28px;padding:4px 7px}
 .text-format-toolbar input[type="color"]{height:26px}
@@ -135,8 +136,8 @@ if (header) {
 .story-header-save-actions{justify-content:flex-end}
 .story-header-edit-actions{justify-content:flex-start;border-top:1px solid var(--line)}
 .story-header-edit-actions .story-html-copy{margin-left:auto;min-height:28px;padding:4px 9px;border-radius:7px;font-size:12px;line-height:1.2}
-@media(max-width:900px){.workspace-top-align-spacer{height:0!important}.library-view-tabs-shell{height:auto}.library-view-tabs-shell .library-view-tabs{height:auto}}
-@media(max-width:650px){.story-header-top{align-items:flex-start;flex-direction:column;height:auto}.story-header-save-actions,.story-header-edit-actions{width:100%;justify-content:flex-start}.story-header-edit-actions .story-html-copy{margin-left:0}}
+@media(max-width:900px){.workspace-top-align-spacer{height:0!important}.library-view-tabs-shell,.story-header-top,.sidebar>.tabs,.sidebar .panel-title-row,.collection-transfer-row,.story-header-edit-actions,.text-format-toolbar{height:auto!important;min-height:0!important}.library-view-tabs-shell .library-view-tabs{height:auto!important}.library-toolbar{height:auto!important;min-height:0!important}}
+@media(max-width:650px){.story-header-top{align-items:flex-start;flex-direction:column}.story-header-save-actions,.story-header-edit-actions{width:100%;justify-content:flex-start}.story-header-edit-actions .story-html-copy{margin-left:0}}
 `;
   document.head.append(style);
   arrangeHeader();

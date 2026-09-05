@@ -1,8 +1,8 @@
+import { applyStoryDropTransfer } from './app.js?v=20260906-16';
 import { getOne, putOne } from './db.js';
 import {
   STORY_BLOCK_MIME,
   STORY_IDS_MIME,
-  forwardDrop,
   transferHasType,
   writeStoryTransfer
 } from './story-dnd-utils.js?v=20260906-2';
@@ -39,7 +39,7 @@ if (storyList && editorActions && addTextButton) {
     return previousIsCon ? 'inline' : 'block';
   }
 
-  function makeInsertSlot(target, previous, next, defaultMode) {
+  function makeInsertSlot(previous, next, defaultMode) {
     const slot = document.createElement('div');
     slot.className = `story-insert-slot ${defaultMode}`;
     slot.title = '이 위치에 삽입';
@@ -63,7 +63,10 @@ if (storyList && editorActions && addTextButton) {
       event.stopPropagation();
       slot.classList.remove('drop-target');
       setSlotMode(slot, defaultMode);
-      forwardDrop(target, event.dataTransfer);
+      const beforeId = next?.dataset?.storyId || null;
+      void applyStoryDropTransfer(event.dataTransfer, beforeId).catch(error => {
+        console.error('원고 삽입 슬롯 drop 적용 중 오류가 발생했습니다.', error);
+      });
     });
     return slot;
   }
@@ -135,7 +138,7 @@ if (storyList && editorActions && addTextButton) {
     items.forEach((row, index) => {
       const previous = items[index - 1] || null;
       const defaultMode = previous?.classList.contains('story-con') && row.classList.contains('story-con') ? 'inline' : 'block';
-      storyList.insertBefore(makeInsertSlot(row, previous, row, defaultMode), row);
+      storyList.insertBefore(makeInsertSlot(previous, row, defaultMode), row);
     });
 
     const tail = storyList.querySelector(':scope > .story-tail-drop');
@@ -143,7 +146,7 @@ if (storyList && editorActions && addTextButton) {
       const last = items.at(-1) || null;
       tail.classList.add('story-direct-tail');
       if (last?.classList.contains('story-con')) {
-        storyList.insertBefore(makeInsertSlot(tail, last, null, 'inline'), tail);
+        storyList.insertBefore(makeInsertSlot(last, null, 'inline'), tail);
         tail.classList.add('story-tail-hidden');
         tail.textContent = '';
       } else {
@@ -193,13 +196,11 @@ if (storyList && editorActions && addTextButton) {
     });
   }
 
-  function moveStoryItemBefore(itemId, beforeId) {
+  async function moveStoryItemBefore(itemId, beforeId) {
     if (!itemId || !beforeId || itemId === beforeId) return;
-    const target = storyList.querySelector(`.story-item[data-story-id="${CSS.escape(beforeId)}"]`);
-    if (!target) return;
     const transfer = new DataTransfer();
     if (!writeStoryTransfer(transfer, [itemId])) return;
-    forwardDrop(target, transfer);
+    await applyStoryDropTransfer(transfer, beforeId);
   }
 
   async function migrateLegacyBreaks() {
@@ -238,7 +239,7 @@ if (storyList && editorActions && addTextButton) {
     if (!newId || !textarea) return;
     textarea.value = BREAK_SENTINEL;
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    if (beforeId) moveStoryItemBefore(newId, beforeId);
+    if (beforeId) await moveStoryItemBefore(newId, beforeId);
     decorateStory();
   });
 }

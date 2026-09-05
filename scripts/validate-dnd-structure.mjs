@@ -129,7 +129,9 @@ for (const [path, source] of [
   ['src/story-output-tools.js', files.outputTools],
   ['src/story-dnd-utils.js', files.utils]
 ]) {
-  if (source.includes("new Event('drop'") || source.includes('new Event("drop"')) fail(`${path} creates a retired synthetic drop`);
+  if (source.includes("new Event('drop'") || source.includes('new Event("drop"')) {
+    fail(`${path} creates a retired synthetic drop`);
+  }
   if (source.includes('forwardDrop(')) fail(`${path} reintroduced retired synthetic drop forwarding`);
 }
 

@@ -123,12 +123,4 @@ if (storyList && addTextButton) {
   const buttonObserver = new MutationObserver(prepareButtons);
   buttonObserver.observe(document.querySelector('.editor-header') || document.body, { childList: true, subtree: true });
   prepareButtons();
-
-  function patchEmptyTailText() {
-    const tail = storyList.querySelector(':scope > .story-tail-drop');
-    if (tail && !directRows().length && tail.textContent === '여기에 콘을 놓아 삽입') tail.textContent = '여기에 놓아 삽입';
-  }
-  const storyObserver = new MutationObserver(patchEmptyTailText);
-  storyObserver.observe(storyList, { childList: true });
-  patchEmptyTailText();
 }

@@ -1,6 +1,7 @@
 import { getAll, getOne } from './db.js';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
+const STORY_WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
 const nativePrompt = window.prompt.bind(window);
 const nativeConfirm = window.confirm.bind(window);
@@ -287,7 +288,7 @@ document.addEventListener('click', async event => {
     task = async () => {
       const value = await showPrompt('저장할 콘문학 이름을 입력하세요.', defaultStoryName(), {
         title: '원고 저장', label: '원고 이름', confirmText: '저장', maxLength: 80,
-        requiredMessage: '콘문학 이름을 입력하세요.'
+        requiredMessage: '콘문학 이름을 입력하세요.', note: STORY_WARNING
       });
       if (value == null) return;
       const name = value.trim();

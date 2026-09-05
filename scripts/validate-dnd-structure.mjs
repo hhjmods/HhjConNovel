@@ -74,10 +74,10 @@ const requiredHelpers = [
   ['src/story-insertion.js', files.insertion, 'transferHasType'],
   ['src/story-insertion.js', files.insertion, 'writeStoryTransfer'],
   ['src/story-insertion.js', files.insertion, 'forwardDrop'],
+  ['src/story-slot-mode.js', files.slot, 'applyStoryDropTransfer'],
   ['src/story-slot-mode.js', files.slot, 'CON_IDS_MIME'],
   ['src/story-slot-mode.js', files.slot, 'STORY_IDS_MIME'],
   ['src/story-slot-mode.js', files.slot, 'transferHasType'],
-  ['src/story-slot-mode.js', files.slot, 'forwardDrop'],
   ['src/story-drag-stability.js', files.stability, 'readTransferIds'],
   ['src/story-drag-stability.js', files.stability, 'writeStoryTransfer'],
   ['src/story-con-run-end-drop.js', files.runEnd, 'storyAreaDropEffect'],
@@ -89,6 +89,10 @@ const requiredHelpers = [
 
 for (const [path, source, helper] of requiredHelpers) {
   if (!source.includes(helper)) fail(`${path} stopped using shared DnD helper ${helper}`);
+}
+
+if (!files.app.includes('export async function applyStoryDropTransfer')) {
+  fail('src/app.js no longer exposes the direct story drop mutation API');
 }
 
 for (const [name, source] of Object.entries(files)) {
@@ -120,6 +124,14 @@ for (const [path, source] of [
   if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
 }
 
+const directAppImport = './app.js?v=20260906-16';
+if (!files.slot.includes(directAppImport)) {
+  fail('story-slot-mode.js does not import the canonical direct app mutation API module version');
+}
+if (!index.includes('./src/app.js?v=20260906-16')) {
+  fail('index.html does not load the same app.js module version used by story-slot-mode.js');
+}
+
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-slot-mode.js', files.slot],
@@ -131,11 +143,11 @@ for (const [path, source] of [
   }
 }
 if (!files.utils.includes("new Event('drop'")) {
-  fail('story-dnd-utils.js lost the single centralized compatibility synthetic drop implementation');
+  fail('story-dnd-utils.js lost the centralized compatibility synthetic drop implementation before all legacy routers migrate');
 }
 
-if (!files.slot.includes('forwardDrop(')) {
-  fail('story-slot-mode.js lost the current centralized compatibility forwardDrop path before direct mutation API exists');
+if (files.slot.includes('forwardDrop(')) {
+  fail('story-slot-mode.js still uses synthetic drop forwarding after direct mutation migration');
 }
 if (!files.insertion.includes('story-insert-slot')) {
   fail('story-insertion.js lost current real drop hit slots before their replacement exists');

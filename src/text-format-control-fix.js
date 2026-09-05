@@ -15,7 +15,9 @@ if (toolbar && storyList) {
     <div class="format-color-sv" role="slider" tabindex="0" aria-label="채도와 밝기 선택">
       <span class="format-color-sv-marker"></span>
     </div>
-    <input class="format-color-hue" type="range" min="0" max="360" step="1" value="0" aria-label="색조">
+    <div class="format-color-hue" role="slider" tabindex="0" aria-label="색조" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0">
+      <span class="format-color-hue-marker"></span>
+    </div>
     <div class="format-color-popup-controls">
       <span class="format-color-preview" aria-hidden="true"></span>
       <input class="format-color-popup-hex" type="text" maxlength="7" spellcheck="false" autocomplete="off" aria-label="색상 코드">
@@ -30,14 +32,15 @@ if (toolbar && storyList) {
   const style = document.createElement('style');
   style.id = 'format-color-popup-style';
   style.textContent = `
-.format-color-popup{position:fixed;z-index:2147483000;width:260px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:10px;border:1px solid var(--line);border-radius:9px;background:#171d27;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.35)}.format-color-popup[hidden]{display:none!important}.format-color-popup-title{display:block;margin-bottom:8px;font-size:12px}.format-color-sv{position:relative;width:100%;height:150px;border:1px solid var(--line);border-radius:7px;cursor:crosshair;touch-action:none;overflow:hidden}.format-color-sv-marker{position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.8);transform:translate(-50%,-50%);pointer-events:none}.format-color-hue{width:100%;height:18px;margin:9px 0 8px;accent-color:transparent;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);border-radius:999px}.format-color-popup-controls{display:grid;grid-template-columns:38px 1fr;gap:8px;align-items:center}.format-color-preview{width:38px;height:34px;border:1px solid var(--line);border-radius:6px}.format-color-popup-hex{min-width:0;height:34px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#121720;color:var(--text);font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.format-color-popup-hex.invalid{border-color:#d85757}.format-color-popup-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:9px}.format-color-popup-actions button{min-height:30px;padding:5px 10px;border-radius:7px;font-size:12px}:root[data-theme="light"] .format-color-popup{background:#fff;color:#1f2937}:root[data-theme="light"] .format-color-popup-hex{background:#fff;color:#1f2937}
+.format-color-popup{position:fixed;z-index:2147483000;width:260px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:10px;border:1px solid var(--line);border-radius:9px;background:#171d27;color:var(--text);box-shadow:0 8px 28px rgba(0,0,0,.35)}.format-color-popup[hidden]{display:none!important}.format-color-popup-title{display:block;margin-bottom:8px;font-size:12px}.format-color-sv{position:relative;width:100%;height:150px;border:1px solid var(--line);border-radius:7px;cursor:crosshair;touch-action:none;overflow:hidden}.format-color-sv-marker{position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.8);transform:translate(-50%,-50%);pointer-events:none}.format-color-hue{position:relative;width:100%;height:18px;margin:9px 0 8px;border:1px solid var(--line);border-radius:999px;box-sizing:border-box;background:linear-gradient(to right,#f00 0%,#ff0 16.666%,#0f0 33.333%,#0ff 50%,#00f 66.666%,#f0f 83.333%,#f00 100%);cursor:pointer;touch-action:none}.format-color-hue-marker{position:absolute;left:0;top:50%;width:12px;height:22px;border:2px solid #fff;border-radius:5px;box-shadow:0 0 0 1px rgba(0,0,0,.8);transform:translate(-50%,-50%);pointer-events:none}.format-color-popup-controls{display:grid;grid-template-columns:38px 1fr;gap:8px;align-items:center}.format-color-preview{width:38px;height:34px;border:1px solid var(--line);border-radius:6px}.format-color-popup-hex{min-width:0;height:34px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#121720;color:var(--text);font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.format-color-popup-hex.invalid{border-color:#d85757}.format-color-popup-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:9px}.format-color-popup-actions button{min-height:30px;padding:5px 10px;border-radius:7px;font-size:12px}:root[data-theme="light"] .format-color-popup{background:#fff;color:#1f2937}:root[data-theme="light"] .format-color-popup-hex{background:#fff;color:#1f2937}
 `;
   document.head.append(style);
 
   const popupTitle = popup.querySelector('.format-color-popup-title');
   const svBox = popup.querySelector('.format-color-sv');
   const svMarker = popup.querySelector('.format-color-sv-marker');
-  const hueInput = popup.querySelector('.format-color-hue');
+  const hueSlider = popup.querySelector('.format-color-hue');
+  const hueMarker = popup.querySelector('.format-color-hue-marker');
   const preview = popup.querySelector('.format-color-preview');
   const popupHex = popup.querySelector('.format-color-popup-hex');
   let popupSource = null;
@@ -47,6 +50,7 @@ if (toolbar && storyList) {
   let value = 0;
   let pendingColor = '#000000';
   let svPointerId = null;
+  let huePointerId = null;
 
   function clamp(value, min = 0, max = 1) {
     return Math.min(max, Math.max(min, value));
@@ -92,14 +96,15 @@ if (toolbar && storyList) {
   }
 
   function renderPicker(updateHex = true) {
-    hue = ((Number(hue) % 360) + 360) % 360;
+    hue = clamp(Number(hue), 0, 360);
     saturation = clamp(Number(saturation));
     value = clamp(Number(value));
     pendingColor = hsvToHex(hue, saturation, value);
     svBox.style.background = `linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,hsl(${hue} 100% 50%))`;
     svMarker.style.left = `${saturation * 100}%`;
     svMarker.style.top = `${(1 - value) * 100}%`;
-    hueInput.value = String(Math.round(hue));
+    hueMarker.style.left = `${(hue / 360) * 100}%`;
+    hueSlider.setAttribute('aria-valuenow', String(Math.round(hue)));
     preview.style.background = pendingColor;
     if (updateHex) popupHex.value = pendingColor;
     popupHex.classList.remove('invalid');
@@ -141,6 +146,7 @@ if (toolbar && storyList) {
     popupKind = null;
     popupHex.classList.remove('invalid');
     svPointerId = null;
+    huePointerId = null;
   }
 
   function positionPopup(source) {
@@ -175,6 +181,14 @@ if (toolbar && storyList) {
     const rect = svBox.getBoundingClientRect();
     saturation = clamp((event.clientX - rect.left) / Math.max(1, rect.width));
     value = 1 - clamp((event.clientY - rect.top) / Math.max(1, rect.height));
+    renderPicker();
+  }
+
+  function updateHueFromPointer(event) {
+    const rect = hueSlider.getBoundingClientRect();
+    if (event.clientX <= rect.left + 1) hue = 0;
+    else if (event.clientX >= rect.right - 1) hue = 360;
+    else hue = clamp((event.clientX - rect.left) / Math.max(1, rect.width)) * 360;
     renderPicker();
   }
 
@@ -249,8 +263,34 @@ if (toolbar && storyList) {
   svBox.addEventListener('pointerup', endSvPointer);
   svBox.addEventListener('pointercancel', endSvPointer);
 
-  hueInput.addEventListener('input', () => {
-    hue = Number(hueInput.value);
+  hueSlider.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    huePointerId = event.pointerId;
+    hueSlider.setPointerCapture?.(event.pointerId);
+    updateHueFromPointer(event);
+  });
+  hueSlider.addEventListener('pointermove', event => {
+    if (huePointerId !== event.pointerId) return;
+    updateHueFromPointer(event);
+  });
+  const endHuePointer = event => {
+    if (huePointerId !== event.pointerId) return;
+    huePointerId = null;
+    if (hueSlider.hasPointerCapture?.(event.pointerId)) hueSlider.releasePointerCapture(event.pointerId);
+  };
+  hueSlider.addEventListener('pointerup', endHuePointer);
+  hueSlider.addEventListener('pointercancel', endHuePointer);
+  hueSlider.addEventListener('keydown', event => {
+    let next = null;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = 360;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = hue - 1;
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = hue + 1;
+    else if (event.key === 'PageDown') next = hue - 15;
+    else if (event.key === 'PageUp') next = hue + 15;
+    if (next === null) return;
+    event.preventDefault();
+    hue = clamp(next, 0, 360);
     renderPicker();
   });
 

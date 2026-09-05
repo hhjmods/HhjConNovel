@@ -1,7 +1,7 @@
 .story-insert-slot.inline { display: inline-block !important; width: 10px !important; height: 112px !important; margin: 0 1px 8px !important; vertical-align: top; }
-.story-insert-slot.inline.drop-target { width: 15px !important; height: 112px !important; box-shadow: inset 2px 0 var(--accent), inset -2px 0 var(--accent) !important; }
+.story-insert-slot.inline.drop-target { width: 10px !important; height: 112px !important; box-shadow: none !important; background: transparent !important; border-color: transparent !important; }
 .story-insert-slot.block { display: block !important; width: 100% !important; height: 8px !important; margin: -3px 0 2px !important; }
-.story-insert-slot.block.drop-target { width: 100% !important; height: 14px !important; box-shadow: inset 0 2px var(--accent), inset 0 -2px var(--accent) !important; }
+.story-insert-slot.block.drop-target { width: 100% !important; height: 8px !important; box-shadow: none !important; background: transparent !important; border-color: transparent !important; }
 .story-tail-hidden { display: none !important; }
 .story-list:not(:has(> .story-item)) > .story-direct-tail { position: absolute; inset: 8px 10px 10px; min-height: 0; margin: 0; display: grid !important; place-items: center; }
 .story-list:not(:has(> .story-item)) > .story-direct-tail.drop-target { background: #202d47; color: var(--accent-2); }
@@ -20,9 +20,9 @@
 .story-list.story-con-dragging > .story-insert-slot { opacity: 0 !important; }
 .story-list.story-con-dragging > .story-insert-slot.inline.drop-target { width: 10px !important; height: 112px !important; box-shadow: none !important; }
 .story-list.story-con-dragging > .story-insert-slot.block.drop-target { width: 100% !important; height: 8px !important; box-shadow: none !important; }
-.story-list.story-guide-dragging > .story-item.story-drag-target { box-shadow: none !important; }
-.story-list.story-guide-dragging > .story-insert-slot.drop-target { box-shadow: none !important; }
-.story-list.story-guide-dragging > .story-tail-drop.drop-target { border-color: transparent !important; background: transparent !important; color: var(--muted) !important; }
+.story-list > .story-item.story-drag-target { box-shadow: none !important; }
+.story-list > .story-insert-slot.drop-target { box-shadow: none !important; background: transparent !important; border-color: transparent !important; }
+.story-list > .story-tail-drop.drop-target { border-color: transparent !important; background: transparent !important; color: var(--muted) !important; }
 .story-drop-guide { position: fixed; z-index: 9999; pointer-events: none; border-radius: 4px; background: #365b9b; box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgba(93, 146, 255, .45); }
 .story-drop-guide.horizontal { min-height: 6px; }
 .story-drop-guide.vertical { min-width: 8px; }

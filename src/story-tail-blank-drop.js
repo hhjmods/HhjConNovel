@@ -1,3 +1,5 @@
+import { forwardDrop, hasStoryAreaPayload, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-1';
+
 const storyList = document.getElementById('storyList');
 
 if (storyList) {
@@ -13,18 +15,6 @@ if (storyList) {
     return tail;
   }
 
-  function hasStoryPayload(dataTransfer) {
-    const types = dataTransfer?.types;
-    return Boolean(
-      types?.includes('application/x-hhjcon-ids') ||
-      types?.includes('application/x-hhjstory-ids')
-    );
-  }
-
-  function isStoryMove(dataTransfer) {
-    return Boolean(dataTransfer?.types?.includes('application/x-hhjstory-ids'));
-  }
-
   function isLowerBlankPoint(clientY) {
     const rows = [...storyList.querySelectorAll(':scope > .story-item')];
     const last = rows.at(-1);
@@ -32,22 +22,15 @@ if (storyList) {
     return clientY >= last.getBoundingClientRect().bottom;
   }
 
-  function forwardDrop(target, dataTransfer) {
-    if (!target || !dataTransfer) return;
-    const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-    Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-    target.dispatchEvent(forwarded);
-  }
-
   storyList.addEventListener('dragover', event => {
-    if (event.target !== storyList || !hasStoryPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) {
+    if (event.target !== storyList || !hasStoryAreaPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) {
       storyList.classList.remove('story-tail-blank-hover');
       return;
     }
     const tail = ensureTailReady();
     if (!tail) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = isStoryMove(event.dataTransfer) ? 'move' : 'copy';
+    event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer);
     storyList.classList.add('story-tail-blank-hover');
   });
 
@@ -57,7 +40,7 @@ if (storyList) {
   });
 
   storyList.addEventListener('drop', event => {
-    if (event.target !== storyList || !hasStoryPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) return;
+    if (event.target !== storyList || !hasStoryAreaPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) return;
     const tail = ensureTailReady();
     if (!tail) return;
     event.preventDefault();

@@ -8,6 +8,7 @@ const editorHeader = editorPanel?.querySelector('.editor-header');
 
 if (storyList && editorPanel && editorHeader) {
   let richDoc = { id: RICH_DOC_ID, version: 1, items: {}, updatedAt: Date.now() };
+  let richDocLoaded = false;
   let saveTimer = null;
   let activeEditor = null;
   let activeRow = null;
@@ -271,6 +272,7 @@ if (storyList && editorPanel && editorHeader) {
   }
 
   function upgradeStory() {
+    if (!richDocLoaded) return;
     storyList.querySelectorAll(':scope > .story-text').forEach(upgradeRow);
   }
 
@@ -314,6 +316,10 @@ if (storyList && editorPanel && editorHeader) {
   setToolbarEnabled(false);
   getOne('documents', RICH_DOC_ID).then(saved => {
     if (saved?.items && typeof saved.items === 'object') richDoc = saved;
+    richDocLoaded = true;
     upgradeStory();
-  }).catch(() => upgradeStory());
+  }).catch(() => {
+    richDocLoaded = true;
+    upgradeStory();
+  });
 }

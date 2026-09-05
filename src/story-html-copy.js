@@ -1,4 +1,4 @@
-import { buildStoryHtmlSnapshot } from './story-html.js?v=20260905-7';
+import { buildStoryHtmlSnapshot } from './story-html.js?v=20260905-8';
 
 const storyList = document.getElementById('storyList');
 const toolbar = document.querySelector('.text-format-toolbar');

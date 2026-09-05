@@ -1,4 +1,5 @@
-import { CON_IDS_MIME, STORY_IDS_MIME, forwardDrop, transferHasType } from './story-dnd-utils.js?v=20260906-2';
+import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { CON_IDS_MIME, STORY_IDS_MIME, transferHasType } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 
@@ -285,10 +286,13 @@ if (storyList) {
     if (!target) return;
     if (event.target === target || target.contains(event.target)) return;
 
+    const beforeId = activeBoundary.next?.dataset?.storyId || null;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    forwardDrop(target, event.dataTransfer);
+    void applyStoryDropTransfer(event.dataTransfer, beforeId).catch(error => {
+      console.error('원고 drop 적용 중 오류가 발생했습니다.', error);
+    });
   }, true);
 
   function finishDrag() {

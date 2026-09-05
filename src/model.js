@@ -32,6 +32,7 @@ export function normalizeSyncPayload(payload) {
       id: String(con.id || makeStableConId(packageId, con.sourceNo)),
       packageId,
       sourceNo: String(con.sourceNo),
+      detailId: String(con.detailId ?? con.detailIdx ?? ''),
       name: String(con.name || `${order + 1}`),
       imageUrl: String(con.imageUrl || ''),
       thumbnailUrl: String(con.thumbnailUrl || con.imageUrl || ''),
@@ -97,6 +98,7 @@ export function exportCollection(collection, consById, packagesById) {
       packageId,
       sourcePackageId: pkg?.sourcePackageId || saved.sourcePackageId || packageId,
       sourceNo: con?.sourceNo || saved.sourceNo || '',
+      detailId: con?.detailId || saved.detailId || '',
       name: con?.name || saved.name || '미보유/미동기화 콘',
       packageName: pkg?.name || saved.packageName || ''
     };
@@ -157,6 +159,7 @@ export function importCollectionFile(data) {
         packageId,
         sourcePackageId,
         sourceNo: String(ref.sourceNo || ''),
+        detailId: String(ref.detailId || ''),
         name: String(ref.name || '미보유/미동기화 콘'),
         packageName: String(ref.packageName || packageNames.get(packageId) || packageNames.get(sourcePackageId) || '')
       };

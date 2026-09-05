@@ -47,10 +47,3 @@ export function storyAreaDropEffect(dataTransfer, forceStoryMove = false) {
   if (transferHasType(dataTransfer, CON_IDS_MIME)) return 'copy';
   return 'none';
 }
-
-export function forwardDrop(target, dataTransfer) {
-  if (!target || !dataTransfer) return false;
-  const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-  Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-  return target.dispatchEvent(forwarded);
-}

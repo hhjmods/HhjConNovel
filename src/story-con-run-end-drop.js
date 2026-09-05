@@ -1,4 +1,5 @@
-import { forwardDrop, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
+import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 
@@ -6,7 +7,6 @@ if (storyList) {
   let activeConDrag = false;
   let movingStoryIds = new Set();
   let targetStoryId = null;
-  let forwarding = false;
 
   const hitZone = document.createElement('div');
   hitZone.setAttribute('aria-hidden', 'true');
@@ -119,24 +119,20 @@ if (storyList) {
   });
 
   hitZone.addEventListener('drop', event => {
-    if (!activeConDrag || forwarding) return;
+    if (!activeConDrag) return;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
 
-    const target = targetStoryId
-      ? storyList.querySelector(`:scope > .story-item[data-story-id="${CSS.escape(targetStoryId)}"]`)
-      : storyList.querySelector(':scope > .story-tail-drop');
+    const transfer = event.dataTransfer;
+    const beforeId = targetStoryId;
+    activeConDrag = false;
+    movingStoryIds = new Set();
+    hideZone();
 
-    if (!target) return;
-
-    forwarding = true;
-    try {
-      forwardDrop(target, event.dataTransfer);
-    } finally {
-      forwarding = false;
-      hideZone();
-    }
+    void applyStoryDropTransfer(transfer, beforeId).catch(error => {
+      console.error('콘 줄 끝 drop 적용 중 오류가 발생했습니다.', error);
+    });
   });
 
   document.addEventListener('dragend', () => {

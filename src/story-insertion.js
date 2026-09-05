@@ -1,4 +1,4 @@
-import { applyStoryDropTransfer } from './app.js?v=20260906-16';
+import { applyStoryDropTransfer, moveStoryItemsBefore } from './app.js?v=20260906-17';
 import { getOne, putOne } from './db.js';
 import {
   STORY_BLOCK_MIME,
@@ -198,9 +198,7 @@ if (storyList && editorActions && addTextButton) {
 
   async function moveStoryItemBefore(itemId, beforeId) {
     if (!itemId || !beforeId || itemId === beforeId) return;
-    const transfer = new DataTransfer();
-    if (!writeStoryTransfer(transfer, [itemId])) return;
-    await applyStoryDropTransfer(transfer, beforeId);
+    await moveStoryItemsBefore([itemId], beforeId);
   }
 
   async function migrateLegacyBreaks() {

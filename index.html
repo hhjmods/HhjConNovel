@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="./collection-backup.css?v=20260905-1">
   <link rel="stylesheet" href="./library-tab-close-all.css?v=20260905-2">
   <link rel="stylesheet" href="./theme.css?v=20260905-1">
-  <link rel="stylesheet" href="./topbar-setup-controls.css?v=20260905-1">
+  <link rel="stylesheet" href="./topbar-setup-controls.css?v=20260906-1">
   <link rel="stylesheet" href="./story-con-controls.css?v=20260905-1">
   <link rel="stylesheet" href="./break-count.css?v=20260905-1">
   <link rel="stylesheet" href="./text-delete-guard.css?v=20260905-1">
@@ -29,15 +29,13 @@
     </div>
     <div class="top-actions">
       <div class="dc-connect-box">
+        <button id="themeToggleBtn" class="setup-link-button" type="button" aria-label="라이트 모드로 전환">☀ 라이트모드</button>
         <a class="file-button setup-link-button" href="https://github.com/hhjmods/HhjConNovel/blob/main/USAGE.md" target="_blank" rel="noopener">사용법</a>
         <a class="file-button setup-link-button" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey 설치</a>
         <a class="file-button setup-link-button" href="./bridge/hhjcon-dc-bridge.user.js?v=0.6.2" target="_blank" rel="noopener">DC 브리지 설치</a>
         <input id="dcWriteUrlInput" type="url" placeholder="DC 글쓰기 페이지 주소" autocomplete="off" spellcheck="false">
         <button id="syncDcBtn" class="primary">DC 동기화</button>
       </div>
-      <button id="exportCollectionBtn">콘묶음 내보내기</button>
-      <label class="file-button">콘묶음 불러오기<input id="importCollectionInput" type="file" accept="application/json,.json,.hhjconset" multiple></label>
-      <button id="themeToggleBtn" type="button" aria-label="라이트 모드로 전환">☀ 라이트</button>
     </div>
   </header>
 
@@ -53,6 +51,10 @@
       </section>
       <section id="collectionPanel" class="nav-panel hidden">
         <div class="panel-title-row"><h2>내 콘묶음</h2><button id="newCollectionBtn" class="small">+ 새 콘묶음</button></div>
+        <div class="collection-transfer-row">
+          <button id="exportCollectionBtn" type="button">콘묶음 내보내기</button>
+          <label class="file-button">콘묶음 불러오기<input id="importCollectionInput" type="file" accept="application/json,.json,.hhjconset" multiple></label>
+        </div>
         <div id="collectionList" class="nav-list"></div>
       </section>
     </aside>
@@ -83,7 +85,7 @@
   </main>
 
   <div id="toast" class="toast" aria-live="polite"></div>
-  <script src="./src/theme-toggle.js?v=20260905-1"></script>
+  <script src="./src/theme-toggle.js?v=20260906-1"></script>
   <script type="module" src="./src/layout-resizer.js?v=20260905-1"></script>
   <script type="module" src="./src/story-drag-guard.js"></script>
   <script type="module" src="./src/collection-missing-ui.js?v=20260905-1"></script>
@@ -106,7 +108,7 @@
   <script type="module" src="./src/con-size-mode.js?v=20260905-2"></script>
   <script type="module" src="./src/story-output-tools.js?v=20260905-8"></script>
   <script type="module" src="./src/story-html-copy.js?v=20260905-5"></script>
-  <script type="module" src="./src/story-save-manager.js?v=20260906-1"></script>
+  <script type="module" src="./src/story-save-manager.js?v=20260906-2"></script>
   <script type="module" src="./src/collection-backup.js?v=20260905-1"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import { buildStoryHtmlSnapshot } from './story-html.js?v=20260905-5';
+import { buildStoryHtmlSnapshot } from './story-html.js?v=20260905-6';
 
 const storyList = document.getElementById('storyList');
 const toolbar = document.querySelector('.text-format-toolbar');
@@ -30,7 +30,7 @@ if (storyList && toolbar) {
     toastNode.textContent = message;
     toastNode.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastNode.classList.remove('show'), 2200);
+    toastTimer = setTimeout(() => toastNode.classList.remove('show'), 2600);
   }
 
   function htmlToPlainText(html) {
@@ -132,14 +132,14 @@ if (storyList && toolbar) {
         showToast('복사할 원고가 없습니다.');
         return;
       }
+      if (snapshot.missingConCount > 0) {
+        showToast(`게시정보가 없는 콘이 ${snapshot.missingConCount}개 있습니다. DC 브리지를 갱신한 뒤 DC 동기화를 다시 해주세요.`);
+        return;
+      }
       const plain = htmlToPlainText(snapshot.html);
       const copied = await copyStoryHtml(snapshot.html, plain);
       if (!copied) throw new Error('clipboard copy failed');
-      if (snapshot.missingConCount > 0) {
-        showToast(`작성내용을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`);
-      } else {
-        showToast('작성내용을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.');
-      }
+      showToast('작성내용을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.');
     } catch (error) {
       console.error('Story clipboard copy failed', error);
       showToast('작성내용 복사에 실패했습니다. HTML 보기에서 내용을 확인해주세요.');

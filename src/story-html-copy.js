@@ -33,6 +33,15 @@ if (storyList && toolbar) {
     toastTimer = setTimeout(() => toastNode.classList.remove('show'), 2600);
   }
 
+  function compactClipboardHtml(html) {
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '');
+    [...template.content.childNodes].forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE && !node.data.trim()) node.remove();
+    });
+    return template.innerHTML;
+  }
+
   function htmlToPlainText(html) {
     const box = document.createElement('div');
     box.innerHTML = String(html || '');
@@ -132,8 +141,9 @@ if (storyList && toolbar) {
         showToast('복사할 원고가 없습니다.');
         return;
       }
-      const plain = htmlToPlainText(snapshot.html);
-      const copied = await copyStoryHtml(snapshot.html, plain);
+      const clipboardHtml = compactClipboardHtml(snapshot.html);
+      const plain = htmlToPlainText(clipboardHtml);
+      const copied = await copyStoryHtml(clipboardHtml, plain);
       if (!copied) throw new Error('clipboard copy failed');
       if (snapshot.missingConCount > 0) {
         showToast(`작성내용을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`);

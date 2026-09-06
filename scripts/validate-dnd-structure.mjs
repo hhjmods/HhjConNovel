@@ -11,6 +11,7 @@ function read(path) {
 
 const index = read('index.html');
 const expectedOrder = [
+  './src/story-dnd-health.js',
   './src/story-drag-guard.js',
   './src/app.js',
   './src/drag-start-fix.js',
@@ -40,6 +41,7 @@ for (const term of ['story-create-drag.js', 'application/x-hhjstory-new-block'])
 
 const files = {
   app: read('src/app.js'),
+  health: read('src/story-dnd-health.js'),
   guard: read('src/story-drag-guard.js'),
   dragStart: read('src/drag-start-fix.js'),
   insertion: read('src/story-insertion.js'),
@@ -81,6 +83,23 @@ for (const [path, source] of [
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
 }
 if (!index.includes('./src/app.js?v=20260906-17')) fail('index.html app module version differs from DnD clients');
+
+if (!index.includes('./src/story-dnd-health.js?v=20260906-1')) fail('index.html does not load the passive DnD health module version');
+if (!files.health.includes('window.__HHJDND')) fail('story-dnd-health.js no longer exposes the diagnostic API');
+if (!files.health.includes("document.addEventListener('dragstart'")) fail('story-dnd-health.js no longer observes drag lifecycle start');
+if (!files.health.includes('duplicates:')) fail('story-dnd-health.js no longer reports duplicate module URLs');
+for (const forbidden of [
+  'preventDefault(',
+  'stopPropagation(',
+  'stopImmediatePropagation(',
+  '.setData(',
+  'applyStoryDropTransfer',
+  'moveStoryItemsBefore',
+  'writeStoryTransfer',
+  'writeConTransfer'
+]) {
+  if (files.health.includes(forbidden)) fail(`story-dnd-health.js must remain passive but contains ${forbidden}`);
+}
 
 if (!files.app.includes('export async function applyStoryDropTransfer')) fail('app.js lost direct drop mutation bridge');
 if (!files.app.includes('export async function moveStoryItemsBefore')) fail('app.js lost direct story-id move command');

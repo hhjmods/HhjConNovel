@@ -2,12 +2,6 @@ import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 const storyDropZone = document.getElementById('storyDropZone');
-let markedTarget = null;
-
-function clearMarkedTarget() {
-  markedTarget?.classList.remove('story-drag-target', 'drop-target');
-  markedTarget = null;
-}
 
 storyList?.addEventListener('dragstart', event => {
   const row = event.target.closest('.story-con');
@@ -25,16 +19,7 @@ storyList?.addEventListener('dragstart', event => {
   event.stopPropagation();
 }, true);
 
-storyList?.addEventListener('dragover', event => {
-  event.preventDefault();
-  const target = event.target.closest('.story-item, .story-tail-drop');
-  if (target !== markedTarget) {
-    clearMarkedTarget();
-    markedTarget = target;
-    if (target) target.classList.add(target.classList.contains('story-tail-drop') ? 'drop-target' : 'story-drag-target');
-  }
-}, true);
-
-storyList?.addEventListener('drop', () => setTimeout(clearMarkedTarget, 0), true);
-storyList?.addEventListener('dragend', clearMarkedTarget, true);
+// 이 모듈은 native drop 허용만 담당한다. fixed guide를 쓰는 동안 구형 target class를 매 dragover마다
+// 추가/제거하면 불필요한 DOM mutation이 계속 발생하므로 시각 상태는 story-slot-mode에 맡긴다.
+storyList?.addEventListener('dragover', event => event.preventDefault(), true);
 storyDropZone?.addEventListener('dragover', event => event.preventDefault(), true);

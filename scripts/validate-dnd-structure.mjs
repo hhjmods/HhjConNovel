@@ -72,11 +72,8 @@ const requiredHelpers = [
   ['src/story-insertion.js', files.insertion, 'applyStoryDropTransfer'],
   ['src/story-insertion.js', files.insertion, 'moveStoryItemsBefore'],
   ['src/story-slot-mode.js', files.slot, 'applyStoryDropTransfer'],
-  ['src/story-slot-mode.js', files.slot, 'CON_IDS_MIME'],
-  ['src/story-slot-mode.js', files.slot, 'STORY_IDS_MIME'],
-  ['src/story-slot-mode.js', files.slot, 'storyAreaDropEffect'],
-  ['src/story-slot-mode.js', files.slot, 'transferHasType'],
   ['src/story-slot-mode.js', files.slot, 'writeStoryTransfer'],
+  ['src/story-slot-mode.js', files.slot, 'dragDropEffect'],
   ['src/story-output-tools.js', files.outputTools, 'writeStoryTransfer'],
   ['src/story-output-tools.js', files.outputTools, 'moveStoryItemsBefore']
 ];
@@ -142,6 +139,12 @@ for (const [path, source] of [
   if (source.includes('new DataTransfer(')) fail(`${path} creates a fake DataTransfer for a non-DnD story mutation`);
 }
 
+if (files.slot.includes('transferHasType(') || files.slot.includes('storyAreaDropEffect(') || files.slot.includes('hasStoryPayload(')) {
+  fail('story-slot-mode.js reintroduced dragover MIME/type inference; active drag session must own drop acceptance/effect');
+}
+if (!files.slot.includes("event.dataTransfer.dropEffect = dragDropEffect()")) {
+  fail('story-slot-mode.js no longer derives dragover dropEffect from the active drag session');
+}
 if (!files.slot.includes("document.addEventListener('drop'")) fail('story-slot-mode.js no longer owns document-level story drop execution');
 if (!files.slot.includes('pointInsideStoryList')) fail('story-slot-mode.js lost coordinate-based story area routing');
 if (!files.slot.includes('storyConDragIds')) fail('story-slot-mode.js lost story con drag session ownership');

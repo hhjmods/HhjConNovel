@@ -85,6 +85,7 @@ for (const [path, source] of [
 if (!index.includes('./src/app.js?v=20260906-17')) fail('index.html app module version differs from DnD clients');
 
 if (!index.includes('./src/story-dnd-health.js?v=20260906-1')) fail('index.html does not load the passive DnD health module version');
+if (!index.includes('./src/story-drag-stability.js?v=20260906-15')) fail('index.html does not load the single-owner stability module version');
 if (!files.health.includes('window.__HHJDND')) fail('story-dnd-health.js no longer exposes the diagnostic API');
 if (!files.health.includes("document.addEventListener('dragstart'")) fail('story-dnd-health.js no longer observes drag lifecycle start');
 if (!files.health.includes('duplicates:')) fail('story-dnd-health.js no longer reports duplicate module URLs');
@@ -105,6 +106,9 @@ if (!files.app.includes('export async function applyStoryDropTransfer')) fail('a
 if (!files.app.includes('export async function moveStoryItemsBefore')) fail('app.js lost direct story-id move command');
 if (!files.guard.includes('writeStoryTransfer')) fail('story-drag-guard.js lost story con payload capture');
 if (!files.dragStart.includes('writeConTransfer')) fail('drag-start-fix.js lost library con payload capture');
+if (!files.insertion.includes('writeStoryTransfer')) fail('story-insertion.js lost text/break drag payload ownership');
+if (!files.outputTools.includes('writeStoryTransfer')) fail('story-output-tools.js lost image drag payload ownership');
+if (files.stability.includes('writeStoryTransfer')) fail('story-drag-stability.js duplicated block drag payload writes');
 if (!files.slot.includes('transferHasType')) fail('story-slot-mode.js no longer matches restored known-good routing checkpoint');
 if (!files.runEnd.includes('hitZone')) fail('story-con-run-end-drop.js lost run-end hit zone');
 if (!files.tail.includes('isLowerBlankPoint')) fail('story-tail-blank-drop.js lost lower blank boundary protection');

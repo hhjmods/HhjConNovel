@@ -1,4 +1,4 @@
-import { readTransferIds, STORY_IDS_MIME, writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
+import { readTransferIds, STORY_IDS_MIME } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 
@@ -23,16 +23,6 @@ if (storyList) {
       node.classList.remove('story-drag-target', 'drop-target');
     });
   }
-
-  storyList.addEventListener('dragstart', event => {
-    const handle = event.target.closest?.('.story-drag-handle');
-    const row = handle?.closest?.('.story-item');
-    if (!handle || !row?.dataset.storyId || !event.dataTransfer) return;
-    if (!row.classList.contains('story-text') && !row.classList.contains('story-break') && !row.classList.contains('story-image-placeholder')) return;
-
-    writeStoryTransfer(event.dataTransfer, [row.dataset.storyId], { block: true, plainText: true });
-    row.classList.add('dragging');
-  }, true);
 
   storyList.addEventListener('drop', event => {
     const movingIds = readTransferIds(event.dataTransfer, STORY_IDS_MIME);

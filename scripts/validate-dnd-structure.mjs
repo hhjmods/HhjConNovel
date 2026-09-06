@@ -85,6 +85,7 @@ for (const [path, source] of [
 if (!index.includes('./src/app.js?v=20260906-17')) fail('index.html app module version differs from DnD clients');
 
 if (!index.includes('./src/story-dnd-health.js?v=20260906-1')) fail('index.html does not load the passive DnD health module version');
+if (!index.includes('./src/story-drag-guard.js?v=20260906-15')) fail('index.html does not load the low-churn story drag guard version');
 if (!index.includes('./src/story-drag-stability.js?v=20260906-15')) fail('index.html does not load the single-owner stability module version');
 if (!files.health.includes('window.__HHJDND')) fail('story-dnd-health.js no longer exposes the diagnostic API');
 if (!files.health.includes("document.addEventListener('dragstart'")) fail('story-dnd-health.js no longer observes drag lifecycle start');
@@ -105,6 +106,10 @@ for (const forbidden of [
 if (!files.app.includes('export async function applyStoryDropTransfer')) fail('app.js lost direct drop mutation bridge');
 if (!files.app.includes('export async function moveStoryItemsBefore')) fail('app.js lost direct story-id move command');
 if (!files.guard.includes('writeStoryTransfer')) fail('story-drag-guard.js lost story con payload capture');
+if (!files.guard.includes("storyList?.addEventListener('dragover'")) fail('story-drag-guard.js lost native story drop acceptance');
+if (files.guard.includes('markedTarget') || files.guard.includes('story-drag-target') || files.guard.includes('drop-target')) {
+  fail('story-drag-guard.js reintroduced legacy per-dragover target class churn');
+}
 if (!files.dragStart.includes('writeConTransfer')) fail('drag-start-fix.js lost library con payload capture');
 if (!files.insertion.includes('writeStoryTransfer')) fail('story-insertion.js lost text/break drag payload ownership');
 if (!files.outputTools.includes('writeStoryTransfer')) fail('story-output-tools.js lost image drag payload ownership');

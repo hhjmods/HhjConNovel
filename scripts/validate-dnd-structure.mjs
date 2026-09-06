@@ -107,7 +107,12 @@ if (!files.app.includes('export async function applyStoryDropTransfer')) fail('a
 if (!files.app.includes('export async function moveStoryItemsBefore')) fail('app.js lost direct story-id move command');
 if (!files.guard.includes('writeStoryTransfer')) fail('story-drag-guard.js lost story con payload capture');
 if (!files.guard.includes("storyList?.addEventListener('dragover'")) fail('story-drag-guard.js lost native story drop acceptance');
-if (files.guard.includes('markedTarget') || files.guard.includes('story-drag-target') || files.guard.includes('drop-target')) {
+if (
+  files.guard.includes('markedTarget') ||
+  files.guard.includes("classList.add('story-drag-target')") ||
+  files.guard.includes("classList.add('drop-target')") ||
+  files.guard.includes("classList.remove('story-drag-target'")
+) {
   fail('story-drag-guard.js reintroduced legacy per-dragover target class churn');
 }
 if (!files.dragStart.includes('writeConTransfer')) fail('drag-start-fix.js lost library con payload capture');

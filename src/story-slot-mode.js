@@ -1,11 +1,5 @@
 import { applyStoryDropTransfer } from './app.js?v=20260906-17';
-import {
-  CON_IDS_MIME,
-  STORY_IDS_MIME,
-  storyAreaDropEffect,
-  transferHasType,
-  writeStoryTransfer
-} from './story-dnd-utils.js?v=20260906-2';
+import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 const storyDropZone = document.getElementById('storyDropZone');
@@ -25,13 +19,13 @@ if (storyList) {
     return guide;
   }
 
-  function hasStoryPayload(dataTransfer) {
-    return transferHasType(dataTransfer, STORY_IDS_MIME) || transferHasType(dataTransfer, CON_IDS_MIME);
-  }
-
   function pointInsideStoryList(clientX, clientY) {
     const rect = storyList.getBoundingClientRect();
     return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  }
+
+  function dragDropEffect() {
+    return sourceRow ? 'move' : 'copy';
   }
 
   function isMovingRow(row) {
@@ -304,11 +298,11 @@ if (storyList) {
   }, true);
 
   document.addEventListener('dragover', event => {
-    if ((activeDragKind !== 'block' && activeDragKind !== 'con') || !hasStoryPayload(event.dataTransfer)) return;
+    if ((activeDragKind !== 'block' && activeDragKind !== 'con') || !event.dataTransfer) return;
 
     if (storyDropZone && (event.target === storyDropZone || storyDropZone.contains(event.target))) {
       event.preventDefault();
-      event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
+      event.dataTransfer.dropEffect = dragDropEffect();
       hideGuide();
       return;
     }
@@ -319,7 +313,7 @@ if (storyList) {
     }
 
     event.preventDefault();
-    event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer, movingStoryIds.size > 0);
+    event.dataTransfer.dropEffect = dragDropEffect();
     if (activeDragKind === 'block') storyList.classList.add('story-block-dragging');
     if (activeDragKind === 'con') storyList.classList.add('story-con-dragging');
     showGuideForEvent(event);
@@ -332,7 +326,7 @@ if (storyList) {
 
   document.addEventListener('drop', event => {
     if (!activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
-    if (!hasStoryPayload(event.dataTransfer) || !pointInsideStoryList(event.clientX, event.clientY)) return;
+    if (!event.dataTransfer || !pointInsideStoryList(event.clientX, event.clientY)) return;
 
     const directRow = event.target?.closest?.('.story-item') || null;
     event.preventDefault();

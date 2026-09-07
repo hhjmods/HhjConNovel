@@ -1,4 +1,4 @@
-import { deleteOne, getAll, getOne, putOne } from './db.js';
+import { deleteOne, getAll, getOne, putOne } from '../db.js';
 
 const FORMAT = 'hhjcon-story-save';
 const VERSION = 1;

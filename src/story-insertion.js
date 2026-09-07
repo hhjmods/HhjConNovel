@@ -1,4 +1,4 @@
-import { applyStoryDropTransfer, moveStoryItemsBefore } from './app.js?v=20260906-17';
+import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260908-3';
 import { getOne, putOne } from './db.js';
 import {
   STORY_BLOCK_MIME,
@@ -11,9 +11,8 @@ const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const storyList = document.getElementById('storyList');
 const storyDropZone = document.getElementById('storyDropZone');
 const editorActions = document.querySelector('.editor-header > div:last-child');
-const addTextButton = document.getElementById('addTextBtn');
 
-if (storyList && editorActions && addTextButton) {
+if (storyList && editorActions) {
   const breakButton = document.createElement('button');
   breakButton.className = 'small';
   breakButton.textContent = '+ 줄바꿈';
@@ -157,50 +156,6 @@ if (storyList && editorActions && addTextButton) {
     observer.observe(storyList, { childList: true });
   }
 
-  function currentItemRows() {
-    return [...storyList.querySelectorAll(':scope > .story-item')];
-  }
-
-  function selectedNextId() {
-    const rows = currentItemRows();
-    const selected = new Set(
-      rows.filter(row => row.classList.contains('story-con') && row.classList.contains('selected'))
-        .map(row => row.dataset.storyId)
-        .filter(Boolean)
-    );
-    if (!selected.size) return null;
-    let lastIndex = -1;
-    rows.forEach((row, index) => {
-      if (selected.has(row.dataset.storyId)) lastIndex = index;
-    });
-    return rows[lastIndex + 1]?.dataset.storyId || null;
-  }
-
-  function waitForNewText(existingIds, timeout = 2500) {
-    return new Promise(resolve => {
-      const started = performance.now();
-      const check = () => {
-        const row = [...storyList.querySelectorAll(':scope > .story-text[data-story-id]')]
-          .find(item => !existingIds.has(item.dataset.storyId));
-        if (row) {
-          resolve(row);
-          return;
-        }
-        if (performance.now() - started >= timeout) {
-          resolve(null);
-          return;
-        }
-        requestAnimationFrame(check);
-      };
-      check();
-    });
-  }
-
-  async function moveStoryItemBefore(itemId, beforeId) {
-    if (!itemId || !beforeId || itemId === beforeId) return;
-    await moveStoryItemsBefore([itemId], beforeId);
-  }
-
   async function migrateLegacyBreaks() {
     const story = await getOne('documents', 'current');
     if (!story?.items?.some(item => item.type === 'break')) return false;
@@ -224,20 +179,7 @@ if (storyList && editorActions && addTextButton) {
   });
 
   breakButton.addEventListener('click', async () => {
-    const beforeId = selectedNextId();
-    const existingIds = new Set(
-      [...storyList.querySelectorAll(':scope > .story-text[data-story-id]')].map(row => row.dataset.storyId)
-    );
-    addTextButton.click();
-    const newRow = await waitForNewText(existingIds);
-    if (!newRow) return;
-
-    const newId = newRow.dataset.storyId;
-    const textarea = newRow.querySelector('textarea');
-    if (!newId || !textarea) return;
-    textarea.value = BREAK_SENTINEL;
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    if (beforeId) await moveStoryItemBefore(newId, beforeId);
+    await appendStoryTextBlock(BREAK_SENTINEL);
     decorateStory();
   });
 }

@@ -1,4 +1,7 @@
-import { getAll, putOne } from './db.js';
+import { commitCollectionDraft } from '../app.js?v=20260908-3';
+import { planOrderedSelection } from '../core/selection.js?v=20260907-1';
+import { getAll } from '../db.js';
+import { reorderOrderedIds } from '../model.js?v=20260907-3';
 
 const packageList = document.getElementById('packageList');
 const collectionList = document.getElementById('collectionList');
@@ -15,6 +18,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   const SIDEBAR_KEY = 'hhjcon-sidebar-mode';
   const VIEWS_KEY = 'hhjcon-open-library-views';
   const ACTIVE_VIEW_KEY = 'hhjcon-active-library-view';
+  const CLOSE_ALL_EVENT = 'hhjcon:library-close-all';
 
   let sidebarMode = localStorage.getItem(SIDEBAR_KEY) === 'collections' ? 'collections' : 'packages';
   let packages = [];
@@ -26,6 +30,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   let draftAnchorId = null;
   let pendingOpenCreatedCollection = false;
   let restorePending = true;
+  let shouldOpenDefaultView = localStorage.getItem(VIEWS_KEY) === null;
 
   function readViews() {
     try {
@@ -184,7 +189,19 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     updateEditControls();
   }
 
+  function closeAllViews() {
+    if (editing) cancelEditState();
+    shouldOpenDefaultView = false;
+    openViews = [];
+    activeViewKey = '';
+    persistViews();
+    renderViewTabs();
+  }
+
+  viewTabs.addEventListener(CLOSE_ALL_EVENT, closeAllViews);
+
   function openView(type, id, name, activate = true) {
+    shouldOpenDefaultView = false;
     const key = keyOf(type, id);
     let view = openViews.find(item => keyOf(item.type, item.id) === key);
     if (!view) {
@@ -230,8 +247,9 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
       return source.some(item => String(item.id) === String(view.id));
     });
 
-    if (!openViews.length && packages[0]) {
+    if (!openViews.length && packages[0] && restorePending && shouldOpenDefaultView) {
       openViews.push({ type: 'packages', id: String(packages[0].id), name: String(packages[0].name) });
+      shouldOpenDefaultView = false;
     }
     if (!activeViewKey || !openViews.some(view => keyOf(view.type, view.id) === activeViewKey)) {
       activeViewKey = openViews[0] ? keyOf(openViews[0].type, openViews[0].id) : '';
@@ -308,13 +326,9 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     const beforeId = targetCard ? String(targetCard.dataset.conId) : null;
     if (beforeId && movingSet.has(beforeId)) return;
 
-    const moving = draftItems.filter(id => movingSet.has(id));
-    if (!moving.length) return;
-    const remaining = draftItems.filter(id => !movingSet.has(id));
-    let insertAt = beforeId ? remaining.indexOf(beforeId) : remaining.length;
-    if (insertAt < 0) insertAt = remaining.length;
-    remaining.splice(insertAt, 0, ...moving);
-    draftItems = remaining;
+    const nextItems = reorderOrderedIds(draftItems, ids, beforeId);
+    if (nextItems === draftItems) return;
+    draftItems = nextItems;
 
     const cards = new Map(
       [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => [String(card.dataset.conId), card])
@@ -361,14 +375,10 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
 
   saveButton.addEventListener('click', async () => {
     if (!editing || !editCollectionId) return;
-    const all = await getAll('collections');
-    const collection = all.find(item => String(item.id) === editCollectionId);
+    const collection = await commitCollectionDraft(editCollectionId, draftItems);
     if (!collection) return;
-    collection.items = [...draftItems];
-    collection.updatedAt = Date.now();
-    await putOne('collections', collection);
+    collections = collections.map(item => String(item.id) === editCollectionId ? collection : item);
     cancelEditState();
-    location.reload();
   });
 
   cancelButton.addEventListener('click', () => {
@@ -384,25 +394,11 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     event.preventDefault();
     event.stopImmediatePropagation();
     const id = String(card.dataset.conId);
-    const toggle = event.ctrlKey || event.metaKey;
-
-    if (event.shiftKey && draftAnchorId && draftItems.includes(draftAnchorId)) {
-      const a = draftItems.indexOf(draftAnchorId);
-      const b = draftItems.indexOf(id);
-      const range = draftItems.slice(Math.min(a, b), Math.max(a, b) + 1);
-      setDraftSelection(toggle ? new Set([...draftSelectedIds, ...range]) : range, draftAnchorId);
-      return;
-    }
-
-    if (toggle) {
-      const next = new Set(draftSelectedIds);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      setDraftSelection(next, id);
-      return;
-    }
-
-    setDraftSelection([id], id);
+    const next = planOrderedSelection(draftItems, draftSelectedIds, draftAnchorId, id, {
+      toggle: event.ctrlKey || event.metaKey,
+      range: event.shiftKey
+    });
+    setDraftSelection(next.ids, next.anchorId);
   }, true);
 
   conGrid.addEventListener('dblclick', event => {

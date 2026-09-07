@@ -1,4 +1,4 @@
-import { getOne, putOne } from './db.js';
+import { getOne, putOne } from '../db.js';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const RICH_DOC_ID = 'rich-text-v1';
@@ -144,6 +144,24 @@ if (storyList && editorPanel && editorHeader) {
     return output.innerHTML;
   }
 
+  function normalizePasteHtml(html, text) {
+    const clean = sanitizeHtml(html);
+    const plain = String(text || '').replace(/\r\n?/g, '\n').trim();
+    if (plain.includes('\n')) return clean;
+    const output = document.createElement('div');
+    output.innerHTML = clean;
+    output.querySelectorAll('br').forEach(lineBreak => lineBreak.remove());
+    output.querySelectorAll('div, p').forEach(block => block.replaceWith(...block.childNodes));
+    const walker = document.createTreeWalker(output, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach(node => {
+      node.data = node.data.replace(/[ \t]*[\r\n]+[ \t]*/g, '');
+      if (!node.data) node.remove();
+    });
+    return output.innerHTML;
+  }
+
   function editorPlainText(editor) {
     if (!editor.textContent && !editor.querySelector('br')) return '';
     return editor.innerText.replace(/\r\n?/g, '\n');
@@ -261,7 +279,7 @@ if (storyList && editorPanel && editorHeader) {
       event.preventDefault();
       const html = event.clipboardData?.getData('text/html');
       const text = event.clipboardData?.getData('text/plain') || '';
-      if (html) document.execCommand('insertHTML', false, sanitizeHtml(html));
+      if (html) document.execCommand('insertHTML', false, normalizePasteHtml(html, text));
       else document.execCommand('insertText', false, text);
     });
     editor.addEventListener('blur', () => { flushSave(); });

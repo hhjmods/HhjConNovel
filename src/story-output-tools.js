@@ -1,12 +1,11 @@
+import { appendStoryTextBlock } from './app.js?v=20260908-3';
 import { getOne, putOne } from './db.js';
-import { moveStoryItemsBefore } from './app.js?v=20260906-17';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
-import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story-html.js?v=20260905-8';
+import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260907-1';
 
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');
 const editorActions = document.querySelector('.editor-header > div:last-child');
-const addTextButton = document.getElementById('addTextBtn');
 const clearStoryButton = document.getElementById('clearStoryBtn');
 const toolbar = document.querySelector('.text-format-toolbar');
 const IMAGE_MEMO_DOC_ID = 'image-marker-memo-v1';
@@ -47,33 +46,6 @@ function savedImageMemo(storyId) {
 
 function currentItemRows() {
   return [...storyList.querySelectorAll(':scope > .story-item')];
-}
-
-function selectedNextId() {
-  const rows = currentItemRows();
-  const selected = new Set(rows.filter(row => row.classList.contains('story-con') && row.classList.contains('selected')).map(row => row.dataset.storyId).filter(Boolean));
-  if (!selected.size) return null;
-  let lastIndex = -1;
-  rows.forEach((row, index) => { if (selected.has(row.dataset.storyId)) lastIndex = index; });
-  return rows[lastIndex + 1]?.dataset.storyId || null;
-}
-
-function waitForNewText(existingIds, timeout = 2500) {
-  return new Promise(resolve => {
-    const started = performance.now();
-    const check = () => {
-      const row = [...storyList.querySelectorAll(':scope > .story-item.story-text[data-story-id]')].find(item => !existingIds.has(item.dataset.storyId));
-      if (row) return resolve(row);
-      if (performance.now() - started >= timeout) return resolve(null);
-      requestAnimationFrame(check);
-    };
-    check();
-  });
-}
-
-async function moveStoryItemBefore(itemId, beforeId) {
-  if (!itemId || !beforeId || itemId === beforeId) return;
-  await moveStoryItemsBefore([itemId], beforeId);
 }
 
 function ensureImageDragHandle(row) {
@@ -150,7 +122,7 @@ function decorateImages() {
   storyList.querySelectorAll(':scope > .story-item').forEach(decorateImageRow);
 }
 
-if (storyList && editorActions && addTextButton) {
+if (storyList && editorActions) {
   const imageButton = document.createElement('button');
   imageButton.type = 'button';
   imageButton.className = 'small';
@@ -159,18 +131,10 @@ if (storyList && editorActions && addTextButton) {
   editorActions.insertBefore(imageButton, clearStoryButton || null);
 
   imageButton.addEventListener('click', async () => {
-    const beforeId = selectedNextId();
-    const existingIds = new Set(currentItemRows().map(row => row.dataset.storyId).filter(Boolean));
-    addTextButton.click();
-    const newRow = await waitForNewText(existingIds);
+    const storyId = await appendStoryTextBlock(IMAGE_SENTINEL);
+    const newRow = currentItemRows().find(row => row.dataset.storyId === storyId);
     if (!newRow) return;
-    const textarea = newRow.querySelector(':scope > textarea');
-    const newId = newRow.dataset.storyId;
-    if (!textarea || !newId) return;
-    textarea.value = IMAGE_SENTINEL;
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
     decorateImageRow(newRow);
-    if (beforeId) await moveStoryItemBefore(newId, beforeId);
   });
 }
 

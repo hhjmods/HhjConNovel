@@ -1,5 +1,5 @@
-import { getAll, putMany } from './db.js';
-import { exportCollection, importCollectionFile } from './model.js';
+import { getAll, putMany } from '../db.js';
+import { exportCollection, importCollectionFile } from '../model.js?v=20260907-3';
 
 const BUNDLE_FORMAT = 'hhjcon-collections';
 const BUNDLE_VERSION = 1;
@@ -131,10 +131,7 @@ function createExportDialog(collections) {
   return { dialog, list, confirm };
 }
 
-async function handleExport(event) {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-
+async function handleExport() {
   const [collections, cons, packages] = await Promise.all([
     getAll('collections'),
     getAll('cons'),
@@ -193,10 +190,7 @@ function importData(data) {
   return [importCollectionFile(data)];
 }
 
-async function handleImport(event) {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-
+async function handleImport() {
   const files = [...(importInput.files || [])];
   importInput.value = '';
   if (!files.length) return;
@@ -233,7 +227,7 @@ async function handleImport(event) {
 }
 
 if (exportButton && importInput) {
-  exportButton.addEventListener('click', handleExport, { capture: true });
-  importInput.addEventListener('change', handleImport, { capture: true });
+  exportButton.addEventListener('click', handleExport);
+  importInput.addEventListener('change', handleImport);
   restoreImportToast();
 }

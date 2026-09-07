@@ -22,7 +22,7 @@
    - 실제 원고 상태(`state.story.items`)의 추가/이동/저장을 담당한다.
    - 최종 변경 함수는 `addConBlocks()`와 `reorderStoryItems()`이다.
    - `renderStory()`는 원고 DOM 전체를 다시 생성한다.
-3. `drag-start-fix.js`
+3. `library/library-con-drag-source.js`
    - 라이브러리 콘의 첫 press-drag가 선택 재렌더로 끊기는 문제를 capture 단계에서 우회한다.
 4. `story-insertion.js`
    - 대사/줄바꿈 drag handle을 붙인다.

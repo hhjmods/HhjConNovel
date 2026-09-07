@@ -1,4 +1,4 @@
-import { getAll } from './db.js';
+import { getAll } from '../db.js';
 
 let refMetaByConId = new Map();
 let refreshPromise = null;

@@ -1,4 +1,4 @@
-import { getAll, getOne } from './db.js';
+import { getAll, getOne } from '../db.js';
 
 export const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 export const IMAGE_SENTINEL = '\uE000HHJCON_IMAGE_PLACEHOLDER\uE001';

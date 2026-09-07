@@ -14,7 +14,7 @@ const expectedOrder = [
   './src/story-dnd-health.js',
   './src/story-drag-guard.js',
   './src/app.js',
-  './src/drag-start-fix.js',
+  './src/library/library-con-drag-source.js',
   './src/story-insertion.js',
   './src/story-con-run-end-drop.js',
   './src/story-slot-mode.js',
@@ -43,13 +43,14 @@ const files = {
   app: read('src/app.js'),
   health: read('src/story-dnd-health.js'),
   guard: read('src/story-drag-guard.js'),
-  dragStart: read('src/drag-start-fix.js'),
+  dragStart: read('src/library/library-con-drag-source.js'),
   insertion: read('src/story-insertion.js'),
   runEnd: read('src/story-con-run-end-drop.js'),
   slot: read('src/story-slot-mode.js'),
   stability: read('src/story-drag-stability.js'),
   tail: read('src/story-tail-blank-drop.js'),
   outputTools: read('src/story-output-tools.js'),
+  storyOrder: read('src/story/story-order.js'),
   utils: read('src/story-dnd-utils.js')
 };
 
@@ -60,7 +61,6 @@ for (const token of ['application/x-hhjcon-ids', 'application/x-hhjstory-ids', '
 const sharedUtilsImport = './story-dnd-utils.js?v=20260906-2';
 for (const [path, source] of [
   ['src/story-drag-guard.js', files.guard],
-  ['src/drag-start-fix.js', files.dragStart],
   ['src/story-insertion.js', files.insertion],
   ['src/story-con-run-end-drop.js', files.runEnd],
   ['src/story-slot-mode.js', files.slot],
@@ -71,8 +71,14 @@ for (const [path, source] of [
   if (!source.includes(sharedUtilsImport)) fail(`${path} does not use canonical DnD utility module version`);
   if (source.includes('application/x-hhj')) fail(`${path} bypasses centralized DnD MIME helpers`);
 }
+if (!files.dragStart.includes('../story-dnd-utils.js?v=20260906-2')) {
+  fail('src/library/library-con-drag-source.js does not use canonical DnD utility module version');
+}
+if (files.dragStart.includes('application/x-hhj')) {
+  fail('src/library/library-con-drag-source.js bypasses centralized DnD MIME helpers');
+}
 
-const directAppImport = './app.js?v=20260906-17';
+const directAppImport = './app.js?v=20260908-3';
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-con-run-end-drop.js', files.runEnd],
@@ -82,9 +88,9 @@ for (const [path, source] of [
 ]) {
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
 }
-if (!index.includes('./src/app.js?v=20260906-17')) fail('index.html app module version differs from DnD clients');
+if (!index.includes('./src/app.js?v=20260908-3')) fail('index.html app module version differs from DnD clients');
 
-if (!index.includes('./src/story-dnd-health.js?v=20260906-1')) fail('index.html does not load the passive DnD health module version');
+if (!index.includes('./src/story-dnd-health.js?v=20260907-1')) fail('index.html does not load the passive DnD health module version');
 if (!index.includes('./src/story-drag-guard.js?v=20260906-15')) fail('index.html does not load the low-churn story drag guard version');
 if (!index.includes('./src/story-drag-stability.js?v=20260906-15')) fail('index.html does not load the single-owner stability module version');
 if (!files.health.includes('window.__HHJDND')) fail('story-dnd-health.js no longer exposes the diagnostic API');
@@ -105,6 +111,24 @@ for (const forbidden of [
 
 if (!files.app.includes('export async function applyStoryDropTransfer')) fail('app.js lost direct drop mutation bridge');
 if (!files.app.includes('export async function moveStoryItemsBefore')) fail('app.js lost direct story-id move command');
+if (!files.app.includes("./story/story-order.js?v=20260907-3")) fail('app.js does not import canonical story order module version');
+if (!files.app.includes('planStoryItemReorder')) fail('app.js bypasses the pure story order planner');
+if (!files.storyOrder.includes('export function planStoryItemReorder')) fail('story-order.js lost the pure reorder planner');
+if (!files.app.includes('planStorySelectionStep')) fail('app.js bypasses the pure button-step planner');
+if (!files.storyOrder.includes('export function planStorySelectionStep')) fail('story-order.js lost the button-step planner');
+if (!files.app.includes('insertStoryItemsBefore')) fail('app.js bypasses the pure story insertion planner');
+if (!files.storyOrder.includes('export function insertStoryItemsBefore')) fail('story-order.js lost the pure insertion planner');
+if (!files.app.includes('export async function appendStoryTextBlock')) fail('app.js lost the direct text block creation command');
+for (const [path, source] of [
+  ['src/story-insertion.js', files.insertion],
+  ['src/story-output-tools.js', files.outputTools]
+]) {
+  if (!source.includes('appendStoryTextBlock')) fail(`${path} bypasses the direct text block creation command`);
+  if (source.includes('waitForNewText') || source.includes('addTextButton.click()')) fail(`${path} restored DOM polling or button-proxy text creation`);
+}
+if (files.app.includes('setStorySelection(ids, anchorId = null, rerender') || files.app.includes('if (rerender) renderStory()')) {
+  fail('story selection restored full renderStory replacement');
+}
 if (!files.guard.includes('writeStoryTransfer')) fail('story-drag-guard.js lost story con payload capture');
 if (!files.guard.includes("storyList?.addEventListener('dragover'")) fail('story-drag-guard.js lost native story drop acceptance');
 if (
@@ -115,7 +139,7 @@ if (
 ) {
   fail('story-drag-guard.js reintroduced legacy per-dragover target class churn');
 }
-if (!files.dragStart.includes('writeConTransfer')) fail('drag-start-fix.js lost library con payload capture');
+if (!files.dragStart.includes('writeConTransfer')) fail('library-con-drag-source.js lost library con payload capture');
 if (!files.insertion.includes('writeStoryTransfer')) fail('story-insertion.js lost text/break drag payload ownership');
 if (!files.outputTools.includes('writeStoryTransfer')) fail('story-output-tools.js lost image drag payload ownership');
 if (files.stability.includes('writeStoryTransfer')) fail('story-drag-stability.js duplicated block drag payload writes');
@@ -136,6 +160,7 @@ for (const [path, source] of [
   ['src/story-output-tools.js', files.outputTools]
 ]) {
   if (source.includes('new DataTransfer(')) fail(`${path} creates fake DataTransfer for non-DnD mutation`);
+  if (source.includes('selectedNextId')) fail(`${path} makes click insertion depend on selected story cons`);
 }
 
 if (!process.exitCode) console.log('DnD structure contracts OK');

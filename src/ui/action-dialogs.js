@@ -1,4 +1,10 @@
-import { getAll, getOne } from './db.js';
+import { getAll, getOne } from '../db.js';
+import {
+  clearCurrentStory,
+  createNamedCollection,
+  deleteCollectionById,
+  hasCurrentStoryItems
+} from '../app.js?v=20260908-3';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
 const STORY_WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
@@ -258,31 +264,25 @@ document.addEventListener('click', async event => {
         requiredMessage: '콘묶음 이름을 입력하세요.', note: COLLECTION_WARNING
       });
       if (name == null) return;
-      replay(button, { prompt: name.trim() });
+      await createNamedCollection(name.trim());
     };
   } else if (button.title === '콘묶음 삭제' && button.closest('.collection-row')) {
     task = async () => {
-      const name = button.closest('.collection-row')?.querySelector('.collection-main span')?.textContent?.trim() || '선택한';
+      const row = button.closest('.collection-row');
+      const collectionId = row?.dataset.collectionId || '';
+      const name = row?.querySelector('.collection-main span')?.textContent?.trim() || '선택한';
       const ok = await showConfirm(`“${name}” 콘묶음을 삭제할까요?\n콘묶음만 삭제되며 원본 디시콘은 삭제되지 않습니다.`, {
         title: '콘묶음 삭제', confirmText: '삭제', danger: true
       });
-      if (ok) replay(button, { confirm: true });
+      if (ok) await deleteCollectionById(collectionId);
     };
   } else if (button.id === 'clearStoryBtn') {
     task = async () => {
-      if (!await currentStoryHasItems()) return replay(button);
+      if (!hasCurrentStoryItems()) return clearCurrentStory();
       const ok = await showConfirm('현재 원고를 모두 비울까요?\n이 동작은 현재 편집 중인 내용을 비웁니다.', {
         title: '원고 비우기', confirmText: '비우기', danger: true
       });
-      if (ok) replay(button, { confirm: true });
-    };
-  } else if (button.id === 'demoBtn') {
-    task = async () => {
-      if (!(await getAll('packages')).length) return replay(button);
-      const ok = await showConfirm('현재 원본 DC콘 DB를 개발용 데모 데이터로 교체할까요?\n사용자 콘묶음은 유지됩니다.', {
-        title: '개발용 데모', confirmText: '교체', danger: true
-      });
-      if (ok) replay(button, { confirm: true });
+      if (ok) await clearCurrentStory();
     };
   } else if ((text === '원고 저장' && button.closest('.editor-header')) || (text === '현재 원고 저장' && button.closest('.story-save-dialog'))) {
     task = async () => {

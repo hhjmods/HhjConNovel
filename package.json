@@ -1,0 +1,12 @@
+{
+  "name": "hhjcon-novel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/model.test.mjs tests/selection.test.mjs tests/story-order.test.mjs",
+    "validate:bridge": "node scripts/validate-bridge-structure.mjs",
+    "validate:dnd": "node scripts/validate-dnd-structure.mjs",
+    "validate:library": "node scripts/validate-library-structure.mjs",
+    "validate:paths": "node scripts/validate-local-paths.mjs"
+  }
+}

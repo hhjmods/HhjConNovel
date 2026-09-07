@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.6.2
+// @version      0.6.3
 // @description  HhjConNovel의 디시콘 동기화와 DC 글쓰기 붙여넣기를 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
@@ -20,10 +20,11 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.6.2';
+  const VERSION = '0.6.3';
   const MAX_PAGE = 30;
   const CI_CACHE_KEY = 'hhjcon-dc-ci-c';
   const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  const PAGE_ORIGIN = location.origin;
 
   function readDocumentCookie(name) {
     const prefix = `${name}=`;
@@ -299,7 +300,7 @@
   const imageRequestQueue = [];
 
   function post(message) {
-    pageWindow.postMessage(message, '*');
+    pageWindow.postMessage(message, PAGE_ORIGIN);
   }
 
   function sendResult(requestId, payload = null, error = null) {
@@ -578,6 +579,7 @@
   }
 
   pageWindow.addEventListener('message', event => {
+    if (event.source !== pageWindow || event.origin !== PAGE_ORIGIN) return;
     const data = event.data;
     if (!data || !data.requestId) return;
     if (data.type === PING_TYPE) {

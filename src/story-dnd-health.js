@@ -68,7 +68,7 @@ function storyDomSnapshot() {
 function moduleResources() {
   const relevant = performance.getEntriesByType('resource')
     .map(entry => entry.name)
-    .filter(name => /\/src\/(?:app|story-[^/]+|drag-start-fix)\.js(?:\?|$)/.test(name));
+    .filter(name => /\/src\/(?:(?:app|story-[^/]+)\.js|library\/library-con-drag-source\.js)(?:\?|$)/.test(name));
 
   const byPath = new Map();
   for (const name of relevant) {

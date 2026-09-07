@@ -24,6 +24,18 @@ jobs:
             node --check "$file"
           done < <(find src bridge scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
 
+      - name: Run unit tests
+        run: node --test tests/model.test.mjs tests/selection.test.mjs tests/story-order.test.mjs
+
+      - name: Check local entrypoint and import paths
+        run: node scripts/validate-local-paths.mjs
+
+      - name: Check Bridge message boundary contracts
+        run: node scripts/validate-bridge-structure.mjs
+
+      - name: Check library tab state contracts
+        run: node scripts/validate-library-structure.mjs
+
       - name: Check DnD structure contracts
         run: node scripts/validate-dnd-structure.mjs
 
@@ -31,8 +43,8 @@ jobs:
         shell: bash
         run: |
           test -f index.html
-          test -f styles.css
+          test -f assets/styles/styles.css
           test -f src/app.js
           test -f src/db.js
           test -f src/model.js
-          test -f src/dc-adapter.js
+          test -f src/integrations/dc-adapter.js

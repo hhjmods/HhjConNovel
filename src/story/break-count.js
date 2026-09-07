@@ -1,4 +1,4 @@
-import { getOne, putOne } from './db.js';
+import { getOne, putOne } from '../db.js';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const DOC_ID = 'break-count-v1';

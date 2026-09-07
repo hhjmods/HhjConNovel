@@ -63,15 +63,50 @@ export function addUniqueIds(collection, ids) {
   return { collection: { ...collection, items: next, updatedAt: Date.now() }, added };
 }
 
-export function reorderIds(collection, movingIds, beforeId = null) {
+export function preserveCollectionRefMeta(collection, consById, packagesById) {
+  const storedMeta = collection?.refMeta && typeof collection.refMeta === 'object' ? collection.refMeta : {};
+  const refMeta = { ...storedMeta };
+  let changed = false;
+
+  (Array.isArray(collection?.items) ? collection.items : []).forEach(id => {
+    const con = consById?.get?.(id);
+    if (!con) return;
+    const saved = storedMeta[id] && typeof storedMeta[id] === 'object' ? storedMeta[id] : {};
+    const packageId = String(con.packageId || saved.packageId || '');
+    const pkg = packageId ? packagesById?.get?.(packageId) : null;
+    const next = {
+      ...saved,
+      packageId,
+      sourcePackageId: String(pkg?.sourcePackageId || saved.sourcePackageId || packageId),
+      sourceNo: String(con.sourceNo || saved.sourceNo || ''),
+      name: String(con.name || saved.name || '미보유/미동기화 콘'),
+      packageName: String(pkg?.name || saved.packageName || '')
+    };
+    const fields = ['packageId', 'sourcePackageId', 'sourceNo', 'name', 'packageName'];
+    if (!fields.every(field => saved[field] === next[field])) changed = true;
+    refMeta[id] = next;
+  });
+
+  return changed ? { ...collection, refMeta, updatedAt: Date.now() } : collection;
+}
+
+export function reorderOrderedIds(items, movingIds, beforeId = null) {
+  const source = Array.isArray(items) ? items : [];
   const moving = new Set(movingIds);
-  const selectedInOrder = collection.items.filter(id => moving.has(id));
-  if (!selectedInOrder.length) return collection;
-  const remaining = collection.items.filter(id => !moving.has(id));
+  const selectedInOrder = source.filter(id => moving.has(id));
+  if (!selectedInOrder.length) return source;
+  const remaining = source.filter(id => !moving.has(id));
   let insertAt = beforeId ? remaining.indexOf(beforeId) : remaining.length;
   if (insertAt < 0) insertAt = remaining.length;
   remaining.splice(insertAt, 0, ...selectedInOrder);
-  return { ...collection, items: remaining, updatedAt: Date.now() };
+  const unchanged = remaining.length === source.length
+    && remaining.every((id, index) => id === source[index]);
+  return unchanged ? source : remaining;
+}
+
+export function reorderIds(collection, movingIds, beforeId = null) {
+  const items = reorderOrderedIds(collection.items, movingIds, beforeId);
+  return items === collection.items ? collection : { ...collection, items, updatedAt: Date.now() };
 }
 
 export function removeIds(collection, ids) {
@@ -84,6 +119,28 @@ export function removeIds(collection, ids) {
     refMeta,
     updatedAt: Date.now()
   };
+}
+
+export function applyCollectionItemDraft(collection, draftIds) {
+  const originalItems = Array.isArray(collection?.items) ? collection.items : [];
+  const allowed = new Set(originalItems);
+  const seen = new Set();
+  const items = [];
+  (Array.isArray(draftIds) ? draftIds : []).forEach(value => {
+    const id = String(value);
+    if (!allowed.has(id) || seen.has(id)) return;
+    seen.add(id);
+    items.push(id);
+  });
+  const unchanged = items.length === originalItems.length
+    && items.every((id, index) => id === originalItems[index]);
+  if (unchanged) return collection;
+
+  const refMeta = {};
+  Object.entries(collection?.refMeta || {}).forEach(([id, meta]) => {
+    if (seen.has(id)) refMeta[id] = meta;
+  });
+  return { ...collection, items, refMeta, updatedAt: Date.now() };
 }
 
 export function exportCollection(collection, consById, packagesById) {

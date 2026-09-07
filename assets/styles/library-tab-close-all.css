@@ -1,0 +1,13 @@
+.library-view-tabs-shell { display: flex; align-items: stretch; min-width: 0; min-height: 40px; background: #151a23; border-bottom: 1px solid var(--line); }
+.library-view-tabs-shell .library-view-tabs { flex: 1 1 auto; min-width: 0; border-bottom: 0; }
+.library-view-close-all { flex: 0 0 auto; align-self: stretch; min-height: 39px; padding: 5px 10px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: #202735; color: var(--muted); white-space: nowrap; }
+.library-view-close-all:hover:not(:disabled) { color: var(--text); background: #283244; }
+.library-view-close-all:disabled { opacity: .45; cursor: default; }
+.library-tabs-empty .library-toolbar { position: relative; }
+.library-tabs-empty .library-toolbar > * { visibility: hidden; pointer-events: none; }
+.library-tabs-empty .library-toolbar::after { content: "열린 탭 없음"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.library-tabs-empty #conGrid { display: none !important; }
+.library-tabs-empty #libraryEmpty { display: grid !important; }
+.library-tabs-empty #libraryEmpty > * { display: none !important; }
+.library-tabs-empty #libraryEmpty::before { content: "열린 콘 탭이 없습니다."; color: var(--text); font-weight: 700; }
+.library-tabs-empty #libraryEmpty::after { content: "왼쪽에서 DC콘이나 내 콘묶음을 선택해 탭을 여세요."; }

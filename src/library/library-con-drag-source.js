@@ -1,4 +1,4 @@
-import { writeConTransfer } from './story-dnd-utils.js?v=20260906-2';
+import { writeConTransfer } from '../story-dnd-utils.js?v=20260906-2';
 
 const conGrid = document.getElementById('conGrid');
 const selectionStatus = document.getElementById('selectionStatus');

@@ -1,4 +1,4 @@
-import { getOne, putOne } from './db.js';
+import { getOne, putOne } from '../db.js';
 
 const storyList = document.getElementById('storyList');
 const DOC_ID = 'con-display-v1';

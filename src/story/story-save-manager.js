@@ -1,13 +1,13 @@
 import { deleteOne, getAll, getOne, putOne } from '../db.js';
-import { downloadJson } from '../core/json-download.js?v=20260908-1';
-import { showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260909-1';
+import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
+import { downloadJson, makeDatedDefaultName, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
+import { showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260909-4';
+import { saveToastForReload, showToast } from '../ui/toast.js?v=20260909-2';
 
 const FORMAT = 'hhjcon-story-save';
 const VERSION = 1;
 const BUNDLE_FORMAT = 'hhjcon-story-saves';
 const BUNDLE_VERSION = 1;
-const COLLECTION_FORMATS = new Set(['hhjcon-collection', 'hhjcon-collections']);
-const EDITOR_FORMAT = 'hhjcon-editor-backup';
 const PREFIX = 'story-save:';
 const DOCS = {
   rich: 'rich-text-v1',
@@ -16,36 +16,13 @@ const DOCS = {
   memo: 'image-marker-memo-v1'
 };
 const HEIGHT_KEY = 'hhjcon-rich-text-heights-v1';
-const TOAST_KEY = 'hhjcon-story-save-toast';
 const STORY_WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
 const storyList = document.getElementById('storyList');
 const editorActions = document.querySelector('.editor-header > div:last-child');
 const clearButton = document.getElementById('clearStoryBtn');
-const toast = document.getElementById('toast');
 
 const clone = value => structuredClone(value);
 const asObject = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-const safeName = name => String(name || '콘문학').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
-
-function showToast(message) {
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2400);
-}
-
-function defaultName() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return `콘문학 ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}`;
-}
-
-function backupFileName() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return `콘문학_백업_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.hhjconstories.json`;
-}
 
 function filtered(items, ids) {
   const out = {};
@@ -163,12 +140,8 @@ function parseSave(data) {
 }
 
 function parseImportData(data) {
-  if (COLLECTION_FORMATS.has(data?.format)) {
-    throw new Error('해당 파일은 콘묶음 백업파일입니다. 콘묶음 불러오기를 이용해주세요.');
-  }
-  if (data?.format === EDITOR_FORMAT) {
-    throw new Error('해당 파일은 에디터 백업파일입니다. 에디터 백업 불러오기를 이용해주세요.');
-  }
+  const typeMessage = wrongBackupTypeMessage(data?.format, 'story');
+  if (typeMessage) throw new Error(typeMessage);
   if (data?.format === BUNDLE_FORMAT) {
     if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || !data.saves.length) {
       throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
@@ -228,12 +201,12 @@ async function loadSave(save) {
     putOne('documents', doc(DOCS.breaks, m.breaks)), putOne('documents', doc(DOCS.memo, m.memo))
   ]);
   localStorage.setItem(HEIGHT_KEY, JSON.stringify(asObject(m.heights)));
-  sessionStorage.setItem(TOAST_KEY, `“${save.name}” 원고를 불러왔습니다.`);
+  saveToastForReload(`“${save.name}” 원고를 불러왔습니다.`);
   location.reload();
 }
 
 async function saveCurrent() {
-  const input = await showPrompt('저장할 콘문학 이름을 입력하세요.', defaultName(), {
+  const input = await showPrompt('저장할 콘문학 이름을 입력하세요.', makeDatedDefaultName('콘문학'), {
     title: '원고 저장', label: '원고 이름', confirmText: '저장', maxLength: 80,
     requiredMessage: '콘문학 이름을 입력하세요.', note: STORY_WARNING
   });
@@ -319,7 +292,7 @@ async function renderList(list) {
     const del = document.createElement('button'); del.type = 'button'; del.className = 'danger'; del.textContent = '삭제';
     actions.append(load, exp, del); row.append(check, info, actions); list.append(row);
     load.addEventListener('click', () => loadSave(save).catch(error => alert(`원고를 불러올 수 없습니다.\n${error.message || error}`)));
-    exp.addEventListener('click', () => downloadJson(`${safeName(save.name)}.hhjconstory.json`, exportSave(save)));
+    exp.addEventListener('click', () => downloadJson(`${sanitizeDownloadName(save.name, '콘문학')}.hhjconstory.json`, exportSave(save)));
     del.addEventListener('click', async () => {
       const ok = await showConfirm(`“${save.name}” 저장 원고를 삭제할까요?`, {
         title: '저장 원고 삭제', confirmText: '삭제', danger: true
@@ -336,9 +309,9 @@ async function exportSelectedSaves(list) {
   const selected = (await getSaves()).filter(save => selectedIds.has(save.id));
   if (!selected.length) return;
   if (selected.length === 1) {
-    downloadJson(`${safeName(selected[0].name)}.hhjconstory.json`, exportSave(selected[0]));
+    downloadJson(`${sanitizeDownloadName(selected[0].name, '콘문학')}.hhjconstory.json`, exportSave(selected[0]));
   } else {
-    downloadJson(backupFileName(), exportBundle(selected));
+    downloadJson(makeTimestampedBackupName('콘문학_백업', '.hhjconstories.json'), exportBundle(selected));
   }
   showToast(`${selected.length}개 콘문학 원고를 내보냈습니다.`);
 }
@@ -373,5 +346,4 @@ if (storyList && editorActions) {
   editorActions.insertBefore(save, clearButton || null); editorActions.insertBefore(manage, clearButton || null);
   save.addEventListener('click', saveCurrent);
   manage.addEventListener('click', () => openManager().catch(error => alert(`원고 목록을 열 수 없습니다.\n${error.message || error}`)));
-  const message = sessionStorage.getItem(TOAST_KEY); if (message) { sessionStorage.removeItem(TOAST_KEY); setTimeout(() => showToast(message), 100); }
 }

@@ -1,4 +1,4 @@
-import { appendStoryTextBlock } from './app.js?v=20260908-4';
+import { appendStoryTextBlock } from './app.js?v=20260909-3';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260907-1';

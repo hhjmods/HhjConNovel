@@ -1,7 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { downloadJson } from '../src/core/json-download.js';
+import { downloadJson, makeDatedDefaultName, makeTimestampedBackupName, sanitizeDownloadName } from '../src/core/json-download.js';
+
+test('sanitizeDownloadName replaces reserved filename characters', () => {
+  assert.equal(sanitizeDownloadName('원고<>이름::백업', 'backup'), '원고_이름_백업');
+});
+
+test('sanitizeDownloadName uses the caller fallback and preserves the 80-character limit', () => {
+  assert.equal(sanitizeDownloadName('', '에디터 백업'), '에디터 백업');
+  assert.equal(sanitizeDownloadName('가'.repeat(81), 'backup'), '가'.repeat(80));
+});
+
+test('makeTimestampedBackupName preserves the local timestamp and requested suffix', () => {
+  const date = new Date(2026, 8, 9, 7, 5, 3);
+  assert.equal(makeTimestampedBackupName('콘문학_백업', '.hhjconstories.json', date), '콘문학_백업_20260909-070503.hhjconstories.json');
+});
+
+test('makeDatedDefaultName preserves the readable local date format', () => {
+  const date = new Date(2026, 8, 9, 7, 5, 3);
+  assert.equal(makeDatedDefaultName('콘문학', date), '콘문학 2026-09-09 0705');
+});
 
 test('downloadJson serializes JSON and cleans up its temporary download resources', async () => {
   const originalDocument = globalThis.document;

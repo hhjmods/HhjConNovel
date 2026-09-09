@@ -10,6 +10,7 @@ import {
 import { requestDcSync } from './integrations/dc-adapter.js?v=20260907-1';
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260907-3';
+import { showToast } from './ui/toast.js?v=20260909-2';
 import {
   CON_IDS_MIME,
   STORY_IDS_MIME,
@@ -40,7 +41,7 @@ const el = Object.fromEntries([
   'packagePanel', 'collectionPanel', 'packageList', 'collectionList',
   'libraryTitle', 'selectionStatus', 'searchInput', 'selectAllBtn', 'clearSelectionBtn',
   'libraryEmpty', 'conGrid', 'storyList', 'storyDropZone', 'storyStats', 'addTextBtn',
-  'addSelectedConsBtn', 'syncStatus', 'toast'
+  'addSelectedConsBtn', 'syncStatus'
 ].map(id => [id, document.getElementById(id)]));
 
 function mapById(items) { return new Map(items.map(item => [item.id, item])); }
@@ -57,13 +58,6 @@ function ensureStoryItemIds() {
     }
   });
   return changed;
-}
-
-function toast(message) {
-  el.toast.textContent = message;
-  el.toast.classList.add('show');
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => el.toast.classList.remove('show'), 1800);
 }
 
 async function loadState() {
@@ -193,7 +187,11 @@ function renderPackageList() {
     button.className = 'nav-item';
     button.classList.toggle('active', pkg.id === state.activePackageId);
     const count = state.cons.filter(con => con.packageId === pkg.id).length;
-    button.innerHTML = `<span>${escapeHtml(pkg.name)}</span><small>${count}</small>`;
+    const packageName = document.createElement('span');
+    packageName.textContent = String(pkg.name);
+    const packageCount = document.createElement('small');
+    packageCount.textContent = String(count);
+    button.append(packageName, packageCount);
     button.addEventListener('click', () => {
       state.activePackageId = pkg.id;
       state.activeTab = 'packages';
@@ -221,7 +219,11 @@ function renderCollectionList() {
     row.classList.toggle('active', collection.id === state.activeCollectionId);
     const button = document.createElement('button');
     button.className = 'collection-main';
-    button.innerHTML = `<span>${escapeHtml(collection.name)}</span><small>${collection.items.length}</small>`;
+    const collectionName = document.createElement('span');
+    collectionName.textContent = String(collection.name);
+    const collectionCount = document.createElement('small');
+    collectionCount.textContent = String(collection.items.length);
+    button.append(collectionName, collectionCount);
     button.addEventListener('click', () => {
       state.activeCollectionId = collection.id;
       state.activeTab = 'collections';
@@ -262,8 +264,19 @@ function renderGrid() {
     card.dataset.conId = con.id;
     card.classList.toggle('selected', state.selectedIds.has(con.id));
     card.classList.toggle('missing', Boolean(con.missing));
-    const image = con.thumbnailUrl ? `<img src="${escapeAttr(con.thumbnailUrl)}" alt="">` : '<div class="missing-thumb">?</div>';
-    card.innerHTML = `${image}<span>${escapeHtml(con.name)}</span>`;
+    let thumbnail;
+    if (con.thumbnailUrl) {
+      thumbnail = document.createElement('img');
+      thumbnail.src = String(con.thumbnailUrl);
+      thumbnail.alt = '';
+    } else {
+      thumbnail = document.createElement('div');
+      thumbnail.className = 'missing-thumb';
+      thumbnail.textContent = '?';
+    }
+    const conName = document.createElement('span');
+    conName.textContent = String(con.name);
+    card.append(thumbnail, conName);
     card.title = con.missing ? con.id : `${con.name}\n${con.id}`;
     card.addEventListener('click', event => handleCardSelection(event, con.id));
     card.addEventListener('dblclick', () => {
@@ -579,12 +592,12 @@ async function addIdsToCollection(collectionId, ids) {
   if (!collection) return;
   const result = addUniqueIds(collection, ids);
   if (!result.added) {
-    toast('이미 이 콘묶음에 들어 있는 디시콘입니다.');
+    showToast('이미 이 콘묶음에 들어 있는 디시콘입니다.', 1800);
     return;
   }
   const next = preserveCollectionRefMeta(result.collection, mapById(state.cons), mapById(state.packages));
   await commitCollectionState(next);
-  toast(`${result.added}개 디시콘을 콘묶음에 추가했습니다.`);
+  showToast(`${result.added}개 디시콘을 콘묶음에 추가했습니다.`, 1800);
   renderCollectionList();
   if (state.activeCollectionId === collectionId) renderGrid();
 }
@@ -606,16 +619,6 @@ function renderAll() {
   renderGrid();
   renderSelectionStatus();
   renderStory();
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-  })[char]);
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value);
 }
 
 const selectionBox = document.createElement('div');
@@ -704,7 +707,7 @@ el.syncDcBtn.addEventListener('click', async () => {
   try {
     const payload = await requestDcSync({ writeUrl });
     await applySyncPayload(payload);
-    toast('디시콘 목록을 동기화했습니다.');
+    showToast('디시콘 목록을 동기화했습니다.', 1800);
   } catch (error) {
     alert(`${error.message}\n\nDC 브리지가 설치되어 있고 같은 브라우저에서 DCInside에 로그인되어 있는지 확인해주세요.`);
   } finally {
@@ -716,7 +719,7 @@ el.syncDcBtn.addEventListener('click', async () => {
 el.addSelectedConsBtn.addEventListener('click', async () => {
   const ids = visibleCons().map(con => con.id).filter(id => state.selectedIds.has(id) && state.cons.some(con => con.id === id));
   if (!ids.length) {
-    toast('먼저 콘 라이브러리에서 넣을 디시콘을 선택해주세요.');
+    showToast('먼저 콘 라이브러리에서 넣을 디시콘을 선택해주세요.', 1800);
     return;
   }
   await addConBlocks(ids);

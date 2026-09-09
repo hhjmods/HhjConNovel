@@ -5,6 +5,7 @@ const closeAll = fs.readFileSync('src/library/library-tab-close-all.js', 'utf8')
 const collectionBackup = fs.readFileSync('src/collections/collection-backup.js', 'utf8');
 const editorBackup = fs.readFileSync('src/backup/editor-backup.js', 'utf8');
 const editorBackupStyles = fs.readFileSync('assets/styles/editor-backup.css', 'utf8');
+const backupFormat = fs.readFileSync('src/core/backup-format.js', 'utf8');
 const jsonDownload = fs.readFileSync('src/core/json-download.js', 'utf8');
 const layoutResizer = fs.readFileSync('src/ui/layout-resizer.js', 'utf8');
 const themeInit = fs.readFileSync('src/ui/theme-init.js', 'utf8');
@@ -25,15 +26,17 @@ const storyOutputStyles = fs.readFileSync('assets/styles/story-output-tools.css'
 const storySaveStyles = fs.readFileSync('assets/styles/story-save-manager.css', 'utf8');
 const actionDialogs = fs.readFileSync('src/ui/action-dialogs.js', 'utf8');
 const actionDialogStyles = fs.readFileSync('assets/styles/action-dialogs.css', 'utf8');
+const toastUi = fs.readFileSync('src/ui/toast.js', 'utf8');
 const storySaveManager = fs.readFileSync('src/story/story-save-manager.js', 'utf8');
 const app = fs.readFileSync('src/app.js', 'utf8');
 const model = fs.readFileSync('src/model.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
 const eventName = 'hhjcon:library-close-all';
-const appImport = "../app.js?v=20260908-4";
+const appImport = "../app.js?v=20260909-3";
 const modelImport = "../model.js?v=20260908-1";
 const selectionImport = "../core/selection.js?v=20260907-1";
-const jsonDownloadImport = "../core/json-download.js?v=20260908-1";
+const backupFormatImport = "../core/backup-format.js?v=20260910-1";
+const jsonDownloadImport = "../core/json-download.js?v=20260909-3";
 
 function fail(message) {
   console.error(`Library structure validation failed: ${message}`);
@@ -71,7 +74,7 @@ if (!collectionBackup.includes("exportButton.addEventListener('click', handleExp
 if (collectionBackup.includes('stopImmediatePropagation()') || collectionBackup.includes('capture: true')) {
   fail('collection file handlers must not rely on suppressing legacy listeners');
 }
-if (!actionDialogs.includes("from '../app.js?v=20260908-4'")
+if (!actionDialogs.includes("from '../app.js?v=20260909-3'")
   || !actionDialogs.includes('createNamedCollection,')
   || !actionDialogs.includes('deleteCollectionById,')
   || !actionDialogs.includes('clearCurrentStory,')
@@ -94,7 +97,7 @@ if (!actionDialogs.includes('if (!hasCurrentStoryItems()) return clearCurrentSto
   || app.includes("el.clearStoryBtn.addEventListener('click'")) {
   fail('clear-story dialog must call the app state command without button replay');
 }
-if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260909-1'")
+if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260909-4'")
   || !storySaveManager.includes('showConfirm, showPrompt')) {
   fail('story save manager must import the canonical async dialog API');
 }
@@ -114,14 +117,41 @@ if (actionDialogs.includes('armOneShot') || actionDialogs.includes('replay(')) {
 if (![collectionBackup, editorBackup, storySaveManager].every(source => source.includes(jsonDownloadImport))) {
   fail('JSON export modules must use the shared download helper');
 }
+if (![collectionBackup, editorBackup, storySaveManager].every(source => source.includes(backupFormatImport))
+  || !backupFormat.includes('export function wrongBackupTypeMessage(')
+  || !collectionBackup.includes("wrongBackupTypeMessage(data?.format, 'collection')")
+  || !storySaveManager.includes("wrongBackupTypeMessage(data?.format, 'story')")
+  || !editorBackup.includes("wrongBackupTypeMessage(data?.format, 'editor')")
+  || [collectionBackup, editorBackup, storySaveManager].some(source => source.includes('백업파일입니다.'))) {
+  fail('wrong backup type guidance must have one tested owner');
+}
 if (![collectionBackup, editorBackup, storySaveManager].every(source => !source.includes('function downloadJson('))
   || !jsonDownload.includes('export function downloadJson(')) {
   fail('JSON download implementation must have one owner');
 }
-if (!index.includes('./src/ui/action-dialogs.js?v=20260909-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260909-1')
-  || !index.includes('./src/collections/collection-backup.js?v=20260908-3')
-  || !index.includes('./src/backup/editor-backup.js?v=20260908-3')) {
+if ([collectionBackup, editorBackup].some(source => source.includes('function safeFileName('))
+  || storySaveManager.includes('const safeName =')
+  || !jsonDownload.includes('export function sanitizeDownloadName(')
+  || ![collectionBackup, editorBackup, storySaveManager].every(source => source.includes('sanitizeDownloadName('))) {
+  fail('download filename sanitization must have one tested owner');
+}
+if ([collectionBackup, storySaveManager].some(source => source.includes('function backupFileName('))
+  || !jsonDownload.includes('export function makeTimestampedBackupName(')
+  || ![collectionBackup, storySaveManager].every(source => source.includes('makeTimestampedBackupName('))) {
+  fail('timestamped bundle backup filenames must have one tested owner');
+}
+if ([editorBackup, storySaveManager].some(source => source.includes('function defaultName('))
+  || !jsonDownload.includes('export function makeDatedDefaultName(')
+  || !editorBackup.includes("makeDatedDefaultName('에디터 백업')")
+  || !storySaveManager.includes("makeDatedDefaultName('콘문학')")) {
+  fail('readable dated default names must have one tested owner');
+}
+if (!index.includes('./src/app.js?v=20260909-3')
+  || !index.includes('./src/library/library-workspace.js?v=20260909-3')
+  || !index.includes('./src/ui/action-dialogs.js?v=20260909-4')
+  || !index.includes('./src/story/story-save-manager.js?v=20260910-1')
+  || !index.includes('./src/collections/collection-backup.js?v=20260910-1')
+  || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
   fail('index.html dialog and story-save cache versions are not canonical');
 }
 if (!workspaceStyles.includes('overflow: hidden')
@@ -203,8 +233,8 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
   || !index.includes('./assets/styles/story-output-tools.css?v=20260908-2')
-  || !index.includes('./src/story-output-tools.js?v=20260908-5')
-  || !index.includes('./src/story/story-html-copy.js?v=20260908-1')) {
+  || !index.includes('./src/story-output-tools.js?v=20260909-3')
+  || !index.includes('./src/story/story-html-copy.js?v=20260909-2')) {
   fail('story output presentation must stay in its dedicated stylesheet');
 }
 if (storySaveManager.includes("document.createElement('style')")
@@ -215,14 +245,14 @@ if (storySaveManager.includes("document.createElement('style')")
   || !storySaveManager.includes('tools.append(save)')
   || !storySaveManager.includes('selectionTools.append(selectAll, clearAll, exportSelected, label)')
   || !index.includes('./assets/styles/story-save-manager.css?v=20260908-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260909-1')) {
+  || !index.includes('./src/story/story-save-manager.js?v=20260910-1')) {
   fail('story save manager presentation must stay in its dedicated stylesheet');
 }
 if (editorBackup.includes("document.createElement('style')")
   || !editorBackupStyles.includes('.editor-backup-dialog {')
   || !editorBackupStyles.includes('.editor-backup-warning-dialog .editor-backup-head strong {')
   || !index.includes('./assets/styles/editor-backup.css?v=20260908-1')
-  || !index.includes('./src/backup/editor-backup.js?v=20260908-3')) {
+  || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
   fail('editor backup presentation must stay in its dedicated stylesheet');
 }
 if (actionDialogs.includes("document.createElement('style')")
@@ -231,9 +261,29 @@ if (actionDialogs.includes("document.createElement('style')")
   || !actionDialogStyles.includes('.hhj-ui-dialog .danger-action {')
   || !actionDialogStyles.includes('.collection-backup-dialog {')
   || !index.includes('./assets/styles/action-dialogs.css?v=20260909-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260909-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260909-1')) {
+  || !index.includes('./src/ui/action-dialogs.js?v=20260909-4')
+  || !index.includes('./src/story/story-save-manager.js?v=20260910-1')) {
   fail('shared action dialog presentation must stay in its dedicated stylesheet');
+}
+const toastClients = [app, collectionBackup, editorBackup, storySaveManager, storyHtmlCopy];
+if (!toastUi.includes('export function showToast(message, duration = 2400)')
+  || !toastUi.includes('export function saveToastForReload(message)')
+  || !toastUi.includes('clearTimeout(hideTimer)')
+  || !toastClients.every(source => source.includes('ui/toast.js?v=20260909-2'))
+  || toastClients.some(source => /function\s+(?:toast|showToast)\s*\(/.test(source))
+  || ![collectionBackup, editorBackup, storySaveManager].every(source => source.includes('saveToastForReload('))
+  || [collectionBackup, editorBackup, storySaveManager].some(source => /sessionStorage\.(?:getItem|setItem|removeItem)\([^)]*toast/i.test(source))
+  || !app.includes(', 1800)')
+  || !storyHtmlCopy.includes(', 2600)')) {
+  fail('toast messages must share one timer owner while preserving feature durations');
+}
+if (app.includes('.innerHTML')
+  || app.includes('function escapeHtml(')
+  || app.includes('function escapeAttr(')
+  || !app.includes('button.append(packageName, packageCount)')
+  || !app.includes('button.append(collectionName, collectionCount)')
+  || !app.includes('card.append(thumbnail, conName)')) {
+  fail('app list labels and thumbnails must use DOM nodes instead of HTML string parsing');
 }
 if (!workspace.includes('viewTabs.addEventListener(CLOSE_ALL_EVENT, closeAllViews)')) {
   fail('workspace must own the close-all state mutation');

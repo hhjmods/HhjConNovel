@@ -1,4 +1,4 @@
-import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260908-4';
+import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260909-3';
 import { getOne, putOne } from './db.js';
 import {
   STORY_BLOCK_MIME,

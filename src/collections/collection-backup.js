@@ -1,44 +1,17 @@
 import { getAll, putMany } from '../db.js';
-import { downloadJson } from '../core/json-download.js?v=20260908-1';
+import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
+import { downloadJson, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
 import { exportCollection, importCollectionFile } from '../model.js?v=20260908-1';
+import { saveToastForReload } from '../ui/toast.js?v=20260909-2';
 
 const BUNDLE_FORMAT = 'hhjcon-collections';
 const BUNDLE_VERSION = 1;
-const STORY_FORMATS = new Set(['hhjcon-story-save', 'hhjcon-story-saves']);
-const EDITOR_FORMAT = 'hhjcon-editor-backup';
-const IMPORT_TOAST_KEY = 'hhjcon-collection-import-toast';
 
 const exportButton = document.getElementById('exportCollectionBtn');
 const importInput = document.getElementById('importCollectionInput');
-const toastElement = document.getElementById('toast');
 
 function mapById(items) {
   return new Map(items.map(item => [item.id, item]));
-}
-
-function safeFileName(name) {
-  return String(name || 'collection').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
-}
-
-function backupFileName() {
-  const now = new Date();
-  const pad = value => String(value).padStart(2, '0');
-  return `콘묶음_백업_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.hhjconset.json`;
-}
-
-function showToast(message) {
-  if (!toastElement) return;
-  toastElement.textContent = message;
-  toastElement.classList.add('show');
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toastElement.classList.remove('show'), 2400);
-}
-
-function restoreImportToast() {
-  const message = sessionStorage.getItem(IMPORT_TOAST_KEY);
-  if (!message) return;
-  sessionStorage.removeItem(IMPORT_TOAST_KEY);
-  setTimeout(() => showToast(message), 100);
 }
 
 function activeCollectionName() {
@@ -147,9 +120,9 @@ async function handleExport() {
 
     if (selected.length === 1) {
       const collection = selected[0];
-      downloadJson(`${safeFileName(collection.name)}.hhjconset.json`, exportCollection(collection, consById, packagesById));
+      downloadJson(`${sanitizeDownloadName(collection.name, 'collection')}.hhjconset.json`, exportCollection(collection, consById, packagesById));
     } else {
-      downloadJson(backupFileName(), {
+      downloadJson(makeTimestampedBackupName('콘묶음_백업', '.hhjconset.json'), {
         format: BUNDLE_FORMAT,
         version: BUNDLE_VERSION,
         exportedAt: new Date().toISOString(),
@@ -164,12 +137,8 @@ async function handleExport() {
 }
 
 function importData(data) {
-  if (STORY_FORMATS.has(data?.format)) {
-    throw new Error('해당 파일은 원고 백업파일입니다. 원고 불러오기를 이용해주세요.');
-  }
-  if (data?.format === EDITOR_FORMAT) {
-    throw new Error('해당 파일은 에디터 백업파일입니다. 에디터 백업 불러오기를 이용해주세요.');
-  }
+  const typeMessage = wrongBackupTypeMessage(data?.format, 'collection');
+  if (typeMessage) throw new Error(typeMessage);
   if (data?.format === BUNDLE_FORMAT) {
     if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.collections) || !data.collections.length) {
       throw new Error('지원하지 않는 콘묶음 백업 파일입니다.');
@@ -211,12 +180,11 @@ async function handleImport() {
 
   if (!imported.length) return;
 
-  sessionStorage.setItem(IMPORT_TOAST_KEY, `${imported.length}개 콘묶음을 불러왔습니다.`);
+  saveToastForReload(`${imported.length}개 콘묶음을 불러왔습니다.`);
   location.reload();
 }
 
 if (exportButton && importInput) {
   exportButton.addEventListener('click', handleExport);
   importInput.addEventListener('change', handleImport);
-  restoreImportToast();
 }

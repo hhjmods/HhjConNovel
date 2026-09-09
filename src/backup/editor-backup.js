@@ -1,5 +1,7 @@
 import { getAll, replaceStores } from '../db.js?v=20260906-1';
-import { downloadJson } from '../core/json-download.js?v=20260908-1';
+import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
+import { downloadJson, makeDatedDefaultName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
+import { saveToastForReload, showToast } from '../ui/toast.js?v=20260909-2';
 
 const FORMAT = 'hhjcon-editor-backup';
 const VERSION = 1;
@@ -10,31 +12,9 @@ const STORE_KEYS = {
   documents: 'id',
   meta: 'key'
 };
-const COLLECTION_FORMATS = new Set(['hhjcon-collection', 'hhjcon-collections']);
-const STORY_FORMATS = new Set(['hhjcon-story-save', 'hhjcon-story-saves']);
 const STORAGE_PREFIX = 'hhjcon-';
-const TOAST_KEY = 'hhjcon-editor-backup-toast';
 const backupButton = document.getElementById('editorBackupBtn');
 const restoreButton = document.getElementById('editorBackupRestoreBtn');
-const toast = document.getElementById('toast');
-
-function showToast(message) {
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2400);
-}
-
-function defaultName() {
-  const d = new Date();
-  const p = value => String(value).padStart(2, '0');
-  return `에디터 백업 ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}`;
-}
-
-function safeFileName(name) {
-  return String(name || '에디터 백업').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
-}
 
 function readEditorLocalStorage() {
   const data = {};
@@ -74,12 +54,8 @@ function validateStore(name, values) {
 }
 
 function parseBackup(data) {
-  if (COLLECTION_FORMATS.has(data?.format)) {
-    throw new Error('해당 파일은 콘묶음 백업파일입니다. 콘묶음 불러오기를 이용해주세요.');
-  }
-  if (STORY_FORMATS.has(data?.format)) {
-    throw new Error('해당 파일은 원고 백업파일입니다. 원고 불러오기를 이용해주세요.');
-  }
+  const typeMessage = wrongBackupTypeMessage(data?.format, 'editor');
+  if (typeMessage) throw new Error(typeMessage);
   if (!data || data.format !== FORMAT || Number(data.version) !== VERSION || !data.stores || typeof data.stores !== 'object') {
     throw new Error('정상적인 에디터 백업데이터 파일이 아닙니다. 에디터 백업 파일을 불러와주세요.');
   }
@@ -146,7 +122,7 @@ function openBackupDialog() {
   labelText.textContent = '저장할 백업 데이터의 이름을 입력해주세요';
   const input = document.createElement('input');
   input.type = 'text';
-  input.value = defaultName();
+  input.value = makeDatedDefaultName('에디터 백업');
   input.maxLength = 80;
   label.append(labelText, input);
   ui.body.append(description, label);
@@ -166,7 +142,7 @@ function openBackupDialog() {
     save.textContent = '저장 중...';
     try {
       const data = await captureBackup(name);
-      downloadJson(`${safeFileName(name)}.hhjconbackup.json`, data);
+      downloadJson(`${sanitizeDownloadName(name, '에디터 백업')}.hhjconbackup.json`, data);
       ui.dialog.close();
       showToast('에디터 백업 파일을 저장했습니다.');
     } catch (error) {
@@ -223,7 +199,7 @@ async function restoreFromFile(file) {
   const parsed = parseBackup(data);
   await replaceStores(parsed.stores);
   replaceEditorLocalStorage(parsed.localStorage);
-  sessionStorage.setItem(TOAST_KEY, `“${String(data.name || file.name)}” 에디터 백업을 불러왔습니다.`);
+  saveToastForReload(`“${String(data.name || file.name)}” 에디터 백업을 불러왔습니다.`);
   location.reload();
 }
 
@@ -245,9 +221,4 @@ if (backupButton && restoreButton) {
       alert(error.message || '에디터 백업 파일을 불러올 수 없습니다.');
     }
   });
-  const message = sessionStorage.getItem(TOAST_KEY);
-  if (message) {
-    sessionStorage.removeItem(TOAST_KEY);
-    setTimeout(() => showToast(message), 100);
-  }
 }

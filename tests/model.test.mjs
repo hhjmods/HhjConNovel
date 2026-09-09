@@ -95,6 +95,13 @@ test('normalizeSyncPayload rejects missing package and con identity fields', () 
   );
 });
 
+test('normalizeSyncPayload treats omitted package and con arrays as empty', () => {
+  const result = normalizeSyncPayload({ account: { id: 'empty-user' } });
+  assert.deepEqual(result.packages, []);
+  assert.deepEqual(result.cons, []);
+  assert.deepEqual(result.account, { id: 'empty-user' });
+});
+
 test('createCollection trims the name and rejects an empty name', () => {
   const result = createCollection('  새 콘묶음  ');
   assert.equal(result.name, '새 콘묶음');
@@ -138,6 +145,17 @@ test('preserveCollectionRefMeta keeps saved metadata when a con is no longer own
   };
   assert.equal(preserveCollectionRefMeta(original, new Map(), new Map()), original);
   assert.equal(original.refMeta.missing.packageName, '이전 묶음');
+});
+
+test('preserveCollectionRefMeta reuses the collection when owned metadata is already current', () => {
+  const meta = {
+    packageId: 'pkg', sourcePackageId: 'source-pkg', sourceNo: '42', name: '테스트 콘', packageName: '테스트 묶음'
+  };
+  const original = { ...collection(['owned']), refMeta: { owned: meta } };
+  const cons = new Map([['owned', { id: 'owned', packageId: 'pkg', sourceNo: '42', name: '테스트 콘' }]]);
+  const packages = new Map([['pkg', { id: 'pkg', sourcePackageId: 'source-pkg', name: '테스트 묶음' }]]);
+
+  assert.equal(preserveCollectionRefMeta(original, cons, packages), original);
 });
 
 test('reorderIds moves one or several ids while preserving story order', () => {
@@ -225,6 +243,19 @@ test('collection export preserves owned and missing con references', () => {
   assert.deepEqual(result.collection.items, ['owned', 'missing']);
   assert.deepEqual(result.refs.map(ref => ref.sourceNo), ['10', '99']);
   assert.deepEqual(result.packages.map(pkg => pkg.sourcePackageId), ['source-owned', 'source-missing']);
+});
+
+test('collection export emits one package row for cons from the same source package', () => {
+  const original = collection(['a', 'b']);
+  const cons = new Map([
+    ['a', { id: 'a', packageId: 'pkg', sourceNo: '1', name: 'A' }],
+    ['b', { id: 'b', packageId: 'pkg', sourceNo: '2', name: 'B' }]
+  ]);
+  const packages = new Map([['pkg', { id: 'pkg', sourcePackageId: 'source-pkg', name: '공통 묶음' }]]);
+
+  const result = exportCollection(original, cons, packages);
+  assert.equal(result.packages.length, 1);
+  assert.equal(result.packages[0].sourcePackageId, 'source-pkg');
 });
 
 test('collection import supports versions 1 and 2 and removes duplicate ids', () => {

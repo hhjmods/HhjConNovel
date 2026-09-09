@@ -1,8 +1,8 @@
 import { buildStoryHtmlSnapshot } from './story-html.js?v=20260907-1';
+import { showToast } from '../ui/toast.js?v=20260909-2';
 
 const storyList = document.getElementById('storyList');
 const toolbar = document.querySelector('.text-format-toolbar');
-const toastNode = document.getElementById('toast');
 
 if (storyList && toolbar) {
   const toggle = toolbar.querySelector('.story-html-toggle');
@@ -15,16 +15,7 @@ if (storyList && toolbar) {
   if (toggle) toolbar.insertBefore(copyButton, toggle);
   else toolbar.append(copyButton);
 
-  let toastTimer = null;
   let copying = false;
-
-  function showToast(message) {
-    if (!toastNode) return;
-    toastNode.textContent = message;
-    toastNode.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastNode.classList.remove('show'), 2600);
-  }
 
   function compactClipboardHtml(html) {
     const template = document.createElement('template');
@@ -131,7 +122,7 @@ if (storyList && toolbar) {
     try {
       const snapshot = await buildStoryHtmlSnapshot(storyList);
       if (!snapshot.html.trim()) {
-        showToast('복사할 원고가 없습니다.');
+        showToast('복사할 원고가 없습니다.', 2600);
         return;
       }
       const clipboardHtml = compactClipboardHtml(snapshot.html);
@@ -139,13 +130,13 @@ if (storyList && toolbar) {
       const copied = await copyStoryHtml(clipboardHtml, plain);
       if (!copied) throw new Error('clipboard copy failed');
       if (snapshot.missingConCount > 0) {
-        showToast(`작성내용을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`);
+        showToast(`작성내용을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`, 2600);
       } else {
-        showToast('작성내용을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.');
+        showToast('작성내용을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.', 2600);
       }
     } catch (error) {
       console.error('Story clipboard copy failed', error);
-      showToast('작성내용 복사에 실패했습니다. HTML 보기에서 내용을 확인해주세요.');
+      showToast('작성내용 복사에 실패했습니다. HTML 보기에서 내용을 확인해주세요.', 2600);
     } finally {
       copying = false;
       copyButton.disabled = false;

@@ -78,17 +78,19 @@ if (files.dragStart.includes('application/x-hhj')) {
   fail('src/library/library-con-drag-source.js bypasses centralized DnD MIME helpers');
 }
 
-const directAppImport = './app.js?v=20260908-4';
-for (const [path, source] of [
+const directAppImport = './app.js?v=20260909-3';
+const directAppClients = [
   ['src/story-insertion.js', files.insertion],
   ['src/story-con-run-end-drop.js', files.runEnd],
   ['src/story-slot-mode.js', files.slot],
   ['src/story-tail-blank-drop.js', files.tail],
   ['src/story-output-tools.js', files.outputTools]
-]) {
+];
+for (const [path, source] of directAppClients) {
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
+  if (!index.includes(`./${path}?v=20260909-3`)) fail(`index.html does not load the current ${path} cache version`);
 }
-if (!index.includes('./src/app.js?v=20260908-4')) fail('index.html app module version differs from DnD clients');
+if (!index.includes('./src/app.js?v=20260909-3')) fail('index.html app module version differs from DnD clients');
 
 if (!index.includes('./src/story-dnd-health.js?v=20260907-1')) fail('index.html does not load the passive DnD health module version');
 if (!index.includes('./src/story-drag-guard.js?v=20260906-15')) fail('index.html does not load the low-churn story drag guard version');

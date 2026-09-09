@@ -1,4 +1,4 @@
-import { commitCollectionDraft } from '../app.js?v=20260908-4';
+import { commitCollectionDraft } from '../app.js?v=20260909-3';
 import { planOrderedSelection } from '../core/selection.js?v=20260907-1';
 import { getAll } from '../db.js';
 import { reorderOrderedIds } from '../model.js?v=20260908-1';

@@ -1,5 +1,6 @@
 import { getAll, putMany } from '../db.js';
-import { exportCollection, importCollectionFile } from '../model.js?v=20260907-3';
+import { downloadJson } from '../core/json-download.js?v=20260908-1';
+import { exportCollection, importCollectionFile } from '../model.js?v=20260908-1';
 
 const BUNDLE_FORMAT = 'hhjcon-collections';
 const BUNDLE_VERSION = 1;
@@ -23,18 +24,6 @@ function backupFileName() {
   const now = new Date();
   const pad = value => String(value).padStart(2, '0');
   return `콘묶음_백업_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.hhjconset.json`;
-}
-
-function downloadJson(name, value) {
-  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
 }
 
 function showToast(message) {

@@ -12,13 +12,6 @@ if (storyList && toolbar) {
   copyButton.textContent = '작성내용 복사';
   copyButton.title = '현재 작성내용을 DC 글쓰기 에디터에 바로 붙여넣을 수 있는 형식으로 복사';
 
-  const style = document.createElement('style');
-  style.id = 'story-html-copy-style';
-  style.textContent = `
-.story-html-copy{margin-left:auto;white-space:nowrap}.text-format-toolbar>.story-html-copy+.story-html-toggle{margin-left:0}.text-format-toolbar.html-preview-active>.story-html-copy{opacity:1!important;pointer-events:auto!important}
-`;
-  document.head.append(style);
-
   if (toggle) toolbar.insertBefore(copyButton, toggle);
   else toolbar.append(copyButton);
 

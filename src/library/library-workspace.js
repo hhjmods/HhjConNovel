@@ -1,7 +1,7 @@
-import { commitCollectionDraft } from '../app.js?v=20260908-3';
+import { commitCollectionDraft } from '../app.js?v=20260908-4';
 import { planOrderedSelection } from '../core/selection.js?v=20260907-1';
 import { getAll } from '../db.js';
-import { reorderOrderedIds } from '../model.js?v=20260907-3';
+import { reorderOrderedIds } from '../model.js?v=20260908-1';
 
 const packageList = document.getElementById('packageList');
 const collectionList = document.getElementById('collectionList');

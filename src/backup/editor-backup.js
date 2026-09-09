@@ -1,4 +1,5 @@
 import { getAll, replaceStores } from '../db.js?v=20260906-1';
+import { downloadJson } from '../core/json-download.js?v=20260908-1';
 
 const FORMAT = 'hhjcon-editor-backup';
 const VERSION = 1;
@@ -33,18 +34,6 @@ function defaultName() {
 
 function safeFileName(name) {
   return String(name || '에디터 백업').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
-}
-
-function downloadJson(name, value) {
-  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
 }
 
 function readEditorLocalStorage() {
@@ -239,9 +228,6 @@ async function restoreFromFile(file) {
 }
 
 if (backupButton && restoreButton) {
-  const style = document.createElement('style');
-  style.textContent = '.editor-backup-dialog{width:min(620px,calc(100vw - 28px));padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009}.editor-backup-dialog::backdrop{background:#0009}.editor-backup-head,.editor-backup-footer{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.editor-backup-head{justify-content:space-between}.editor-backup-body{padding:16px;line-height:1.65}.editor-backup-body p{margin:0 0 12px}.editor-backup-name{display:flex;flex-direction:column;gap:7px;margin-top:18px}.editor-backup-name input{width:100%}.editor-backup-footer{justify-content:flex-end;border-top:1px solid var(--line);border-bottom:0}.editor-backup-warning-dialog .editor-backup-head strong{color:#ff9aa7}.editor-backup-warning-dialog .editor-backup-body p:last-child{margin-bottom:0}';
-  document.head.append(style);
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.accept = 'application/json,.json,.hhjconbackup';

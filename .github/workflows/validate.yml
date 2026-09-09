@@ -25,7 +25,7 @@ jobs:
           done < <(find src bridge scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
 
       - name: Run unit tests
-        run: node --test tests/model.test.mjs tests/selection.test.mjs tests/story-order.test.mjs
+        run: node --test
 
       - name: Check local entrypoint and import paths
         run: node scripts/validate-local-paths.mjs

@@ -1,4 +1,4 @@
-import { appendStoryTextBlock } from './app.js?v=20260908-3';
+import { appendStoryTextBlock } from './app.js?v=20260908-4';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260907-1';
@@ -15,13 +15,6 @@ let imageMemoLoaded = false;
 let imageMemoSaveTimer = null;
 let imageMemoSaveChain = Promise.resolve();
 const imageMemoEditedBeforeLoad = new Set();
-
-const style = document.createElement('style');
-style.id = 'story-output-tools-style';
-style.textContent = `
-.story-image-source{display:none!important}.story-image-placeholder{width:100%;display:inline-grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center;padding:7px 8px!important;background:rgba(255,184,77,.10)!important;border-color:#765d32!important}.story-image-placeholder>.story-drag-handle{grid-column:1;grid-row:1;min-width:24px;width:24px;align-self:stretch;cursor:grab;color:var(--muted)}.story-image-placeholder>.story-image-label{grid-column:2;grid-row:1;padding:8px 12px;border-radius:7px;background:rgba(255,184,77,.08);display:flex;flex-direction:column;gap:5px;text-align:center;color:#ffd58c}.story-image-placeholder>.story-image-label strong{font-weight:700}.story-image-placeholder>.story-image-label small{font-size:10px;line-height:1.4;font-weight:400;color:var(--muted)}.story-image-memo-input{width:min(100%,560px);align-self:center;padding:6px 8px;font-size:12px}.story-image-placeholder>.story-tools{grid-column:3;grid-row:1}.story-html-toggle{margin-left:auto;white-space:nowrap}.text-format-toolbar.html-preview-active>:not(.story-html-toggle){opacity:.4;pointer-events:none}.editor-panel.html-preview-mode>.story-list,.editor-panel.html-preview-mode>.story-drop-zone{display:none!important}.story-html-preview{flex:1;min-height:180px;margin:10px;padding:12px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:#0f141b;color:var(--text);font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;tab-size:2;user-select:text}.story-html-preview[hidden]{display:none!important}.story-detail-stats{min-height:34px;padding:7px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:12px}.story-detail-stats strong{color:var(--text);font-weight:600}:root[data-theme="light"] .story-image-placeholder{background:#fff8e8!important;border-color:#d7b66b!important}:root[data-theme="light"] .story-image-placeholder>.story-image-label{background:#fff2cf;color:#815800}:root[data-theme="light"] .story-html-preview{background:#fff;color:var(--text)}
-`;
-document.head.append(style);
 
 function queueImageMemoSave() {
   clearTimeout(imageMemoSaveTimer);

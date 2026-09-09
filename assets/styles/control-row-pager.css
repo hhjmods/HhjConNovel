@@ -1,0 +1,83 @@
+.story-header-edit-actions.hhj-control-row-paged,
+.text-format-toolbar.hhj-control-row-paged {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  align-items: stretch !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+  padding-right: 5px !important;
+}
+.story-header-edit-actions.hhj-control-row-paged:not(.has-pages),
+.text-format-toolbar.hhj-control-row-paged:not(.has-pages) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.hhj-control-row-viewport {
+  min-width: 0;
+  height: 32px;
+  overflow: hidden;
+  scroll-behavior: smooth;
+}
+.hhj-control-row-track {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 5px 6px;
+  min-width: 0;
+}
+.hhj-control-row-track > * { flex: 0 0 auto; }
+.story-header-edit-actions .hhj-control-row-track > .story-html-copy { margin-left: auto; }
+.hhj-control-row-nav {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: 20px;
+  min-width: 20px;
+}
+.hhj-control-row-nav[hidden] { display: none !important; }
+.hhj-control-row-nav button,
+.text-format-toolbar .hhj-control-row-nav button {
+  width: 20px;
+  min-width: 20px;
+  height: 15px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border-radius: 5px;
+  font-size: 9px;
+  line-height: 1;
+}
+.hhj-control-row-nav button:disabled { opacity: .3; }
+.library-heading {
+  flex: 1 1 38%;
+  min-width: 0;
+  overflow: hidden;
+}
+.library-title-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+.library-title-scroll > * { display: block; white-space: nowrap; }
+#selectionStatus { flex: 0 0 auto; white-space: nowrap; }
+.library-toolbar .toolbar-actions {
+  flex: 1 1 62%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.library-toolbar .toolbar-actions > * { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 900px) {
+  .story-header-edit-actions.hhj-control-row-paged,
+  .text-format-toolbar.hhj-control-row-paged {
+    height: auto !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .hhj-control-row-viewport { height: auto; overflow: visible; }
+  .hhj-control-row-nav { display: none !important; }
+}

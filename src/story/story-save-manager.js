@@ -1,4 +1,6 @@
 import { deleteOne, getAll, getOne, putOne } from '../db.js';
+import { downloadJson } from '../core/json-download.js?v=20260908-1';
+import { showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260909-1';
 
 const FORMAT = 'hhjcon-story-save';
 const VERSION = 1;
@@ -15,6 +17,7 @@ const DOCS = {
 };
 const HEIGHT_KEY = 'hhjcon-rich-text-heights-v1';
 const TOAST_KEY = 'hhjcon-story-save-toast';
+const STORY_WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
 const storyList = document.getElementById('storyList');
 const editorActions = document.querySelector('.editor-header > div:last-child');
 const clearButton = document.getElementById('clearStoryBtn');
@@ -30,17 +33,6 @@ function showToast(message) {
   toast.classList.add('show');
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2400);
-}
-
-function downloadJson(name, value) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 function defaultName() {
@@ -211,7 +203,12 @@ function doc(id, items) {
 
 async function loadSave(save) {
   const current = await getOne('documents', 'current');
-  if (current?.items?.length && !confirm('현재 작성 중인 원고가 선택한 저장 원고로 교체됩니다.\n남겨둘 현재 버전이 있다면 먼저 원고 저장을 해주세요.\n\n계속 불러올까요?')) return;
+  if (current?.items?.length) {
+    const ok = await showConfirm('현재 작성 중인 원고가 선택한 저장 원고로 교체됩니다.\n남겨둘 현재 버전이 있다면 먼저 원고 저장을 해주세요.\n\n계속 불러올까요?', {
+      title: '원고 불러오기', confirmText: '불러오기', tone: 'warning'
+    });
+    if (!ok) return;
+  }
   await new Promise(resolve => setTimeout(resolve, 220));
   const cons = await getAll('cons');
   const byId = new Map(cons.map(con => [con.id, con]));
@@ -236,13 +233,21 @@ async function loadSave(save) {
 }
 
 async function saveCurrent() {
-  const saves = await getSaves();
-  const input = prompt('저장할 콘문학 이름을 입력하세요.', defaultName());
+  const input = await showPrompt('저장할 콘문학 이름을 입력하세요.', defaultName(), {
+    title: '원고 저장', label: '원고 이름', confirmText: '저장', maxLength: 80,
+    requiredMessage: '콘문학 이름을 입력하세요.', note: STORY_WARNING
+  });
   if (input == null) return false;
   const name = input.trim();
   if (!name) return alert('콘문학 이름을 입력하세요.'), false;
+  const saves = await getSaves();
   const oldSave = saves.find(save => save.name === name) || null;
-  if (oldSave && !confirm(`“${name}” 저장 원고가 이미 있습니다.\n현재 내용으로 덮어쓸까요?`)) return false;
+  if (oldSave) {
+    const overwrite = await showConfirm(`“${name}” 저장 원고가 이미 있습니다.\n현재 내용으로 덮어쓸까요?`, {
+      title: '원고 덮어쓰기', confirmText: '덮어쓰기', tone: 'warning'
+    });
+    if (!overwrite) return false;
+  }
   try {
     await putOne('documents', await captureSave(name, oldSave));
     showToast(oldSave ? `“${name}” 원고를 덮어썼습니다.` : `“${name}” 원고를 저장했습니다.`);
@@ -280,7 +285,7 @@ function makeDialog() {
   const selectAll = document.createElement('button'); selectAll.type = 'button'; selectAll.textContent = '전체 선택';
   const clearAll = document.createElement('button'); clearAll.type = 'button'; clearAll.textContent = '선택 해제';
   const exportSelected = document.createElement('button'); exportSelected.type = 'button'; exportSelected.className = 'primary'; exportSelected.textContent = '선택 원고 내보내기';
-  const label = document.createElement('label'); label.className = 'file-button'; label.textContent = '원고 불러오기';
+  const label = document.createElement('label'); label.className = 'file-button'; label.textContent = '원고 백업 불러오기';
   const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = 'application/json,.json,.hhjconstory,.hhjconstories';
   label.append(input);
   selectionTools.append(selectAll, clearAll, exportSelected, label);
@@ -316,7 +321,10 @@ async function renderList(list) {
     load.addEventListener('click', () => loadSave(save).catch(error => alert(`원고를 불러올 수 없습니다.\n${error.message || error}`)));
     exp.addEventListener('click', () => downloadJson(`${safeName(save.name)}.hhjconstory.json`, exportSave(save)));
     del.addEventListener('click', async () => {
-      if (!confirm(`“${save.name}” 저장 원고를 삭제할까요?`)) return;
+      const ok = await showConfirm(`“${save.name}” 저장 원고를 삭제할까요?`, {
+        title: '저장 원고 삭제', confirmText: '삭제', danger: true
+      });
+      if (!ok) return;
       await deleteOne('documents', save.id); showToast(`“${save.name}” 저장 원고를 삭제했습니다.`); await renderList(list);
     });
   });
@@ -360,9 +368,6 @@ async function openManager() {
 }
 
 if (storyList && editorActions) {
-  const style = document.createElement('style');
-  style.textContent = '.editor-header>div:last-child{flex-wrap:wrap;justify-content:flex-end}.story-save-dialog{width:min(820px,calc(100vw - 28px));max-height:82vh;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009}.story-save-dialog::backdrop{background:#0009}.story-save-head,.story-save-tools,.story-save-selection-tools{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.story-save-head{justify-content:space-between}.story-save-tools,.story-save-selection-tools{flex-wrap:wrap}.story-save-selection-tools input{display:none}.story-save-selection-tools{padding-top:8px;padding-bottom:8px}.story-save-list{max-height:58vh;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px}.story-save-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}.story-save-check{width:18px;height:18px;margin:0}.story-save-info{min-width:0;display:flex;flex-direction:column;gap:4px}.story-save-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.story-save-info small{color:var(--muted)}.story-save-actions{display:flex;flex-wrap:wrap;gap:6px}.story-save-empty{padding:28px;text-align:center;color:var(--muted)}.story-save-warning{padding:10px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.5}@media(max-width:650px){.story-save-row{grid-template-columns:auto minmax(0,1fr)}.story-save-actions{grid-column:1/-1}}';
-  document.head.append(style);
   const save = document.createElement('button'); save.type = 'button'; save.className = 'small'; save.textContent = '원고 저장';
   const manage = document.createElement('button'); manage.type = 'button'; manage.className = 'small'; manage.textContent = '원고 목록';
   editorActions.insertBefore(save, clearButton || null); editorActions.insertBefore(manage, clearButton || null);

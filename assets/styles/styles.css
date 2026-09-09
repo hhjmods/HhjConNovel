@@ -14,6 +14,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
+html.hhj-app-booting body { visibility: hidden; }
 button, input, textarea { font: inherit; }
 button, .file-button { border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 9px; padding: 8px 11px; cursor: pointer; }
 button:hover, .file-button:hover { border-color: #53627a; }
@@ -60,7 +61,7 @@ body.workspace-resizing { cursor: col-resize; user-select: none; }
 .icon-button { min-width: 30px; padding: 4px 7px; background: transparent; border-color: transparent; }
 .library-panel { display: flex; flex-direction: column; }
 .library-toolbar { min-height: 58px; }
-.library-toolbar > div:first-child { display: flex; gap: 10px; align-items: baseline; }
+.library-heading { display: flex; gap: 10px; align-items: baseline; }
 .toolbar-actions { display: flex; gap: 6px; }
 .con-grid { padding: 12px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); align-content: start; gap: 9px; flex: 1; }
 .con-card { min-height: 132px; padding: 7px; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; gap: 6px; background: #151b25; user-select: none; }

@@ -41,6 +41,8 @@
 
 :root[data-theme="light"] .library-view-tab { background: #f1f4f8; }
 :root[data-theme="light"] .library-view-tab.active { border-color: #9eacc0; }
+:root[data-theme="light"] .library-view-tab .library-view-tab-main,
+:root[data-theme="light"] .library-view-tab .library-view-tab-close { background: transparent; }
 :root[data-theme="light"] .library-view-tab.drop-target { background: #e3ebfb; }
 :root[data-theme="light"] .collection-order-editing { outline-color: #7894c4; }
 :root[data-theme="light"] .story-insert-slot.drop-target { background: #dce8ff; }

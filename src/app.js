@@ -6,7 +6,7 @@ import {
   normalizeSyncPayload,
   preserveCollectionRefMeta,
   reorderIds
-} from './model.js?v=20260907-3';
+} from './model.js?v=20260908-1';
 import { requestDcSync } from './integrations/dc-adapter.js?v=20260907-1';
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260907-3';

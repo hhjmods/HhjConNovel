@@ -1,0 +1,120 @@
+.editor-header > div:last-child {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.story-save-dialog {
+  width: min(820px, calc(100vw - 28px));
+  max-height: 82vh;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 22px 70px #0009;
+}
+
+.story-save-dialog::backdrop {
+  background: #0009;
+}
+
+.story-save-head,
+.story-save-tools,
+.story-save-selection-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.story-save-head {
+  justify-content: space-between;
+}
+
+.story-save-tools,
+.story-save-selection-tools {
+  flex-wrap: wrap;
+}
+
+.story-save-selection-tools {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.story-save-selection-tools input {
+  display: none;
+}
+
+.story-save-list {
+  display: flex;
+  max-height: 58vh;
+  padding: 10px;
+  overflow: auto;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-save-row {
+  display: grid;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-2);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.story-save-check {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.story-save-info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.story-save-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.story-save-info small {
+  color: var(--muted);
+}
+
+.story-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.story-save-empty {
+  padding: 28px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.story-save-warning {
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 650px) {
+  .story-save-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .story-save-actions {
+    grid-column: 1 / -1;
+  }
+}

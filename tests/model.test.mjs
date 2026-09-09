@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   COLLECTION_FILE_FORMAT,
   COLLECTION_FILE_VERSION,
+  COLLECTION_NAME_MAX_LENGTH,
   addUniqueIds,
   applyCollectionItemDraft,
   createCollection,
@@ -30,6 +31,14 @@ function collection(items = ['a', 'b', 'c', 'd']) {
 
 test('makeStableConId uses package id and sourceNo as the stable identity', () => {
   assert.equal(makeStableConId(12, 34), 'dccon:12:34');
+});
+
+test('createCollection enforces the collection name length limit', () => {
+  assert.equal(createCollection('가'.repeat(COLLECTION_NAME_MAX_LENGTH)).name.length, COLLECTION_NAME_MAX_LENGTH);
+  assert.throws(
+    () => createCollection('가'.repeat(COLLECTION_NAME_MAX_LENGTH + 1)),
+    new RegExp(`최대 ${COLLECTION_NAME_MAX_LENGTH}자`)
+  );
 });
 
 test('normalizeSyncPayload normalizes ids and derives a stable con id', () => {
@@ -235,6 +244,15 @@ test('collection import supports versions 1 and 2 and removes duplicate ids', ()
     collection: { name: '구버전', items: ['old'] }
   });
   assert.deepEqual(versionOne.items, ['old']);
+});
+
+test('collection import truncates an overlong external name', () => {
+  const result = importCollectionFile({
+    format: COLLECTION_FILE_FORMAT,
+    version: 2,
+    collection: { name: '가'.repeat(COLLECTION_NAME_MAX_LENGTH + 10), items: [] }
+  });
+  assert.equal(result.name, '가'.repeat(COLLECTION_NAME_MAX_LENGTH));
 });
 
 test('collection import rejects unsupported formats and versions', () => {

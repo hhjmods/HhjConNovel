@@ -1,48 +1,14 @@
-import { getAll, getOne } from '../db.js';
+import { COLLECTION_NAME_MAX_LENGTH } from '../model.js?v=20260908-1';
 import {
   clearCurrentStory,
   createNamedCollection,
   deleteCollectionById,
   hasCurrentStoryItems
-} from '../app.js?v=20260908-3';
+} from '../app.js?v=20260908-4';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
-const STORY_WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
-const nativePrompt = window.prompt.bind(window);
-const nativeConfirm = window.confirm.bind(window);
-let replaying = false;
 let alertChain = Promise.resolve();
-
-function installStyles() {
-  if (document.getElementById('hhjcon-ui-dialog-style')) return;
-  const style = document.createElement('style');
-  style.id = 'hhjcon-ui-dialog-style';
-  style.textContent = `
-.hhj-ui-dialog{width:min(620px,calc(100vw - 28px));max-height:min(82vh,720px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);box-shadow:0 22px 70px #0009;overflow:hidden}
-.hhj-ui-dialog::backdrop{background:#0009}
-.hhj-ui-dialog-head,.hhj-ui-dialog-footer{display:flex;align-items:center;gap:8px;padding:12px 14px}
-.hhj-ui-dialog-head{justify-content:space-between;border-bottom:1px solid var(--line)}
-.hhj-ui-dialog-head strong{font-size:14px}
-.hhj-ui-dialog-body{padding:16px;overflow:auto;line-height:1.65}
-.hhj-ui-dialog-message{margin:0;white-space:pre-line;overflow-wrap:anywhere}
-.hhj-ui-dialog-field{display:flex;flex-direction:column;gap:7px;margin-top:14px}
-.hhj-ui-dialog-field>span{font-size:12px;color:var(--muted)}
-.hhj-ui-dialog-field input{width:100%;min-width:0}
-.hhj-ui-dialog-note{margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.55;white-space:pre-line}
-.hhj-ui-dialog-error{min-height:18px;margin:6px 0 0;color:#ff9aa7;font-size:12px}
-.hhj-ui-dialog-footer{justify-content:flex-end;border-top:1px solid var(--line)}
-.hhj-ui-dialog.danger .hhj-ui-dialog-head strong{color:#ff9aa7}
-.hhj-ui-dialog.warning .hhj-ui-dialog-head strong{color:#ffd08a}
-.hhj-ui-dialog .danger-action{background:#74313b;border-color:#a34a58;color:#fff}
-.hhj-ui-dialog .danger-action:hover{border-color:#d16a79}
-.editor-backup-dialog,.story-save-dialog,.collection-backup-dialog{border-color:var(--line)!important;border-radius:12px!important;background:var(--panel)!important;color:var(--text)!important;box-shadow:0 22px 70px #0009!important}
-.editor-backup-dialog::backdrop,.story-save-dialog::backdrop,.collection-backup-dialog::backdrop{background:#0009!important}
-.editor-backup-head,.story-save-head,.collection-backup-header{padding:12px 14px!important;border-bottom:1px solid var(--line)!important}
-.editor-backup-footer,.collection-backup-footer{padding:12px 14px!important;border-top:1px solid var(--line)!important}
-`;
-  document.head.append(style);
-}
 
 function createDialog(title, tone = '') {
   const dialog = document.createElement('dialog');
@@ -99,7 +65,7 @@ function showAlert(message, options = {}) {
   });
 }
 
-function showConfirm(message, options = {}) {
+export function showConfirm(message, options = {}) {
   const { dialog, body, footer } = createDialog(options.title || '확인', options.tone || (options.danger ? 'danger' : ''));
   body.append(messageNode(message));
   const cancel = document.createElement('button');
@@ -119,7 +85,7 @@ function showConfirm(message, options = {}) {
   });
 }
 
-function showPrompt(message, defaultValue = '', options = {}) {
+export function showPrompt(message, defaultValue = '', options = {}) {
   const { dialog, body, footer } = createDialog(options.title || '입력');
   body.append(messageNode(message));
   const field = document.createElement('label');
@@ -207,60 +173,15 @@ sessionStorage.removeItem(PENDING_ALERT_KEY);
 window.alert = message => enqueueAlert(message);
 restoredAlerts.forEach(item => enqueueAlert(item.message));
 
-window.hhjUiAlert = showAlert;
-window.hhjUiConfirm = showConfirm;
-window.hhjUiPrompt = showPrompt;
-
-function armOneShot(kind, value) {
-  const native = kind === 'prompt' ? nativePrompt : nativeConfirm;
-  const wrapper = () => {
-    if (window[kind] === wrapper) window[kind] = native;
-    return value;
-  };
-  window[kind] = wrapper;
-  setTimeout(() => { if (window[kind] === wrapper) window[kind] = native; }, 10000);
-}
-
-function replay(button, answers = {}) {
-  if (Object.hasOwn(answers, 'prompt')) armOneShot('prompt', answers.prompt);
-  if (Object.hasOwn(answers, 'confirm')) armOneShot('confirm', answers.confirm);
-  replaying = true;
-  try {
-    button.click();
-  } finally {
-    replaying = false;
-  }
-}
-
-function defaultStoryName() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return `콘문학 ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}`;
-}
-
-async function currentStoryHasItems() {
-  const current = await getOne('documents', 'current');
-  return Boolean(current?.items?.length);
-}
-
-async function storySaveExists(name) {
-  const documents = await getAll('documents');
-  return documents.some(item => item?.format === 'hhjcon-story-save' && String(item.name || '') === name);
-}
-
-installStyles();
-
 document.addEventListener('click', async event => {
-  if (replaying) return;
   const button = event.target.closest('button');
   if (!button) return;
-  const text = button.textContent.trim();
   let task = null;
 
   if (button.id === 'newCollectionBtn') {
     task = async () => {
       const name = await showPrompt('새 콘묶음 이름을 입력하세요.', '', {
-        title: '새 콘묶음', label: '콘묶음 이름', confirmText: '만들기', maxLength: 80,
+        title: '새 콘묶음', label: `콘묶음 이름 (최대 ${COLLECTION_NAME_MAX_LENGTH}자)`, confirmText: '만들기', maxLength: COLLECTION_NAME_MAX_LENGTH,
         requiredMessage: '콘묶음 이름을 입력하세요.', note: COLLECTION_WARNING
       });
       if (name == null) return;
@@ -283,39 +204,6 @@ document.addEventListener('click', async event => {
         title: '원고 비우기', confirmText: '비우기', danger: true
       });
       if (ok) await clearCurrentStory();
-    };
-  } else if ((text === '원고 저장' && button.closest('.editor-header')) || (text === '현재 원고 저장' && button.closest('.story-save-dialog'))) {
-    task = async () => {
-      const value = await showPrompt('저장할 콘문학 이름을 입력하세요.', defaultStoryName(), {
-        title: '원고 저장', label: '원고 이름', confirmText: '저장', maxLength: 80,
-        requiredMessage: '콘문학 이름을 입력하세요.', note: STORY_WARNING
-      });
-      if (value == null) return;
-      const name = value.trim();
-      const duplicate = await storySaveExists(name);
-      if (duplicate) {
-        const overwrite = await showConfirm(`“${name}” 저장 원고가 이미 있습니다.\n현재 내용으로 덮어쓸까요?`, {
-          title: '원고 덮어쓰기', confirmText: '덮어쓰기', tone: 'warning'
-        });
-        if (!overwrite) return;
-      }
-      replay(button, duplicate ? { prompt: name, confirm: true } : { prompt: name });
-    };
-  } else if (text === '불러오기' && button.closest('.story-save-actions')) {
-    task = async () => {
-      if (!await currentStoryHasItems()) return replay(button);
-      const ok = await showConfirm('현재 작성 중인 원고가 선택한 저장 원고로 교체됩니다.\n남겨둘 현재 버전이 있다면 먼저 원고 저장을 해주세요.\n\n계속 불러올까요?', {
-        title: '원고 불러오기', confirmText: '불러오기', tone: 'warning'
-      });
-      if (ok) replay(button, { confirm: true });
-    };
-  } else if (text === '삭제' && button.closest('.story-save-actions')) {
-    task = async () => {
-      const name = button.closest('.story-save-row')?.querySelector('.story-save-info strong')?.textContent?.trim() || '선택한 원고';
-      const ok = await showConfirm(`“${name}” 저장 원고를 삭제할까요?`, {
-        title: '저장 원고 삭제', confirmText: '삭제', danger: true
-      });
-      if (ok) replay(button, { confirm: true });
     };
   }
 

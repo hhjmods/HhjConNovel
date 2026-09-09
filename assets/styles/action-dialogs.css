@@ -1,0 +1,128 @@
+.hhj-ui-dialog {
+  width: min(620px, calc(100vw - 28px));
+  max-height: min(82vh, 720px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 22px 70px #0009;
+}
+
+.hhj-ui-dialog::backdrop {
+  background: #0009;
+}
+
+.hhj-ui-dialog-head,
+.hhj-ui-dialog-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.hhj-ui-dialog-head {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.hhj-ui-dialog-head strong {
+  font-size: 14px;
+}
+
+.hhj-ui-dialog-body {
+  padding: 16px;
+  overflow: auto;
+  line-height: 1.65;
+}
+
+.hhj-ui-dialog-message {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.hhj-ui-dialog-field {
+  display: flex;
+  margin-top: 14px;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.hhj-ui-dialog-field > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hhj-ui-dialog-field input {
+  width: 100%;
+  min-width: 0;
+}
+
+.hhj-ui-dialog-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.hhj-ui-dialog-error {
+  min-height: 18px;
+  margin: 6px 0 0;
+  color: #ff9aa7;
+  font-size: 12px;
+}
+
+.hhj-ui-dialog-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+}
+
+.hhj-ui-dialog.danger .hhj-ui-dialog-head strong {
+  color: #ff9aa7;
+}
+
+.hhj-ui-dialog.warning .hhj-ui-dialog-head strong {
+  color: #ffd08a;
+}
+
+.hhj-ui-dialog .danger-action {
+  border-color: #a34a58;
+  background: #74313b;
+  color: #fff;
+}
+
+.hhj-ui-dialog .danger-action:hover {
+  border-color: #d16a79;
+}
+
+.editor-backup-dialog,
+.story-save-dialog,
+.collection-backup-dialog {
+  border-color: var(--line) !important;
+  border-radius: 12px !important;
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  box-shadow: 0 22px 70px #0009 !important;
+}
+
+.editor-backup-dialog::backdrop,
+.story-save-dialog::backdrop,
+.collection-backup-dialog::backdrop {
+  background: #0009 !important;
+}
+
+.editor-backup-head,
+.story-save-head,
+.collection-backup-header {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+
+.editor-backup-footer,
+.collection-backup-footer {
+  padding: 12px 14px !important;
+  border-top: 1px solid var(--line) !important;
+}

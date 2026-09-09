@@ -1,5 +1,6 @@
 export const COLLECTION_FILE_FORMAT = 'hhjcon-collection';
 export const COLLECTION_FILE_VERSION = 2;
+export const COLLECTION_NAME_MAX_LENGTH = 40;
 
 export function makeId(prefix = 'id') {
   return `${prefix}_${crypto.randomUUID()}`;
@@ -46,6 +47,9 @@ export function normalizeSyncPayload(payload) {
 export function createCollection(name) {
   const trimmed = String(name || '').trim();
   if (!trimmed) throw new Error('콘묶음 이름을 입력하세요.');
+  if (trimmed.length > COLLECTION_NAME_MAX_LENGTH) {
+    throw new Error(`콘묶음 이름은 최대 ${COLLECTION_NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+  }
   return { id: makeId('collection'), name: trimmed, items: [], refMeta: {}, createdAt: Date.now(), updatedAt: Date.now() };
 }
 
@@ -190,7 +194,8 @@ export function importCollectionFile(data) {
     throw new Error('지원하지 않는 콘묶음 파일입니다.');
   }
 
-  const name = String(data.collection?.name || '가져온 콘묶음').trim() || '가져온 콘묶음';
+  const rawName = String(data.collection?.name || '가져온 콘묶음').trim() || '가져온 콘묶음';
+  const name = rawName.slice(0, COLLECTION_NAME_MAX_LENGTH);
   const items = Array.isArray(data.collection?.items)
     ? [...new Set(data.collection.items.filter(id => typeof id === 'string'))]
     : [];

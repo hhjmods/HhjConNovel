@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'hhjcon-workspace-split-ratio';
 const DEFAULT_RATIO = 0.5;
-const MIN_RATIO = 0.2;
-const MAX_RATIO = 0.8;
+const MIN_RATIO = 0.3;
+const MAX_RATIO = 0.7;
 
 const layout = document.querySelector('.layout');
 const libraryPanel = document.querySelector('.library-panel');
@@ -18,8 +18,9 @@ if (layout && libraryPanel && editorPanel && splitter) {
 
   function applyRatio(value, persist = true) {
     ratio = clampRatio(value);
-    layout.style.setProperty('--library-share', `${ratio}fr`);
-    layout.style.setProperty('--editor-share', `${1 - ratio}fr`);
+    const libraryWeight = Math.round(ratio * 1000);
+    layout.style.setProperty('--library-share', `${libraryWeight}fr`);
+    layout.style.setProperty('--editor-share', `${1000 - libraryWeight}fr`);
     splitter.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
     if (persist) localStorage.setItem(STORAGE_KEY, String(ratio));
   }

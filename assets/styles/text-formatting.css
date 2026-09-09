@@ -10,3 +10,20 @@
 .rich-text-editor:empty::before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; }
 .story-break.rich-text-row > .rich-text-editor { display: none !important; }
 @media (max-width: 760px) { .text-format-toolbar { align-items: stretch; } .text-format-toolbar .format-color { flex: 1 0 auto; } }
+
+
+.format-color-popup { position: fixed; z-index: 2147483000; width: 260px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #171d27; color: var(--text); box-shadow: 0 8px 28px rgba(0, 0, 0, .35); }
+.format-color-popup[hidden] { display: none !important; }
+.format-color-popup-title { display: block; margin-bottom: 8px; font-size: 12px; }
+.format-color-sv { position: relative; width: 100%; height: 150px; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; cursor: crosshair; touch-action: none; }
+.format-color-sv-marker { position: absolute; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, .8); transform: translate(-50%, -50%); pointer-events: none; }
+.format-color-hue { position: relative; width: 100%; height: 18px; margin: 9px 0 8px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 999px; background: linear-gradient(to right, #f00 0%, #ff0 16.666%, #0f0 33.333%, #0ff 50%, #00f 66.666%, #f0f 83.333%, #f00 100%); cursor: pointer; touch-action: none; }
+.format-color-hue-marker { position: absolute; top: 50%; left: 0; width: 12px; height: 22px; border: 2px solid #fff; border-radius: 5px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .8); transform: translate(-50%, -50%); pointer-events: none; }
+.format-color-popup-controls { display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 8px; }
+.format-color-preview { width: 38px; height: 34px; border: 1px solid var(--line); border-radius: 6px; }
+.format-color-popup-hex { min-width: 0; height: 34px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #121720; color: var(--text); font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+.format-color-popup-hex.invalid { border-color: #d85757; }
+.format-color-popup-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 9px; }
+.format-color-popup-actions button { min-height: 30px; padding: 5px 10px; border-radius: 7px; font-size: 12px; }
+:root[data-theme="light"] .format-color-popup { background: #fff; color: #1f2937; }
+:root[data-theme="light"] .format-color-popup-hex { background: #fff; color: #1f2937; }

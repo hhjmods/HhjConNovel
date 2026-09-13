@@ -75,8 +75,6 @@ function installPager(row) {
   const resizeObserver = new ResizeObserver(scheduleMeasure);
   resizeObserver.observe(row);
   resizeObserver.observe(track);
-  const mutationObserver = new MutationObserver(scheduleMeasure);
-  mutationObserver.observe(track, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
   desktopQuery.addEventListener?.('change', scheduleMeasure);
   scheduleMeasure();
 }

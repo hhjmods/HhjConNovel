@@ -77,8 +77,7 @@ if (storyList) {
     storyList.querySelectorAll(':scope > .story-con').forEach(decorateRow);
   }
 
-  const observer = new MutationObserver(decorateStory);
-  observer.observe(storyList, { childList: true });
+  document.addEventListener('hhjcon:story-rendered', decorateStory);
 
   getOne('documents', DOC_ID).then(saved => {
     if (saved?.items && typeof saved.items === 'object') displayDoc = saved;

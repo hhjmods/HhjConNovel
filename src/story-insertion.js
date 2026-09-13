@@ -1,4 +1,4 @@
-import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260909-3';
+import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260913-9';
 import { getOne, putOne } from './db.js';
 import {
   STORY_BLOCK_MIME,
@@ -123,10 +123,7 @@ if (storyList && editorActions) {
     return true;
   }
 
-  const observer = new MutationObserver(() => decorateStory());
-
   function decorateStory() {
-    observer.disconnect();
     storyList.querySelectorAll(':scope > .story-insert-slot').forEach(slot => slot.remove());
     const items = [...storyList.querySelectorAll(':scope > .story-item')];
     items.forEach(row => {
@@ -153,8 +150,9 @@ if (storyList && editorActions) {
         tail.textContent = items.length ? '여기에 놓으면 맨 뒤에 삽입' : '여기에 콘을 놓아 삽입';
       }
     }
-    observer.observe(storyList, { childList: true });
   }
+
+  document.addEventListener('hhjcon:story-rendered', decorateStory);
 
   async function migrateLegacyBreaks() {
     const story = await getOne('documents', 'current');
@@ -180,6 +178,5 @@ if (storyList && editorActions) {
 
   breakButton.addEventListener('click', async () => {
     await appendStoryTextBlock(BREAK_SENTINEL);
-    decorateStory();
   });
 }

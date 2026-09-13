@@ -60,6 +60,11 @@ test('planStoryItemReorder returns null when no requested item exists', () => {
   assert.equal(planStoryItemReorder(storyItems(), ['missing'], 'b'), null);
 });
 
+test('planStoryItemReorder ignores a drop before a moving item', () => {
+  assert.equal(planStoryItemReorder(storyItems(), ['b'], 'b'), null);
+  assert.equal(planStoryItemReorder(storyItems(), ['b', 'c'], 'c'), null);
+});
+
 test('planStoryItemReorder does not mutate the source array', () => {
   const original = storyItems();
   const snapshot = [...original];

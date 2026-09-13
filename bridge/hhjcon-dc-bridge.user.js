@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.6.3
+// @version      0.6.10
 // @description  HhjConNovel의 디시콘 동기화와 DC 글쓰기 붙여넣기를 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
@@ -20,8 +20,9 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.6.3';
+  const VERSION = '0.6.10';
   const MAX_PAGE = 30;
+  const DC_HTML_LIMIT = 65535;
   const CI_CACHE_KEY = 'hhjcon-dc-ci-c';
   const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const PAGE_ORIGIN = location.origin;
@@ -136,6 +137,8 @@
     let fetchedAt = 0;
     let scheduleTimer = null;
     let lastWarnAt = 0;
+    let activeEditor = null;
+    let usageNode = null;
 
     function editorDocuments() {
       const docs = [];
@@ -188,12 +191,51 @@
     function dcConTargets() {
       const targets = [];
       editorDocuments().forEach(doc => {
-        doc.querySelectorAll('img.written_dccon').forEach(image => {
+        doc.querySelectorAll('img.written_dccon.hhjcon-bridge-dccon').forEach(image => {
           const sourceNo = readSourceNo(image.getAttribute('src') || '').toLowerCase();
           if (sourceNo) targets.push({ image, sourceNo });
         });
       });
       return targets;
+    }
+
+    function claimPasteEditor() {
+      for (const doc of editorDocuments()) {
+        const marker = doc.querySelector('.hhjcon-bridge-paste');
+        if (!marker) continue;
+        const editor = marker.closest('.note-editable');
+        marker.classList.remove('hhjcon-bridge-paste');
+        if (!marker.className) marker.removeAttribute('class');
+        return editor;
+      }
+      return null;
+    }
+
+    function updateUsage() {
+      if (!activeEditor?.isConnected || !document.body) return;
+      if (!usageNode) {
+        usageNode = document.createElement('div');
+        usageNode.title = 'DC에 제출되는 현재 편집기 HTML 길이';
+        usageNode.style.cssText = [
+          'position:fixed', 'right:18px', 'bottom:18px', 'z-index:2147483647',
+          'padding:9px 12px', 'border-radius:8px', 'font:12px/1.4 "Malgun Gothic",sans-serif',
+          'color:#fff', 'box-shadow:0 4px 16px rgba(0,0,0,.25)', 'pointer-events:none'
+        ].join(';');
+        document.body.append(usageNode);
+      }
+      let count = activeEditor.innerHTML.length;
+      activeEditor.querySelectorAll('img.written_dccon[title=""]').forEach(image => {
+        count += (image.getAttribute('alt') || '').length;
+      });
+      const over = count > DC_HTML_LIMIT;
+      usageNode.textContent = `HhjConNovel · DC HTML ${count.toLocaleString('ko-KR')} / ${DC_HTML_LIMIT.toLocaleString('ko-KR')}자`;
+      usageNode.style.background = over ? '#b42318' : '#263244';
+    }
+
+    function clearEditorOnlyConState() {
+      activeEditor?.querySelectorAll('img.written_dccon[data-dcconoverstatus]').forEach(image => {
+        image.removeAttribute('data-dcconoverstatus');
+      });
     }
 
     async function refreshDetailMap() {
@@ -235,8 +277,14 @@
     }
 
     function fillDetails() {
+      activeEditor = claimPasteEditor() || activeEditor;
       const targets = dcConTargets();
-      if (!targets.length) return;
+      if (targets.length && !activeEditor) activeEditor = targets[0].image.closest('.note-editable');
+      clearEditorOnlyConState();
+      if (!targets.length) {
+        updateUsage();
+        return;
+      }
       const detailMap = currentDetailMap();
       let fixed = 0;
       let unresolved = 0;
@@ -251,7 +299,10 @@
           image.setAttribute('detail', String(detailId));
           fixed += 1;
         }
+        image.classList.remove('hhjcon-bridge-dccon');
       });
+
+      updateUsage();
 
       if (fixed) toast(`콘 ${fixed}개 인증값을 갱신했습니다.`);
       if (unresolved || Date.now() - fetchedAt >= 60000) refreshDetailMap();
@@ -272,7 +323,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['src']
+        attributeFilter: ['src', 'data-dcconoverstatus']
       });
       setInterval(fillDetails, 1500);
       fillDetails();
@@ -293,7 +344,7 @@
   const PING_TYPE = 'HHJCON_DC_BRIDGE_PING';
   const PONG_TYPE = 'HHJCON_DC_BRIDGE_PONG';
   const IMAGE_CACHE_NAME = 'hhjcon-dccon-images-v1';
-  const IMAGE_NETWORK_LIMIT = 4;
+  const IMAGE_NETWORK_LIMIT = 6;
   const imageCache = new Map();
   let persistentImageCachePromise = null;
   let activeImageRequests = 0;

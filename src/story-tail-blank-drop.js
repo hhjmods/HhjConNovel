@@ -1,4 +1,4 @@
-import { applyStoryDropTransfer } from './app.js?v=20260909-3';
+import { applyStoryDropTransfer } from './app.js?v=20260913-9';
 import { hasStoryAreaPayload, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
@@ -55,8 +55,7 @@ if (storyList) {
 
   document.addEventListener('dragend', () => storyList.classList.remove('story-tail-blank-hover'), true);
 
-  const observer = new MutationObserver(() => queueMicrotask(ensureTailReady));
-  observer.observe(storyList, { childList: true });
+  document.addEventListener('hhjcon:story-rendered', () => queueMicrotask(ensureTailReady));
 
   ensureTailReady();
 }

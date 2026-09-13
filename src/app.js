@@ -1,22 +1,30 @@
-import { clearStore, deleteOne, getAll, getOne, putMany, putOne } from './db.js';
+import { deleteOne, getAll, getOne, putMany, putOne, replaceStores } from './db.js';
 import {
   addUniqueIds,
   applyCollectionItemDraft,
   createCollection,
   normalizeSyncPayload,
   preserveCollectionRefMeta,
+  preserveStoryConRefs,
   reorderIds
-} from './model.js?v=20260908-1';
-import { requestDcSync } from './integrations/dc-adapter.js?v=20260907-1';
+} from './model.js?v=20260912-1';
+import { requestDcSync } from './integrations/dc-adapter.js?v=20260910-1';
+import { selectVisibleCons } from './library/library-view.js?v=20260911-2';
+import {
+  createMissingThumbnail,
+  renderCollectionNavigation,
+  renderConGrid,
+  renderPackageNavigation
+} from './library/library-render.js?v=20260913-1';
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
-import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260907-3';
+import { installBoxSelection } from './core/box-selection.js?v=20260913-2';
+import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260911-1';
+import { renderStoryList } from './story/story-render.js?v=20260913-2';
 import { showToast } from './ui/toast.js?v=20260909-2';
 import {
   CON_IDS_MIME,
   STORY_IDS_MIME,
-  readTransferIds,
-  writeConTransfer,
-  writeStoryTransfer
+  readTransferIds
 } from './story-dnd-utils.js?v=20260906-2';
 
 const DC_WRITE_URL_KEY = 'hhjcon-dc-write-url';
@@ -48,7 +56,6 @@ function mapById(items) { return new Map(items.map(item => [item.id, item])); }
 function activeCollection() { return state.collections.find(item => item.id === state.activeCollectionId) || null; }
 function activePackage() { return state.packages.find(item => item.id === state.activePackageId) || null; }
 function makeStoryItemId() { return `story_${crypto.randomUUID()}`; }
-
 function ensureStoryItemIds() {
   let changed = false;
   state.story.items.forEach(item => {
@@ -68,7 +75,10 @@ async function loadState() {
   state.cons = cons;
   state.collections = collections.sort((a, b) => a.createdAt - b.createdAt);
   state.story = story || state.story;
-  if (ensureStoryItemIds()) await putOne('documents', state.story);
+  const addedItemIds = ensureStoryItemIds();
+  const previousStory = state.story;
+  state.story = preserveStoryConRefs(state.story, mapById(state.cons), mapById(state.packages));
+  if (addedItemIds || state.story !== previousStory) await putOne('documents', state.story);
   state.activePackageId = state.packages[0]?.id || null;
   state.activeCollectionId = state.collections[0]?.id || null;
   el.dcWriteUrlInput.value = localStorage.getItem(DC_WRITE_URL_KEY) || '';
@@ -77,7 +87,12 @@ async function loadState() {
 }
 
 function updateSyncStatus(meta) {
-  el.syncStatus.textContent = meta?.syncedAt ? new Date(meta.syncedAt).toLocaleString('ko-KR') : '미동기화';
+  if (!meta?.syncedAt) {
+    el.syncStatus.textContent = '미동기화';
+    return;
+  }
+  const syncedAt = new Date(meta.syncedAt);
+  el.syncStatus.textContent = `${syncedAt.toLocaleDateString('ko-KR')}\n${syncedAt.toLocaleTimeString('ko-KR')}`;
 }
 
 async function preserveCollectionMetadata(cons, packages) {
@@ -91,16 +106,23 @@ async function preserveCollectionMetadata(cons, packages) {
   state.collections = nextCollections;
 }
 
+async function preserveStoryMetadata(cons, packages) {
+  const nextStory = preserveStoryConRefs(state.story, mapById(cons), mapById(packages));
+  if (nextStory === state.story) return;
+  state.story = nextStory;
+  await putOne('documents', state.story);
+}
+
 async function applySyncPayload(rawPayload) {
   const payload = normalizeSyncPayload(rawPayload);
   await preserveCollectionMetadata(state.cons, state.packages);
-  await Promise.all([clearStore('packages'), clearStore('cons')]);
-  await putMany('packages', payload.packages);
-  await putMany('cons', payload.cons);
+  await preserveStoryMetadata(state.cons, state.packages);
+  await replaceStores({ packages: payload.packages, cons: payload.cons });
   await putOne('meta', { key: 'lastSync', syncedAt: payload.syncedAt, account: payload.account });
   state.packages = payload.packages;
   state.cons = payload.cons;
   await preserveCollectionMetadata(state.cons, state.packages);
+  await preserveStoryMetadata(state.cons, state.packages);
   if (!state.packages.some(pkg => pkg.id === state.activePackageId)) state.activePackageId = state.packages[0]?.id || null;
   state.selectedIds.clear();
   state.selectionAnchorId = null;
@@ -109,28 +131,15 @@ async function applySyncPayload(rawPayload) {
 }
 
 function visibleCons() {
-  const consById = mapById(state.cons);
-  let list = [];
-  if (state.activeTab === 'packages') {
-    const pkg = activePackage();
-    if (pkg) list = state.cons.filter(con => con.packageId === pkg.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  } else {
-    const collection = activeCollection();
-    if (collection) {
-      list = collection.items.map(id => consById.get(id) || ({
-        id, name: '미보유/미동기화 콘', packageId: '', thumbnailUrl: '', missing: true
-      }));
-    }
-  }
-  const query = state.search.trim().toLowerCase();
-  if (query) list = list.filter(con => `${con.name} ${con.id}`.toLowerCase().includes(query));
-  return list;
+  return selectVisibleCons(state);
 }
 
 function setSelection(ids, anchorId = null) {
   state.selectedIds = new Set(ids);
   state.selectionAnchorId = anchorId;
-  renderGrid();
+  el.conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => {
+    card.classList.toggle('selected', state.selectedIds.has(card.dataset.conId));
+  });
   renderSelectionStatus();
 }
 
@@ -143,22 +152,8 @@ function handleCardSelection(event, id) {
   setSelection(next.ids, next.anchorId);
 }
 
-function dragIdsFor(id) {
-  if (state.selectedIds.has(id)) return visibleCons().map(con => con.id).filter(conId => state.selectedIds.has(conId));
-  setSelection([id], id);
-  return [id];
-}
-
-function writeDragData(event, ids) {
-  return writeConTransfer(event.dataTransfer, ids);
-}
-
 function readDragData(event) {
   return readTransferIds(event.dataTransfer, CON_IDS_MIME);
-}
-
-function writeStoryDragData(event, ids) {
-  return writeStoryTransfer(event.dataTransfer, ids);
 }
 
 function readStoryDragData(event) {
@@ -174,81 +169,35 @@ function renderTabs() {
 }
 
 function renderPackageList() {
-  el.packageList.replaceChildren();
-  if (!state.packages.length) {
-    const div = document.createElement('div');
-    div.className = 'nav-empty';
-    div.textContent = '동기화된 디시콘이 없습니다.';
-    el.packageList.append(div);
-    return;
-  }
-  state.packages.forEach(pkg => {
-    const button = document.createElement('button');
-    button.className = 'nav-item';
-    button.classList.toggle('active', pkg.id === state.activePackageId);
-    const count = state.cons.filter(con => con.packageId === pkg.id).length;
-    const packageName = document.createElement('span');
-    packageName.textContent = String(pkg.name);
-    const packageCount = document.createElement('small');
-    packageCount.textContent = String(count);
-    button.append(packageName, packageCount);
-    button.addEventListener('click', () => {
-      state.activePackageId = pkg.id;
+  renderPackageNavigation(el.packageList, {
+    packages: state.packages,
+    cons: state.cons,
+    activeId: state.activePackageId,
+    onSelect: packageId => {
+      state.activePackageId = packageId;
       state.activeTab = 'packages';
       state.selectedIds.clear();
       state.selectionAnchorId = null;
-      renderAll();
-    });
-    el.packageList.append(button);
+      renderLibrary();
+    }
   });
 }
 
 function renderCollectionList() {
-  el.collectionList.replaceChildren();
-  if (!state.collections.length) {
-    const div = document.createElement('div');
-    div.className = 'nav-empty';
-    div.textContent = '새 콘묶음을 만들어 디시콘을 분류해 보세요.';
-    el.collectionList.append(div);
-    return;
-  }
-  state.collections.forEach(collection => {
-    const row = document.createElement('div');
-    row.className = 'collection-row';
-    row.dataset.collectionId = collection.id;
-    row.classList.toggle('active', collection.id === state.activeCollectionId);
-    const button = document.createElement('button');
-    button.className = 'collection-main';
-    const collectionName = document.createElement('span');
-    collectionName.textContent = String(collection.name);
-    const collectionCount = document.createElement('small');
-    collectionCount.textContent = String(collection.items.length);
-    button.append(collectionName, collectionCount);
-    button.addEventListener('click', () => {
-      state.activeCollectionId = collection.id;
+  renderCollectionNavigation(el.collectionList, {
+    collections: state.collections,
+    activeId: state.activeCollectionId,
+    onSelect: collectionId => {
+      state.activeCollectionId = collectionId;
       state.activeTab = 'collections';
       state.selectedIds.clear();
       state.selectionAnchorId = null;
-      renderAll();
-    });
-    row.addEventListener('dragover', event => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'copy';
-      row.classList.add('drop-target');
-    });
-    row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
-    row.addEventListener('drop', async event => {
-      event.preventDefault();
-      row.classList.remove('drop-target');
+      renderLibrary();
+    },
+    onDrop: async (event, collectionId) => {
       const ids = readDragData(event);
-      if (ids.length) await addIdsToCollection(collection.id, ids);
-    });
-    const del = document.createElement('button');
-    del.className = 'icon-button';
-    del.title = '콘묶음 삭제';
-    del.textContent = '×';
-    row.append(button, del);
-    el.collectionList.append(row);
+      if (ids.length) await addIdsToCollection(collectionId, ids);
+    }
   });
 }
 
@@ -257,63 +206,14 @@ function renderGrid() {
   el.conGrid.replaceChildren();
   el.libraryEmpty.classList.toggle('hidden', list.length > 0);
   el.libraryTitle.textContent = (state.activeTab === 'packages' ? activePackage()?.name : activeCollection()?.name) || '콘 라이브러리';
-  list.forEach(con => {
-    const card = document.createElement('button');
-    card.className = 'con-card';
-    card.draggable = !con.missing;
-    card.dataset.conId = con.id;
-    card.classList.toggle('selected', state.selectedIds.has(con.id));
-    card.classList.toggle('missing', Boolean(con.missing));
-    let thumbnail;
-    if (con.thumbnailUrl) {
-      thumbnail = document.createElement('img');
-      thumbnail.src = String(con.thumbnailUrl);
-      thumbnail.alt = '';
-    } else {
-      thumbnail = document.createElement('div');
-      thumbnail.className = 'missing-thumb';
-      thumbnail.textContent = '?';
-    }
-    const conName = document.createElement('span');
-    conName.textContent = String(con.name);
-    card.append(thumbnail, conName);
-    card.title = con.missing ? con.id : `${con.name}\n${con.id}`;
-    card.addEventListener('click', event => handleCardSelection(event, con.id));
-    card.addEventListener('dblclick', () => {
-      if (!con.missing) addConBlocks([con.id]);
-    });
-    card.addEventListener('dragstart', event => {
-      if (con.missing) return event.preventDefault();
-      writeDragData(event, dragIdsFor(con.id));
-      card.classList.add('dragging');
-    });
-    card.addEventListener('dragend', () => card.classList.remove('dragging'));
-    if (state.activeTab === 'collections') {
-      card.addEventListener('dragover', event => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-        card.classList.add('reorder-target');
-      });
-      card.addEventListener('dragleave', () => card.classList.remove('reorder-target'));
-      card.addEventListener('drop', async event => {
-        event.preventDefault();
-        card.classList.remove('reorder-target');
-        await reorderActiveCollection(readDragData(event), con.id);
-      });
-    }
-    el.conGrid.append(card);
+  renderConGrid(el.conGrid, {
+    cons: list,
+    selectedIds: state.selectedIds,
+    collectionMode: state.activeTab === 'collections' && Boolean(activeCollection()),
+    onSelect: handleCardSelection,
+    onOpen: conId => addConBlocks([conId]),
+    onDrop: (event, beforeId) => reorderActiveCollection(readDragData(event), beforeId)
   });
-  if (state.activeTab === 'collections' && activeCollection()) {
-    const tail = document.createElement('div');
-    tail.className = 'reorder-tail';
-    tail.textContent = '여기에 놓으면 맨 뒤로 이동';
-    tail.addEventListener('dragover', event => event.preventDefault());
-    tail.addEventListener('drop', async event => {
-      event.preventDefault();
-      await reorderActiveCollection(readDragData(event), null);
-    });
-    el.conGrid.append(tail);
-  }
 }
 
 function renderSelectionStatus() {
@@ -333,6 +233,12 @@ function setStorySelection(ids, anchorId = null) {
   updateStoryStats();
 }
 
+function clearStorySelectionOutsideStory(target) {
+  if (!state.storySelectedIds.size || !(target instanceof Node)) return;
+  if (el.storyList.contains(target) || el.storyDropZone.contains(target)) return;
+  setStorySelection([]);
+}
+
 function handleStorySelection(event, itemId) {
   if (event.target.closest('.story-tools')) return;
   const ids = storyConIds();
@@ -343,129 +249,25 @@ function handleStorySelection(event, itemId) {
   setStorySelection(next.ids, next.anchorId);
 }
 
-function storyDragIdsFor(itemId) {
-  if (state.storySelectedIds.has(itemId)) {
-    return state.story.items.filter(item => state.storySelectedIds.has(item.id)).map(item => item.id);
-  }
-  setStorySelection([itemId], itemId);
-  return [itemId];
-}
-
 function updateStoryStats() {
   const selected = state.storySelectedIds.size;
   el.storyStats.textContent = selected ? `${state.story.items.length}블록 · ${selected}개 선택` : `${state.story.items.length}블록`;
 }
 
-function makeStoryTools(item) {
-  const tools = document.createElement('div');
-  tools.className = 'story-tools';
-  tools.append(
-    storyTool('↑', '위로', () => moveStorySelection(-1, item.id)),
-    storyTool('↓', '아래로', () => moveStorySelection(1, item.id)),
-    storyTool('×', '삭제', () => removeStorySelection(item.id))
-  );
-  return tools;
-}
-
-function addStoryDropHandlers(row, itemId) {
-  row.addEventListener('dragover', event => {
-    const storyIds = readStoryDragData(event);
-    const conIds = readDragData(event);
-    if (!storyIds.length && !conIds.length) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
-    row.classList.add('story-drag-target');
-  });
-  row.addEventListener('dragleave', () => row.classList.remove('story-drag-target'));
-  row.addEventListener('drop', async event => {
-    event.preventDefault();
-    row.classList.remove('story-drag-target');
-    const storyIds = readStoryDragData(event);
-    if (storyIds.length) {
-      await reorderStoryItems(storyIds, itemId);
-      return;
-    }
-    const conIds = readDragData(event);
-    if (conIds.length) await addConBlocks(conIds, itemId);
-  });
-}
-
 function renderStory() {
-  const consById = mapById(state.cons);
-  el.storyList.replaceChildren();
-  state.story.items.forEach(item => {
-    const row = document.createElement('div');
-    row.className = `story-item story-${item.type}`;
-    row.dataset.storyId = item.id;
-    addStoryDropHandlers(row, item.id);
-
-    if (item.type === 'text') {
-      const textarea = document.createElement('textarea');
-      textarea.rows = 2;
-      textarea.placeholder = '대사를 입력하세요.';
-      textarea.value = item.text || '';
-      textarea.addEventListener('input', async () => {
-        item.text = textarea.value;
-        await saveStory();
-      });
-      row.append(textarea, makeStoryTools(item));
-    } else if (item.type === 'con') {
-      const con = consById.get(item.conId);
-      row.draggable = true;
-      row.classList.toggle('selected', state.storySelectedIds.has(item.id));
-      const img = document.createElement('img');
-      if (con?.thumbnailUrl) img.src = con.thumbnailUrl;
-      img.alt = con?.name || '미보유 콘';
-      const label = document.createElement('span');
-      label.textContent = con?.name || `미보유: ${item.conId}`;
-      row.append(img, label, makeStoryTools(item));
-      row.addEventListener('click', event => handleStorySelection(event, item.id));
-      row.addEventListener('dragstart', event => {
-        writeStoryDragData(event, storyDragIdsFor(item.id));
-        row.classList.add('dragging');
-      });
-      row.addEventListener('dragend', () => row.classList.remove('dragging'));
-    }
-    el.storyList.append(row);
+  renderStoryList(el.storyList, {
+    items: state.story.items,
+    cons: state.cons,
+    selectedIds: state.storySelectedIds,
+    createMissingThumbnail,
+    onTextInput: updateStoryText,
+    onMove: moveStorySelection,
+    onRemove: removeStorySelection,
+    onSelect: handleStorySelection,
+    onDrop: applyStoryDropTransfer
   });
-
-  const tail = document.createElement('div');
-  tail.className = 'story-tail-drop';
-  tail.textContent = state.story.items.length ? '여기에 놓으면 원고 맨 뒤로 이동' : '';
-  tail.addEventListener('dragover', event => {
-    const storyIds = readStoryDragData(event);
-    const conIds = readDragData(event);
-    if (!storyIds.length && !conIds.length) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = storyIds.length ? 'move' : 'copy';
-    tail.classList.add('drop-target');
-  });
-  tail.addEventListener('dragleave', () => tail.classList.remove('drop-target'));
-  tail.addEventListener('drop', async event => {
-    event.preventDefault();
-    tail.classList.remove('drop-target');
-    const storyIds = readStoryDragData(event);
-    if (storyIds.length) {
-      await reorderStoryItems(storyIds, null);
-      return;
-    }
-    const conIds = readDragData(event);
-    if (conIds.length) await addConBlocks(conIds);
-  });
-  el.storyList.append(tail);
   updateStoryStats();
-}
-
-function storyTool(text, title, action) {
-  const button = document.createElement('button');
-  button.className = 'icon-button';
-  button.textContent = text;
-  button.title = title;
-  button.addEventListener('click', event => {
-    event.stopPropagation();
-    action();
-  });
-  return button;
+  document.dispatchEvent(new Event('hhjcon:story-rendered'));
 }
 
 async function saveStory() {
@@ -485,8 +287,16 @@ async function addConBlocks(ids, beforeStoryId = null) {
   await commitStoryItems(insertStoryItemsBefore(state.story.items, newItems, beforeStoryId), newItems);
 }
 
+async function updateStoryText(itemId, text) {
+  const item = state.story.items.find(candidate => candidate.id === itemId && candidate.type === 'text');
+  if (!item) return false;
+  item.text = text;
+  await saveStory();
+  return true;
+}
+
 async function commitStoryItems(items, selectedItems = []) {
-  state.story.items = items;
+  state.story = preserveStoryConRefs({ ...state.story, items }, mapById(state.cons), mapById(state.packages));
   state.storySelectedIds = new Set(selectedItems.filter(item => item.type === 'con').map(item => item.id));
   state.storySelectionAnchorId = selectedItems.find(item => item.type === 'con')?.id || null;
   await saveStory();
@@ -563,7 +373,7 @@ export async function createNamedCollection(name) {
   state.collections.push(collection);
   state.activeCollectionId = collection.id;
   state.activeTab = 'collections';
-  renderAll();
+  renderLibrary();
   return collection.id;
 }
 
@@ -572,7 +382,7 @@ export async function deleteCollectionById(collectionId) {
   await deleteOne('collections', collectionId);
   state.collections = state.collections.filter(item => item.id !== collectionId);
   if (state.activeCollectionId === collectionId) state.activeCollectionId = state.collections[0]?.id || null;
-  renderAll();
+  renderLibrary();
   return true;
 }
 
@@ -587,8 +397,8 @@ export async function commitCollectionDraft(collectionId, draftIds) {
   return next;
 }
 
-async function addIdsToCollection(collectionId, ids) {
-  const collection = state.collections.find(item => item.id === collectionId);
+export async function addIdsToCollection(collectionId, ids) {
+  const collection = state.collections.find(item => String(item.id) === String(collectionId));
   if (!collection) return;
   const result = addUniqueIds(collection, ids);
   if (!result.added) {
@@ -612,70 +422,40 @@ async function reorderActiveCollection(ids, beforeId) {
   renderCollectionList();
 }
 
-function renderAll() {
+function renderLibrary() {
   renderTabs();
   renderPackageList();
   renderCollectionList();
   renderGrid();
   renderSelectionStatus();
+}
+
+function renderAll() {
+  renderLibrary();
   renderStory();
 }
 
-const selectionBox = document.createElement('div');
-selectionBox.className = 'story-selection-box hidden';
-document.body.append(selectionBox);
-let boxSelection = null;
-
-el.storyList.addEventListener('pointerdown', event => {
-  if (event.button !== 0 || event.target.closest('.story-item, button, textarea')) return;
-  const additive = event.ctrlKey || event.metaKey;
-  boxSelection = {
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    base: additive ? new Set(state.storySelectedIds) : new Set()
-  };
-  el.storyList.setPointerCapture(event.pointerId);
-  selectionBox.classList.remove('hidden');
-  event.preventDefault();
+installBoxSelection(el.storyList, {
+  itemSelector: '.story-con',
+  idKey: 'storyId',
+  getSelectedIds: () => state.storySelectedIds,
+  setSelection: setStorySelection
+});
+installBoxSelection(el.conGrid, {
+  itemSelector: '.con-card[data-con-id]',
+  idKey: 'conId',
+  getSelectedIds: () => state.selectedIds,
+  setSelection
 });
 
-el.storyList.addEventListener('pointermove', event => {
-  if (!boxSelection || boxSelection.pointerId !== event.pointerId) return;
-  const left = Math.min(boxSelection.startX, event.clientX);
-  const top = Math.min(boxSelection.startY, event.clientY);
-  const right = Math.max(boxSelection.startX, event.clientX);
-  const bottom = Math.max(boxSelection.startY, event.clientY);
-  selectionBox.style.left = `${left}px`;
-  selectionBox.style.top = `${top}px`;
-  selectionBox.style.width = `${right - left}px`;
-  selectionBox.style.height = `${bottom - top}px`;
-
-  const next = new Set(boxSelection.base);
-  el.storyList.querySelectorAll('.story-con').forEach(row => {
-    const rect = row.getBoundingClientRect();
-    const intersects = rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top;
-    if (intersects) next.add(row.dataset.storyId);
-  });
-  const anchor = [...next][0] || null;
-  setStorySelection(next, anchor);
-});
-
-function finishBoxSelection(event) {
-  if (!boxSelection || boxSelection.pointerId !== event.pointerId) return;
-  if (el.storyList.hasPointerCapture(event.pointerId)) el.storyList.releasePointerCapture(event.pointerId);
-  boxSelection = null;
-  selectionBox.classList.add('hidden');
-}
-
-el.storyList.addEventListener('pointerup', finishBoxSelection);
-el.storyList.addEventListener('pointercancel', finishBoxSelection);
+document.addEventListener('pointerdown', event => clearStorySelectionOutsideStory(event.target), true);
+document.addEventListener('focusin', event => clearStorySelectionOutsideStory(event.target), true);
 
 document.querySelectorAll('[data-library-tab]').forEach(button => button.addEventListener('click', () => {
   state.activeTab = button.dataset.libraryTab;
   state.selectedIds.clear();
   state.selectionAnchorId = null;
-  renderAll();
+  renderLibrary();
 }));
 
 el.dcWriteUrlInput.addEventListener('change', () => {

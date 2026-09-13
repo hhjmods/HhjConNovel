@@ -94,6 +94,30 @@ export function preserveCollectionRefMeta(collection, consById, packagesById) {
   return changed ? { ...collection, refMeta, updatedAt: Date.now() } : collection;
 }
 
+export function preserveStoryConRefs(story, consById, packagesById) {
+  let changed = false;
+  const items = (Array.isArray(story?.items) ? story.items : []).map(item => {
+    if (item?.type !== 'con') return item;
+    const con = consById?.get?.(item.conId);
+    if (!con) return item;
+    const saved = item.conRef && typeof item.conRef === 'object' ? item.conRef : {};
+    const packageId = String(con.packageId || saved.packageId || '');
+    const pkg = packageId ? packagesById?.get?.(packageId) : null;
+    const conRef = {
+      packageId,
+      sourcePackageId: String(pkg?.sourcePackageId || saved.sourcePackageId || packageId),
+      sourceNo: String(con.sourceNo || saved.sourceNo || ''),
+      name: String(con.name || saved.name || '미보유/미동기화 콘'),
+      packageName: String(pkg?.name || saved.packageName || '')
+    };
+    const fields = ['packageId', 'sourcePackageId', 'sourceNo', 'name', 'packageName'];
+    if (fields.every(field => saved[field] === conRef[field])) return item;
+    changed = true;
+    return { ...item, conRef };
+  });
+  return changed ? { ...story, items, updatedAt: Date.now() } : story;
+}
+
 export function reorderOrderedIds(items, movingIds, beforeId = null) {
   const source = Array.isArray(items) ? items : [];
   const moving = new Set(movingIds);
@@ -111,18 +135,6 @@ export function reorderOrderedIds(items, movingIds, beforeId = null) {
 export function reorderIds(collection, movingIds, beforeId = null) {
   const items = reorderOrderedIds(collection.items, movingIds, beforeId);
   return items === collection.items ? collection : { ...collection, items, updatedAt: Date.now() };
-}
-
-export function removeIds(collection, ids) {
-  const remove = new Set(ids);
-  const refMeta = { ...(collection.refMeta || {}) };
-  ids.forEach(id => delete refMeta[id]);
-  return {
-    ...collection,
-    items: collection.items.filter(id => !remove.has(id)),
-    refMeta,
-    updatedAt: Date.now()
-  };
 }
 
 export function applyCollectionItemDraft(collection, draftIds) {
@@ -199,6 +211,7 @@ export function importCollectionFile(data) {
   const items = Array.isArray(data.collection?.items)
     ? [...new Set(data.collection.items.filter(id => typeof id === 'string'))]
     : [];
+  const itemIds = new Set(items);
 
   const packageNames = new Map();
   if (Array.isArray(data.packages)) {
@@ -214,7 +227,7 @@ export function importCollectionFile(data) {
   const refMeta = {};
   if (Array.isArray(data.refs)) {
     data.refs.forEach(ref => {
-      if (!ref || typeof ref !== 'object' || typeof ref.id !== 'string') return;
+      if (!ref || typeof ref !== 'object' || typeof ref.id !== 'string' || !itemIds.has(ref.id)) return;
       const packageId = String(ref.packageId || '');
       const sourcePackageId = String(ref.sourcePackageId || packageId);
       refMeta[ref.id] = {

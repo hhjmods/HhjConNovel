@@ -1,4 +1,5 @@
-import { buildStoryHtmlSnapshot } from './story-html.js?v=20260907-1';
+import { buildStoryHtmlSnapshot } from './story-html.js?v=20260914-1';
+import { DC_HTML_LIMIT } from './story-html-utils.js?v=20260912-3';
 import { showToast } from '../ui/toast.js?v=20260909-2';
 
 const storyList = document.getElementById('storyList');
@@ -12,7 +13,7 @@ if (storyList && toolbar) {
   copyButton.textContent = '작성내용 복사';
   copyButton.title = '현재 작성내용을 DC 글쓰기 에디터에 바로 붙여넣을 수 있는 형식으로 복사';
 
-  if (toggle) toolbar.insertBefore(copyButton, toggle);
+  if (toggle) toggle.after(copyButton);
   else toolbar.append(copyButton);
 
   let copying = false;
@@ -22,6 +23,10 @@ if (storyList && toolbar) {
     template.innerHTML = String(html || '');
     [...template.content.childNodes].forEach(node => {
       if (node.nodeType === Node.TEXT_NODE && !node.data.trim()) node.remove();
+    });
+    template.content.firstElementChild?.classList.add('hhjcon-bridge-paste');
+    template.content.querySelectorAll('img.written_dccon').forEach(image => {
+      image.classList.add('hhjcon-bridge-dccon');
     });
     return template.innerHTML;
   }
@@ -129,7 +134,9 @@ if (storyList && toolbar) {
       const plain = htmlToPlainText(clipboardHtml);
       const copied = await copyStoryHtml(clipboardHtml, plain);
       if (!copied) throw new Error('clipboard copy failed');
-      if (snapshot.missingConCount > 0) {
+      if (snapshot.dcHtmlCharCount > DC_HTML_LIMIT) {
+        showToast(`작성내용을 복사했지만 DC 예상 한도를 ${(snapshot.dcHtmlCharCount - DC_HTML_LIMIT).toLocaleString('ko-KR')}자 초과합니다.`, 5000);
+      } else if (snapshot.missingConCount > 0) {
         showToast(`작성내용을 복사했습니다. · 미보유/미동기화 콘 ${snapshot.missingConCount}개 포함`, 2600);
       } else {
         showToast('작성내용을 복사했습니다. DC 글쓰기에서 Ctrl+V로 붙여넣으세요.', 2600);

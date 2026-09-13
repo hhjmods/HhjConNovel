@@ -1,4 +1,6 @@
 import { getAll, getOne } from '../db.js';
+import { copySafeStyle, sanitizeRichHtml } from './rich-html.js?v=20260914-1';
+import { buildDcConHtml, escapeHtml, estimateDcHtmlCharCount, validDcConSource } from './story-html-utils.js?v=20260912-3';
 
 export const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 export const IMAGE_SENTINEL = '\uE000HHJCON_IMAGE_PLACEHOLDER\uE001';
@@ -8,77 +10,6 @@ const RICH_DOC_ID = 'rich-text-v1';
 const CON_DISPLAY_DOC_ID = 'con-display-v1';
 const BREAK_COUNT_DOC_ID = 'break-count-v1';
 const IMAGE_MEMO_DOC_ID = 'image-marker-memo-v1';
-const FONT_SIZE_MAP = { '1': '10px', '2': '12px', '3': '14px', '4': '18px', '5': '24px', '6': '32px', '7': '48px' };
-const ALLOWED_RICH_TAGS = new Set(['SPAN', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DIV', 'P']);
-const BLOCKED_RICH_TAGS = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META']);
-const ALLOWED_STYLE_PROPS = [
-  'color', 'backgroundColor', 'fontFamily', 'fontSize', 'fontWeight',
-  'fontStyle', 'textDecoration', 'textDecorationLine', 'textAlign'
-];
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-  })[char]);
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value);
-}
-
-function copySafeStyle(source, target) {
-  const style = source?.style;
-  if (!style) return;
-  ALLOWED_STYLE_PROPS.forEach(prop => {
-    const value = style[prop];
-    if (!value || /(?:javascript\s*:|expression\s*\(|url\s*\()/i.test(value)) return;
-    target.style[prop] = value;
-  });
-}
-
-function sanitizeRichHtml(html) {
-  const template = document.createElement('template');
-  template.innerHTML = String(html || '');
-  const output = document.createElement('div');
-
-  function appendClean(node, parent) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      parent.append(document.createTextNode(node.data));
-      return;
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-    const tag = node.tagName;
-    if (BLOCKED_RICH_TAGS.has(tag)) return;
-    if (tag === 'BR') {
-      parent.append(document.createElement('br'));
-      return;
-    }
-    if (tag === 'FONT') {
-      const span = document.createElement('span');
-      const face = node.getAttribute('face');
-      const color = node.getAttribute('color');
-      const size = node.getAttribute('size');
-      if (face) span.style.fontFamily = face;
-      if (color) span.style.color = color;
-      if (FONT_SIZE_MAP[size]) span.style.fontSize = FONT_SIZE_MAP[size];
-      copySafeStyle(node, span);
-      [...node.childNodes].forEach(child => appendClean(child, span));
-      parent.append(span);
-      return;
-    }
-    if (!ALLOWED_RICH_TAGS.has(tag)) {
-      [...node.childNodes].forEach(child => appendClean(child, parent));
-      return;
-    }
-    const clean = document.createElement(tag.toLowerCase());
-    copySafeStyle(node, clean);
-    [...node.childNodes].forEach(child => appendClean(child, clean));
-    parent.append(clean);
-  }
-
-  [...template.content.childNodes].forEach(node => appendClean(node, output));
-  return output.innerHTML;
-}
 
 function replaceLiteralNewlines(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -202,31 +133,6 @@ function dialogueFor(row, item, richDoc) {
   return { text: source, html: escapeHtml(source).replace(/\n/g, '<br>') };
 }
 
-function validDcConSource(value) {
-  try {
-    const url = new URL(String(value || ''));
-    return url.protocol === 'https:'
-      && url.hostname === 'dcimg5.dcinside.com'
-      && url.pathname === '/dccon.php'
-      && Boolean(url.searchParams.get('no'))
-      ? url.href
-      : '';
-  } catch {
-    return '';
-  }
-}
-
-function conHtml(item, con, big) {
-  const src = validDcConSource(con?.imageUrl || con?.thumbnailUrl || '');
-  if (!src) {
-    return '<span style="color:#ff0000;background-color:#ffff00;font-weight:700;">【미보유/미동기화 디시콘】</span>';
-  }
-  const label = String(con?.name || con?.sourceNo || item.conId || '디시콘');
-  const className = big ? 'written_dccon bigdccon' : 'written_dccon ';
-  const attr = escapeAttr(label);
-  return `<img class="${className}" src="${escapeAttr(src)}" conalt="${attr}" alt="${attr}" con_alt="${attr}" title="${attr}">`;
-}
-
 export async function buildStoryHtmlSnapshot(root = document.getElementById('storyList')) {
   const [story, cons, richDoc, displayDoc, breakDoc, memoDoc] = await Promise.all([
     getOne('documents', 'current'),
@@ -246,6 +152,7 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
   let dialogueCount = 0;
   let breakCount = 0;
   let imageCount = 0;
+  let imageMarkerHtmlLength = 0;
   let missingConCount = 0;
 
   const flushCons = () => {
@@ -261,7 +168,7 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
       const con = consById.get(item.conId);
       const big = row?.classList.contains('story-con-big') || Boolean(displayDoc?.items?.[item.id]?.big);
       if (!validDcConSource(con?.imageUrl || con?.thumbnailUrl || '')) missingConCount += 1;
-      conBuffer.push(conHtml(item, con, big));
+      conBuffer.push(buildDcConHtml(item, con, big));
       continue;
     }
 
@@ -283,7 +190,9 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
       const memoHtml = memo
         ? `<br><span style="color:#ff0000;background-color:#ffff00;font-weight:700;">${escapeHtml(memo)}</span>`
         : '';
-      htmlParts.push(`<p>${marker}${memoHtml}</p>`);
+      const markerHtml = `<p>${marker}${memoHtml}</p>`;
+      htmlParts.push(markerHtml);
+      imageMarkerHtmlLength += markerHtml.length;
       continue;
     }
 
@@ -295,10 +204,17 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
 
   flushCons();
   const html = htmlParts.join('\n');
+  const dcHtmlCharCount = estimateDcHtmlCharCount(
+    htmlParts.join(''),
+    conCount - missingConCount,
+    imageMarkerHtmlLength,
+    imageCount
+  );
   return {
     html,
     textCharCount,
     htmlCharCount: html.length,
+    dcHtmlCharCount,
     conCount,
     dialogueCount,
     breakCount,

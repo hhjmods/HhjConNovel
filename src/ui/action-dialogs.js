@@ -1,10 +1,10 @@
-import { COLLECTION_NAME_MAX_LENGTH } from '../model.js?v=20260908-1';
+import { COLLECTION_NAME_MAX_LENGTH } from '../model.js?v=20260912-1';
 import {
   clearCurrentStory,
   createNamedCollection,
   deleteCollectionById,
   hasCurrentStoryItems
-} from '../app.js?v=20260909-3';
+} from '../app.js?v=20260913-9';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
@@ -185,7 +185,11 @@ document.addEventListener('click', async event => {
         requiredMessage: '콘묶음 이름을 입력하세요.', note: COLLECTION_WARNING
       });
       if (name == null) return;
-      await createNamedCollection(name.trim());
+      const collectionName = name.trim();
+      const collectionId = await createNamedCollection(collectionName);
+      document.dispatchEvent(new CustomEvent('hhjcon:collection-created', {
+        detail: { id: collectionId, name: collectionName }
+      }));
     };
   } else if (button.title === '콘묶음 삭제' && button.closest('.collection-row')) {
     task = async () => {

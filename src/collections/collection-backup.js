@@ -1,7 +1,7 @@
 import { getAll, putMany } from '../db.js';
 import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
 import { downloadJson, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
-import { exportCollection, importCollectionFile } from '../model.js?v=20260908-1';
+import { exportCollection, importCollectionFile } from '../model.js?v=20260912-1';
 import { saveToastForReload } from '../ui/toast.js?v=20260909-2';
 
 const BUNDLE_FORMAT = 'hhjcon-collections';

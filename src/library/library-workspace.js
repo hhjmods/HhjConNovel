@@ -1,7 +1,16 @@
-import { commitCollectionDraft } from '../app.js?v=20260909-3';
-import { planOrderedSelection } from '../core/selection.js?v=20260907-1';
+import { addIdsToCollection, commitCollectionDraft } from '../app.js?v=20260913-9';
 import { getAll } from '../db.js';
-import { reorderOrderedIds } from '../model.js?v=20260908-1';
+import { CON_IDS_MIME, readTransferIds, transferHasType } from '../story-dnd-utils.js?v=20260906-2';
+import {
+  createCollectionEditDraft,
+  deleteCollectionEditSelection,
+  prepareCollectionEditDrag,
+  reorderCollectionEditDraft,
+  selectCollectionEditDraft
+} from './library-edit-draft.js?v=20260914-1';
+import { createCollectionEditControls } from './library-edit-controls.js?v=20260914-1';
+import { renderLibraryViewTabs } from './library-tab-render.js?v=20260913-1';
+import { closeLibraryView, libraryViewKey, openLibraryView, reconcileLibraryViews } from './library-tabs.js?v=20260911-2';
 
 const packageList = document.getElementById('packageList');
 const collectionList = document.getElementById('collectionList');
@@ -19,16 +28,13 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   const VIEWS_KEY = 'hhjcon-open-library-views';
   const ACTIVE_VIEW_KEY = 'hhjcon-active-library-view';
   const CLOSE_ALL_EVENT = 'hhjcon:library-close-all';
-
+  const COLLECTION_CREATED_EVENT = 'hhjcon:collection-created';
+  const NAVIGATION_RENDER_EVENT = 'hhjcon:library-navigation-rendered';
   let sidebarMode = localStorage.getItem(SIDEBAR_KEY) === 'collections' ? 'collections' : 'packages';
   let packages = [];
   let collections = [];
-  let editing = false;
-  let editCollectionId = null;
-  let draftItems = [];
-  let draftSelectedIds = new Set();
-  let draftAnchorId = null;
-  let pendingOpenCreatedCollection = false;
+  let editDraft = null;
+  let libraryDeleteArmed = false;
   let restorePending = true;
   let shouldOpenDefaultView = localStorage.getItem(VIEWS_KEY) === null;
 
@@ -50,30 +56,11 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   viewTabs.className = 'library-view-tabs';
   libraryPanel.insertBefore(viewTabs, libraryToolbar);
 
-  const editControls = document.createElement('div');
-  editControls.className = 'collection-edit-controls';
-  const editButton = document.createElement('button');
-  editButton.className = 'small';
-  editButton.textContent = '콘 편집';
-  const deleteButton = document.createElement('button');
-  deleteButton.className = 'small danger';
-  deleteButton.textContent = '삭제';
-  deleteButton.title = '선택한 콘을 이 콘묶음에서 삭제';
-  const saveButton = document.createElement('button');
-  saveButton.className = 'small primary';
-  saveButton.textContent = '저장';
-  const cancelButton = document.createElement('button');
-  cancelButton.className = 'small';
-  cancelButton.textContent = '취소';
-  editControls.append(editButton, deleteButton, saveButton, cancelButton);
-  toolbarActions.prepend(editControls);
-
-  function keyOf(type, id) {
-    return `${type}:${id}`;
-  }
+  const { editButton, deleteButton, saveButton, cancelButton, render: renderEditControls } =
+    createCollectionEditControls(toolbarActions);
 
   function activeView() {
-    return openViews.find(view => keyOf(view.type, view.id) === activeViewKey) || null;
+    return openViews.find(view => libraryViewKey(view.type, view.id) === activeViewKey) || null;
   }
 
   function persistViews() {
@@ -88,109 +75,62 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     });
     packagePanel.classList.toggle('hidden', sidebarMode !== 'packages');
     collectionPanel.classList.toggle('hidden', sidebarMode !== 'collections');
+    document.dispatchEvent(new Event('hhjcon:library-sidebar-rendered'));
   }
 
   function updateEditControls() {
     const view = activeView();
     const isCollection = view?.type === 'collections';
-    editControls.classList.toggle('hidden', !isCollection);
-    editButton.classList.toggle('hidden', !isCollection || editing);
-    deleteButton.classList.toggle('hidden', !isCollection || !editing);
-    saveButton.classList.toggle('hidden', !isCollection || !editing);
-    cancelButton.classList.toggle('hidden', !isCollection || !editing);
-    conGrid.classList.toggle('collection-order-editing', editing);
+    const hasItems = isCollection && collections.some(item => String(item.id) === String(view.id) && item.items?.length);
+    renderEditControls({ isCollection, editing: Boolean(editDraft), hasItems });
+    conGrid.classList.toggle('collection-order-editing', Boolean(editDraft));
   }
 
-  function setDraftSelection(ids, anchorId = null) {
-    draftSelectedIds = new Set(ids);
-    draftAnchorId = anchorId;
+  function renderDraftSelection() {
+    const selectedIds = editDraft?.selectedIds || new Set();
     conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => {
-      card.classList.toggle('selected', draftSelectedIds.has(String(card.dataset.conId)));
+      card.classList.toggle('selected', selectedIds.has(String(card.dataset.conId)));
     });
-    if (selectionStatus) selectionStatus.textContent = `${draftSelectedIds.size}개 선택`;
+    if (selectionStatus) selectionStatus.textContent = `${selectedIds.size}개 선택`;
   }
 
   function cancelEditState() {
-    editing = false;
-    editCollectionId = null;
-    draftItems = [];
-    draftSelectedIds.clear();
-    draftAnchorId = null;
+    editDraft = null;
     conGrid.classList.remove('collection-order-editing');
     updateEditControls();
   }
 
-  function forwardDrop(target, dataTransfer) {
-    if (!target || !dataTransfer) return;
-    const forwarded = new Event('drop', { bubbles: true, cancelable: true });
-    Object.defineProperty(forwarded, 'dataTransfer', { value: dataTransfer });
-    target.dispatchEvent(forwarded);
-  }
-
   function renderViewTabs() {
-    viewTabs.replaceChildren();
-    openViews.forEach(view => {
-      const key = keyOf(view.type, view.id);
-      const tab = document.createElement('div');
-      tab.className = 'library-view-tab';
-      tab.classList.toggle('active', key === activeViewKey);
-      tab.classList.toggle('collection-tab', view.type === 'collections');
-
-      const main = document.createElement('button');
-      main.className = 'library-view-tab-main';
-      main.textContent = view.name;
-      main.title = view.type === 'collections' ? `내 콘묶음: ${view.name}` : `DC콘: ${view.name}`;
-      main.addEventListener('click', () => activateView(view));
-
-      if (view.type === 'collections') {
-        tab.addEventListener('dragover', event => {
-          if (!event.dataTransfer?.types?.includes('application/x-hhjcon-ids')) return;
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'copy';
-          tab.classList.add('drop-target');
-        });
-        tab.addEventListener('dragleave', () => tab.classList.remove('drop-target'));
-        tab.addEventListener('drop', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          tab.classList.remove('drop-target');
-          const row = collectionList.querySelector(`.collection-row[data-view-id="${CSS.escape(String(view.id))}"]`);
-          forwardDrop(row, event.dataTransfer);
-        });
-      }
-
-      const close = document.createElement('button');
-      close.className = 'library-view-tab-close';
-      close.textContent = '×';
-      close.title = '탭 닫기';
-      close.addEventListener('click', event => {
-        event.stopPropagation();
-        const index = openViews.findIndex(item => keyOf(item.type, item.id) === key);
-        if (index < 0) return;
-        const wasActive = activeViewKey === key;
-        openViews.splice(index, 1);
-        if (wasActive) {
-          if (editing) cancelEditState();
-          const next = openViews[Math.min(index, openViews.length - 1)] || null;
-          activeViewKey = next ? keyOf(next.type, next.id) : '';
+    renderLibraryViewTabs(viewTabs, {
+      views: openViews,
+      activeViewKey,
+      onActivate: activateView,
+      onDrop: async (event, view) => {
+        const ids = dragIds(event);
+        if (ids.length) await addIdsToCollection(view.id, ids);
+      },
+      onClose: (_view, key) => {
+        const next = closeLibraryView(openViews, activeViewKey, key);
+        if (!next) return;
+        openViews = next.views;
+        activeViewKey = next.activeViewKey;
+        if (next.closedActive) {
+          if (editDraft) cancelEditState();
           persistViews();
           renderViewTabs();
-          if (next) activateView(next);
+          if (next.nextView) activateView(next.nextView);
           else updateEditControls();
           return;
         }
         persistViews();
         renderViewTabs();
-      });
-
-      tab.append(main, close);
-      viewTabs.append(tab);
+      }
     });
     updateEditControls();
   }
 
   function closeAllViews() {
-    if (editing) cancelEditState();
+    if (editDraft) cancelEditState();
     shouldOpenDefaultView = false;
     openViews = [];
     activeViewKey = '';
@@ -202,18 +142,14 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
 
   function openView(type, id, name, activate = true) {
     shouldOpenDefaultView = false;
-    const key = keyOf(type, id);
-    let view = openViews.find(item => keyOf(item.type, item.id) === key);
-    if (!view) {
-      view = { type, id: String(id), name: String(name || '콘') };
-      openViews.push(view);
-    } else if (name) {
-      view.name = String(name);
-    }
-    if (activate) activeViewKey = key;
+    const key = libraryViewKey(type, id);
+    if (activate && editDraft && key !== libraryViewKey('collections', editDraft.collectionId)) cancelEditState();
+    const next = openLibraryView(openViews, activeViewKey, { type, id, name }, activate);
+    openViews = next.views;
+    activeViewKey = next.activeViewKey;
     persistViews();
     renderViewTabs();
-    return view;
+    return next.view;
   }
 
   function findNavElement(view) {
@@ -225,8 +161,8 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
 
   function activateView(view) {
     if (!view) return;
-    if (editing && (view.type !== 'collections' || String(view.id) !== editCollectionId)) cancelEditState();
-    activeViewKey = keyOf(view.type, view.id);
+    if (editDraft && (view.type !== 'collections' || String(view.id) !== editDraft.collectionId)) cancelEditState();
+    activeViewKey = libraryViewKey(view.type, view.id);
     persistViews();
     renderViewTabs();
     const target = findNavElement(view);
@@ -242,30 +178,14 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     collections.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
     annotateNavigation();
 
-    openViews = openViews.filter(view => {
-      const source = view.type === 'packages' ? packages : collections;
-      return source.some(item => String(item.id) === String(view.id));
-    });
-
-    if (!openViews.length && packages[0] && restorePending && shouldOpenDefaultView) {
-      openViews.push({ type: 'packages', id: String(packages[0].id), name: String(packages[0].name) });
-      shouldOpenDefaultView = false;
-    }
-    if (!activeViewKey || !openViews.some(view => keyOf(view.type, view.id) === activeViewKey)) {
-      activeViewKey = openViews[0] ? keyOf(openViews[0].type, openViews[0].id) : '';
-    }
+    const nextViews = reconcileLibraryViews(
+      openViews, activeViewKey, packages, collections, restorePending && shouldOpenDefaultView
+    );
+    openViews = nextViews.views;
+    activeViewKey = nextViews.activeViewKey;
+    if (nextViews.openedDefault) shouldOpenDefaultView = false;
     persistViews();
     renderViewTabs();
-
-    if (pendingOpenCreatedCollection) {
-      const activeRow = collectionList.querySelector('.collection-row.active[data-view-id]');
-      if (activeRow) {
-        const id = activeRow.dataset.viewId;
-        const item = collections.find(collection => String(collection.id) === id);
-        if (item) openView('collections', item.id, item.name, true);
-        pendingOpenCreatedCollection = false;
-      }
-    }
 
     if (restorePending) {
       const view = activeView();
@@ -302,39 +222,34 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   }
 
   function dragIds(event) {
-    try {
-      const raw = event.dataTransfer?.getData('application/x-hhjcon-ids');
-      const ids = raw ? JSON.parse(raw) : [];
-      return Array.isArray(ids) ? ids.map(String) : [];
-    } catch {
-      return [];
-    }
+    return readTransferIds(event.dataTransfer, CON_IDS_MIME);
   }
 
   function hasConDrag(event) {
-    return Boolean(event.dataTransfer?.types?.includes('application/x-hhjcon-ids'));
+    return transferHasType(event.dataTransfer, CON_IDS_MIME);
   }
 
   function orderedDraftSelection(fallbackId = null) {
-    if (fallbackId && !draftSelectedIds.has(fallbackId)) setDraftSelection([fallbackId], fallbackId);
-    return draftItems.filter(id => draftSelectedIds.has(id));
+    const prepared = prepareCollectionEditDrag(editDraft, fallbackId);
+    if (prepared.draft !== editDraft) {
+      editDraft = prepared.draft;
+      renderDraftSelection();
+    }
+    return prepared.ids;
   }
 
   function moveDraftCards(ids, target) {
-    const movingSet = new Set(ids);
     const targetCard = target?.closest?.('.con-card[data-con-id]') || null;
     const beforeId = targetCard ? String(targetCard.dataset.conId) : null;
-    if (beforeId && movingSet.has(beforeId)) return;
-
-    const nextItems = reorderOrderedIds(draftItems, ids, beforeId);
-    if (nextItems === draftItems) return;
-    draftItems = nextItems;
+    const nextDraft = reorderCollectionEditDraft(editDraft, ids, beforeId);
+    if (nextDraft === editDraft) return;
+    editDraft = nextDraft;
 
     const cards = new Map(
       [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => [String(card.dataset.conId), card])
     );
     const tail = conGrid.querySelector('.reorder-tail');
-    draftItems.forEach(id => {
+    editDraft.items.forEach(id => {
       const card = cards.get(id);
       if (!card) return;
       if (tail) conGrid.insertBefore(card, tail);
@@ -343,13 +258,13 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   }
 
   function deleteDraftSelection() {
-    if (!editing || !draftSelectedIds.size) return;
-    const removing = new Set(draftSelectedIds);
-    draftItems = draftItems.filter(id => !removing.has(id));
+    if (!editDraft?.selectedIds.size) return;
+    const removing = editDraft.selectedIds;
+    editDraft = deleteCollectionEditSelection(editDraft);
     conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => {
       if (removing.has(String(card.dataset.conId))) card.remove();
     });
-    setDraftSelection([]);
+    renderDraftSelection();
   }
 
   editButton.addEventListener('click', () => {
@@ -359,25 +274,24 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
       searchInput.value = '';
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    editing = true;
-    editCollectionId = String(view.id);
-    draftItems = [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => String(card.dataset.conId));
-    draftSelectedIds = new Set(
+    editDraft = createCollectionEditDraft(
+      view.id,
+      [...conGrid.querySelectorAll('.con-card[data-con-id]')].map(card => String(card.dataset.conId)),
       [...conGrid.querySelectorAll('.con-card.selected[data-con-id]')].map(card => String(card.dataset.conId))
     );
-    draftAnchorId = draftItems.find(id => draftSelectedIds.has(id)) || null;
     conGrid.querySelectorAll('.con-card[data-con-id]').forEach(card => { card.draggable = true; });
-    setDraftSelection(draftSelectedIds, draftAnchorId);
+    renderDraftSelection();
     updateEditControls();
   });
 
   deleteButton.addEventListener('click', deleteDraftSelection);
 
   saveButton.addEventListener('click', async () => {
-    if (!editing || !editCollectionId) return;
-    const collection = await commitCollectionDraft(editCollectionId, draftItems);
+    if (!editDraft) return;
+    const collectionId = editDraft.collectionId;
+    const collection = await commitCollectionDraft(collectionId, editDraft.items);
     if (!collection) return;
-    collections = collections.map(item => String(item.id) === editCollectionId ? collection : item);
+    collections = collections.map(item => String(item.id) === collectionId ? collection : item);
     cancelEditState();
   });
 
@@ -388,34 +302,34 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   });
 
   conGrid.addEventListener('click', event => {
-    if (!editing) return;
+    if (!editDraft) return;
     const card = event.target.closest('.con-card[data-con-id]');
     if (!card) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     const id = String(card.dataset.conId);
-    const next = planOrderedSelection(draftItems, draftSelectedIds, draftAnchorId, id, {
+    editDraft = selectCollectionEditDraft(editDraft, id, {
       toggle: event.ctrlKey || event.metaKey,
       range: event.shiftKey
     });
-    setDraftSelection(next.ids, next.anchorId);
+    renderDraftSelection();
   }, true);
 
   conGrid.addEventListener('dblclick', event => {
-    if (!editing || !event.target.closest('.con-card[data-con-id]')) return;
+    if (!editDraft || !event.target.closest('.con-card[data-con-id]')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
 
   conGrid.addEventListener('dragstart', event => {
-    if (!editing) return;
+    if (!editDraft) return;
     const card = event.target.closest('.con-card[data-con-id]');
     if (!card || !event.dataTransfer) return;
     event.stopImmediatePropagation();
     const id = String(card.dataset.conId);
     const ids = orderedDraftSelection(id);
     event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-hhjcon-ids', JSON.stringify(ids));
+    event.dataTransfer.setData(CON_IDS_MIME, JSON.stringify(ids));
     event.dataTransfer.setData('text/plain', ids.join('\n'));
     card.classList.add('dragging');
   }, true);
@@ -431,7 +345,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     if (!target || (!hasConDrag(event) && !dragIds(event).length)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!editing) {
+    if (!editDraft) {
       event.dataTransfer.dropEffect = 'none';
       return;
     }
@@ -453,7 +367,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     event.preventDefault();
     event.stopImmediatePropagation();
     target.classList.remove('collection-order-target');
-    if (!editing) return;
+    if (!editDraft) return;
     moveDraftCards(ids, target);
   }, true);
 
@@ -468,7 +382,6 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
   }, true);
 
   document.addEventListener('click', event => {
-    if (event.target.closest('#newCollectionBtn')) pendingOpenCreatedCollection = true;
     const nav = event.target.closest('.nav-item[data-view-id], .collection-main[data-view-id]');
     if (!nav) return;
     const type = nav.dataset.viewType;
@@ -479,27 +392,39 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     updateEditControls();
   });
 
+  document.addEventListener(COLLECTION_CREATED_EVENT, event => {
+    const { id, name } = event.detail || {};
+    if (id) openView('collections', id, name, true);
+  });
+
+  function updateLibraryDeleteContext(target) {
+    libraryDeleteArmed = target instanceof Node && libraryPanel.contains(target);
+  }
+
+  document.addEventListener('pointerdown', event => updateLibraryDeleteContext(event.target), true);
+  document.addEventListener('focusin', event => updateLibraryDeleteContext(event.target), true);
+
   window.addEventListener('keydown', event => {
     if (event.key !== 'Delete') return;
     if (document.activeElement?.matches('textarea, input, [contenteditable="true"]')) return;
+    if (!editDraft || !libraryDeleteArmed) return;
     if (document.querySelector('.story-con.selected')) return;
     if (activeView()?.type !== 'collections') return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (editing) deleteDraftSelection();
+    deleteDraftSelection();
   }, true);
 
   let refreshQueued = false;
-  const observer = new MutationObserver(() => {
+  function queueRefreshData() {
     if (refreshQueued) return;
     refreshQueued = true;
     queueMicrotask(() => {
       refreshQueued = false;
       refreshData().catch(() => {});
     });
-  });
-  observer.observe(packageList, { childList: true });
-  observer.observe(collectionList, { childList: true });
+  }
+  collectionList.addEventListener(NAVIGATION_RENDER_EVENT, queueRefreshData);
 
   refreshData().catch(() => {});
 }

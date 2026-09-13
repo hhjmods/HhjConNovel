@@ -10,6 +10,7 @@ export function insertStoryItemsBefore(items, insertingItems, beforeId = null) {
 
 export function planStoryItemReorder(items, movingIds, beforeId = null) {
   const moving = new Set(movingIds);
+  if (beforeId && moving.has(beforeId)) return null;
   const movingItems = items.filter(item => moving.has(item.id));
   if (!movingItems.length) return null;
 

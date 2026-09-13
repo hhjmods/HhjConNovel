@@ -3,6 +3,11 @@ import { getAll } from '../db.js';
 let refMetaByConId = new Map();
 let refreshPromise = null;
 
+export function showMissingConNotice(meta) {
+  const packageName = meta?.packageName || '원본 디시콘 묶음 이름을 확인할 수 없습니다.';
+  alert(`해당 콘을 구매하지 않았습니다.\n\n디시콘 묶음: ${packageName}`);
+}
+
 async function refreshMetadata() {
   if (refreshPromise) return refreshPromise;
   refreshPromise = getAll('collections').then(collections => {
@@ -55,10 +60,8 @@ document.addEventListener('click', async event => {
     await refreshMetadata();
     meta = refMetaByConId.get(card.dataset.conId);
   }
-  const packageName = meta?.packageName || '원본 디시콘 묶음 이름을 확인할 수 없습니다.';
-  alert(`해당 콘을 구매하지 않았습니다.\n\n디시콘 묶음: ${packageName}`);
+  showMissingConNotice(meta);
 }, true);
 
-const observer = new MutationObserver(annotateMissingCards);
-observer.observe(document.documentElement, { childList: true, subtree: true });
+document.getElementById('conGrid')?.addEventListener('hhjcon:library-grid-rendered', annotateMissingCards);
 refreshMetadata().then(annotateMissingCards);

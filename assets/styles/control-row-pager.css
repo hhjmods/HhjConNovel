@@ -27,7 +27,6 @@
   min-width: 0;
 }
 .hhj-control-row-track > * { flex: 0 0 auto; }
-.story-header-edit-actions .hhj-control-row-track > .story-html-copy { margin-left: auto; }
 .hhj-control-row-nav {
   display: grid;
   grid-template-rows: 1fr 1fr;

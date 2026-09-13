@@ -24,5 +24,4 @@
 .story-direct-tail.drop-target { border-color: var(--accent); background: #202d47; color: var(--accent-2); }
 .story-break { width: 100%; min-height: 30px; display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; padding: 4px 8px !important; border-style: dashed !important; background: #171c25 !important; }
 .story-break-label { align-self: center; color: var(--muted); font-size: 11px; text-align: center; }
-.story-break-remove { align-self: center; }
 @media (max-width: 760px) { .library-view-tabs { max-width: 100%; } .library-view-tab-main { max-width: 130px; } }

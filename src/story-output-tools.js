@@ -1,7 +1,8 @@
-import { appendStoryTextBlock } from './app.js?v=20260909-3';
+import { appendStoryTextBlock } from './app.js?v=20260913-9';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
-import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260907-1';
+import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260914-1';
+import { DC_HTML_LIMIT } from './story/story-html-utils.js?v=20260912-3';
 
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');
@@ -35,10 +36,6 @@ function setImageMemo(storyId, value) {
 
 function savedImageMemo(storyId) {
   return String(imageMemoDoc.items?.[storyId]?.text || '');
-}
-
-function currentItemRows() {
-  return [...storyList.querySelectorAll(':scope > .story-item')];
 }
 
 function ensureImageDragHandle(row) {
@@ -102,11 +99,13 @@ function decorateImageRow(row) {
     const title = document.createElement('strong');
     title.textContent = '이미지 자료 위치 마커';
     const help = document.createElement('small');
-    help.textContent = '(이후 dc 글쓰기 에디터에서 해당 위치에 삽입되는 위치표시용 문구를 지우고 이미지를 삽입하시면 됩니다.)';
+    help.textContent = 'DC 글쓰기에서 위치 표시 문구를 지우고 이미지를 넣으세요. DC 예상 글자수는 실제 이미지로 교체한 상태를 기준으로 계산합니다.';
     label.append(title, help);
     row.insertBefore(label, row.querySelector(':scope > .story-tools') || null);
   }
   ensureImageMemoInput(row, label);
+  const help = label.querySelector('small');
+  if (help) label.append(help);
   row.title = IMAGE_PLACEHOLDER_TEXT;
   return true;
 }
@@ -124,10 +123,7 @@ if (storyList && editorActions) {
   editorActions.insertBefore(imageButton, clearStoryButton || null);
 
   imageButton.addEventListener('click', async () => {
-    const storyId = await appendStoryTextBlock(IMAGE_SENTINEL);
-    const newRow = currentItemRows().find(row => row.dataset.storyId === storyId);
-    if (!newRow) return;
-    decorateImageRow(newRow);
+    await appendStoryTextBlock(IMAGE_SENTINEL);
   });
 }
 
@@ -145,7 +141,7 @@ storyList.insertAdjacentElement('afterend', preview);
 
 const detailStats = document.createElement('div');
 detailStats.className = 'story-detail-stats';
-detailStats.innerHTML = '<span>글자 <strong data-stat="text">0</strong>자</span><span>HTML <strong data-stat="html">0</strong>자</span><span>콘 <strong data-stat="con">0</strong>개</span><span>대사 <strong data-stat="dialogue">0</strong>개</span><span>줄바꿈 <strong data-stat="break">0</strong>줄</span><span>이미지 <strong data-stat="image">0</strong>개</span>';
+detailStats.innerHTML = `<span>글자 <strong data-stat="text">0</strong>자</span><span>HTML <strong data-stat="html">0</strong>자</span><span data-stat-wrap="dc-html" title="콘 인증값을 넣고 이미지 마커를 현재 DC 업로드 이미지 코드로 교체했을 때의 예상 길이">DC 예상 <strong data-stat="dc-html">0</strong> / ${numberFormat.format(DC_HTML_LIMIT)}자</span><span>콘 <strong data-stat="con">0</strong>개</span><span>대사 <strong data-stat="dialogue">0</strong>개</span><span>줄바꿈 <strong data-stat="break">0</strong>줄</span><span>이미지 <strong data-stat="image">0</strong>개</span>`;
 preview.insertAdjacentElement('afterend', detailStats);
 
 async function refreshSnapshot() {
@@ -154,6 +150,9 @@ async function refreshSnapshot() {
   if (seq !== refreshSeq) return;
   detailStats.querySelector('[data-stat="text"]').textContent = numberFormat.format(snapshot.textCharCount);
   detailStats.querySelector('[data-stat="html"]').textContent = numberFormat.format(snapshot.htmlCharCount);
+  const dcHtmlStat = detailStats.querySelector('[data-stat-wrap="dc-html"]');
+  dcHtmlStat.classList.toggle('over-limit', snapshot.dcHtmlCharCount > DC_HTML_LIMIT);
+  dcHtmlStat.querySelector('[data-stat="dc-html"]').textContent = numberFormat.format(snapshot.dcHtmlCharCount);
   detailStats.querySelector('[data-stat="con"]').textContent = numberFormat.format(snapshot.conCount);
   detailStats.querySelector('[data-stat="dialogue"]').textContent = numberFormat.format(snapshot.dialogueCount);
   detailStats.querySelector('[data-stat="break"]').textContent = numberFormat.format(snapshot.breakCount);
@@ -172,11 +171,12 @@ if (toolbar && editorPanel) {
   toggle.className = 'story-html-toggle';
   toggle.textContent = 'HTML 보기';
   toggle.title = '현재 작성된 원고의 HTML 코드 보기';
-  toolbar.append(toggle);
+  toolbar.insertBefore(toggle, toolbar.querySelector('.story-html-copy'));
   toggle.addEventListener('click', () => {
     previewMode = !previewMode;
     editorPanel.classList.toggle('html-preview-mode', previewMode);
     toolbar.classList.toggle('html-preview-active', previewMode);
+    document.querySelectorAll('.story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle)').forEach(button => { button.disabled = previewMode; });
     preview.hidden = !previewMode;
     toggle.textContent = previewMode ? '블록 보기' : 'HTML 보기';
     toggle.title = previewMode ? '블록 편집 화면으로 돌아가기' : '현재 작성된 원고 HTML 코드 보기';
@@ -184,11 +184,10 @@ if (toolbar && editorPanel) {
   });
 }
 
-const observer = new MutationObserver(() => {
+document.addEventListener('hhjcon:story-rendered', () => {
   decorateImages();
   scheduleRefresh();
 });
-observer.observe(storyList, { childList: true });
 storyList.addEventListener('input', () => scheduleRefresh());
 storyList.addEventListener('change', () => scheduleRefresh());
 storyList.addEventListener('click', () => scheduleRefresh(0));

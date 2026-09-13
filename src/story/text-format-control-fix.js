@@ -92,6 +92,45 @@ if (toolbar && storyList) {
     return true;
   }
 
+  function normalizeFontSize(pixelSize) {
+    activeEditor?.querySelectorAll('font[size="7"]').forEach(font => {
+      const parent = font.parentElement;
+      if (parent?.tagName === 'SPAN' && parent.childNodes.length === 1) {
+        parent.style.fontSize = pixelSize;
+        font.removeAttribute('size');
+        return;
+      }
+      font.removeAttribute('size');
+      font.style.fontSize = pixelSize;
+    });
+    const anchorNode = window.getSelection()?.anchorNode;
+    const anchorElement = anchorNode?.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode?.parentElement;
+    const pendingElement = anchorElement?.closest('[style*="font-size"]');
+    if (pendingElement && activeEditor?.contains(pendingElement) && pendingElement.style.fontSize === 'xxx-large') {
+      pendingElement.style.fontSize = pixelSize;
+    }
+  }
+
+  function applyFontSize(pixelSize) {
+    if (!/^\d+px$/.test(pixelSize) || !restoreSelection()) return false;
+    document.execCommand('styleWithCSS', false, false);
+    const applied = document.execCommand('fontSize', false, '7');
+    document.execCommand('styleWithCSS', false, true);
+    activeEditor.dataset.fontSizePx = pixelSize;
+    captureSelection();
+    normalizeFontSize(pixelSize);
+    restoreSelection();
+    captureSelection();
+    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    return applied;
+  }
+
+  storyList.addEventListener('input', event => {
+    const editor = event.target.closest?.('.rich-text-editor');
+    if (editor !== activeEditor || !editor.dataset.fontSizePx) return;
+    normalizeFontSize(editor.dataset.fontSizePx);
+  }, true);
+
   function closePopup() {
     popup.hidden = true;
     popupSource = null;
@@ -193,7 +232,7 @@ if (toolbar && storyList) {
     }
     if (control.matches('[data-format="size"]')) {
       event.stopImmediatePropagation();
-      if (control.value) applyCommand('fontSize', control.value);
+      if (control.value) applyFontSize(control.value);
     }
   }, true);
 

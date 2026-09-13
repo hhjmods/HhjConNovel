@@ -15,7 +15,7 @@
 
 :root[data-theme="light"] button,
 :root[data-theme="light"] .file-button { background: var(--panel-2); color: var(--text); }
-:root[data-theme="light"] button:hover,
+:root[data-theme="light"] button:hover:not(:disabled),
 :root[data-theme="light"] .file-button:hover { border-color: #a7b4c8; }
 :root[data-theme="light"] button.primary { background: #dce7ff; border-color: #9db9f4; color: #244f9f; }
 :root[data-theme="light"] button.danger { color: #b42335; }
@@ -27,6 +27,8 @@
 :root[data-theme="light"] .library-view-tabs-shell { background: #f7f9fc; }
 :root[data-theme="light"] .nav-item.active,
 :root[data-theme="light"] .collection-row.active { background: #e8eef9; border-color: #b9c7dc; }
+:root[data-theme="dark"] .nav-item:not(.active),
+:root[data-theme="dark"] .collection-row:not(.active) { background: var(--panel-2); }
 :root[data-theme="light"] .con-card,
 :root[data-theme="light"] .story-item { background: #f8fafc; }
 :root[data-theme="light"] .con-card img,

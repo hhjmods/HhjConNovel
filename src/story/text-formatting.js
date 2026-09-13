@@ -1,7 +1,9 @@
 import { getOne, putOne } from '../db.js';
+import { sanitizeRichHtml as sanitizeHtml } from './rich-html.js?v=20260914-1';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const RICH_DOC_ID = 'rich-text-v1';
+const RICH_EDITORS_RENDERED_EVENT = 'hhjcon:rich-editors-rendered';
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');
 const editorHeader = editorPanel?.querySelector('.editor-header');
@@ -17,23 +19,49 @@ if (storyList && editorPanel && editorHeader) {
   const toolbar = document.createElement('div');
   toolbar.className = 'text-format-toolbar';
   toolbar.innerHTML = `
-    <select data-format="font" aria-label="서체" title="서체">
-      <option value="">서체</option>
-      <option value="Arial">Arial</option>
-      <option value="Malgun Gothic">맑은 고딕</option>
-      <option value="Gulim">굴림</option>
-      <option value="Dotum">돋움</option>
-      <option value="Batang">바탕</option>
-      <option value="Gungsuh">궁서</option>
+    <select data-format="font" aria-label="글꼴" title="글꼴">
+      <option value="">글꼴</option>
+      <option value="Malgun Gothic" style="font-family:'Malgun Gothic'">맑은 고딕</option>
+      <option value="GulimChe" style="font-family:GulimChe">굴림체</option>
+      <option value="Gulim" style="font-family:Gulim">굴림</option>
+      <option value="BatangChe" style="font-family:BatangChe">바탕체</option>
+      <option value="Batang" style="font-family:Batang">바탕</option>
+      <option value="Gungsuh" style="font-family:Gungsuh">궁서</option>
+      <option value="NanumGothic" style="font-family:NanumGothic">나눔고딕</option>
+      <option value="NanumMyeongjo" style="font-family:NanumMyeongjo">나눔명조</option>
+      <option value="NanumSquare" style="font-family:NanumSquare">나눔스퀘어</option>
+      <option value="Helvetica" style="font-family:Helvetica">helvetica</option>
+      <option value="Arial" style="font-family:Arial">Arial</option>
+      <option value="Arial Black" style="font-family:'Arial Black'">Arial Black</option>
+      <option value="Comic Sans MS" style="font-family:'Comic Sans MS'">Comic Sans MS</option>
+      <option value="Courier New" style="font-family:'Courier New'">Courier New</option>
+      <option value="Impact" style="font-family:Impact">Impact</option>
+      <option value="Tahoma" style="font-family:Tahoma">Tahoma</option>
+      <option value="Times New Roman" style="font-family:'Times New Roman'">Times New Roman</option>
+      <option value="Verdana" style="font-family:Verdana">Verdana</option>
+      <option value="MS Gothic" style="font-family:'MS Gothic'">MS Gothic</option>
+      <option value="MS PGothic" style="font-family:'MS PGothic'">MS PGothic</option>
+      <option value="MS UI Gothic" style="font-family:'MS UI Gothic'">MS UI Gothic</option>
     </select>
     <select data-format="size" aria-label="크기" title="글자 크기">
       <option value="">크기</option>
-      <option value="2">12</option>
-      <option value="3">14</option>
-      <option value="4">18</option>
-      <option value="5">24</option>
-      <option value="6">32</option>
-      <option value="7">48</option>
+      <option value="8px">8</option>
+      <option value="9px">9</option>
+      <option value="10px">10</option>
+      <option value="11px">11</option>
+      <option value="12px">12</option>
+      <option value="14px">14</option>
+      <option value="16px">16</option>
+      <option value="18px">18</option>
+      <option value="20px">20</option>
+      <option value="22px">22</option>
+      <option value="24px">24</option>
+      <option value="28px">28</option>
+      <option value="30px">30</option>
+      <option value="36px">36</option>
+      <option value="50px">50</option>
+      <option value="72px">72</option>
+      <option value="96px">96</option>
     </select>
     <label class="format-color" title="글자색"><span>글자색</span><input data-format="color" type="color" value="#e8edf5" aria-label="글자색"></label>
     <label class="format-color" title="배경색"><span>배경색</span><input data-format="background" type="color" value="#27344f" aria-label="배경색"></label>
@@ -82,66 +110,6 @@ if (storyList && editorPanel && editorHeader) {
       box.append(document.createTextNode(part));
     });
     return box.innerHTML;
-  }
-
-  function copyStyle(source, target) {
-    const style = source.style;
-    if (!style) return;
-    const allowed = [
-      'color', 'backgroundColor', 'fontFamily', 'fontSize', 'fontWeight',
-      'fontStyle', 'textDecorationLine', 'textAlign'
-    ];
-    allowed.forEach(prop => {
-      const value = style[prop];
-      if (value) target.style[prop] = value;
-    });
-  }
-
-  function sanitizeHtml(html) {
-    const template = document.createElement('template');
-    template.innerHTML = String(html || '');
-    const output = document.createElement('div');
-    const allowed = new Set(['SPAN', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DIV', 'P']);
-    const blocked = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META']);
-    const sizeMap = { '1': '10px', '2': '12px', '3': '14px', '4': '18px', '5': '24px', '6': '32px', '7': '48px' };
-
-    function appendClean(node, parent) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        parent.append(document.createTextNode(node.data));
-        return;
-      }
-      if (node.nodeType !== Node.ELEMENT_NODE) return;
-      const tag = node.tagName;
-      if (blocked.has(tag)) return;
-      if (tag === 'BR') {
-        parent.append(document.createElement('br'));
-        return;
-      }
-      if (tag === 'FONT') {
-        const span = document.createElement('span');
-        const face = node.getAttribute('face');
-        const color = node.getAttribute('color');
-        const size = node.getAttribute('size');
-        if (face) span.style.fontFamily = face;
-        if (color) span.style.color = color;
-        if (sizeMap[size]) span.style.fontSize = sizeMap[size];
-        copyStyle(node, span);
-        [...node.childNodes].forEach(child => appendClean(child, span));
-        parent.append(span);
-        return;
-      }
-      if (!allowed.has(tag)) {
-        [...node.childNodes].forEach(child => appendClean(child, parent));
-        return;
-      }
-      const clean = document.createElement(tag.toLowerCase());
-      copyStyle(node, clean);
-      [...node.childNodes].forEach(child => appendClean(child, clean));
-      parent.append(clean);
-    }
-
-    [...template.content.childNodes].forEach(node => appendClean(node, output));
-    return output.innerHTML;
   }
 
   function normalizePasteHtml(html, text) {
@@ -194,6 +162,27 @@ if (storyList && editorPanel && editorHeader) {
     toolbar.querySelectorAll('.format-toggle[data-command]').forEach(button => {
       button.classList.toggle('active', Boolean(document.queryCommandState(button.dataset.command)));
     });
+    if (document.activeElement !== fontSelect) {
+      const fontNames = String(document.queryCommandValue('fontName') || '').replace(/["']/g, '').split(',').map(value => value.trim().toLowerCase());
+      fontSelect.value = [...fontSelect.options].find(option => option.value && fontNames.includes(option.value.toLowerCase()))?.value || '';
+    }
+    if (document.activeElement === sizeSelect) return;
+    const anchorNode = window.getSelection()?.anchorNode;
+    const anchorElement = anchorNode?.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode?.parentElement;
+    const sizedElement = anchorElement?.closest('font[size], [style*="font-size"]');
+    if (!sizedElement || !activeEditor.contains(sizedElement)) {
+      const pendingSize = activeEditor.dataset.fontSizePx;
+      if (pendingSize && String(document.queryCommandValue('fontSize')) === '7') {
+        sizeSelect.value = pendingSize;
+        return;
+      }
+      delete activeEditor.dataset.fontSizePx;
+      sizeSelect.value = '12px';
+      return;
+    }
+    const pixelSize = Math.round(parseFloat(getComputedStyle(sizedElement).fontSize));
+    const pixelOption = `${pixelSize}px`;
+    sizeSelect.value = [...sizeSelect.options].some(option => option.value === pixelOption) ? pixelOption : '';
   }
 
   function setActive(editor) {
@@ -285,13 +274,16 @@ if (storyList && editorPanel && editorHeader) {
     editor.addEventListener('blur', () => { flushSave(); });
 
     textarea.addEventListener('input', () => {
-      if (textarea.value === BREAK_SENTINEL) removeEditorForBreak(row, textarea);
+      if (textarea.value !== BREAK_SENTINEL) return;
+      removeEditorForBreak(row, textarea);
+      storyList.dispatchEvent(new Event(RICH_EDITORS_RENDERED_EVENT));
     });
   }
 
   function upgradeStory() {
     if (!richDocLoaded) return;
     storyList.querySelectorAll(':scope > .story-text').forEach(upgradeRow);
+    storyList.dispatchEvent(new Event(RICH_EDITORS_RENDERED_EVENT));
   }
 
   toolbar.addEventListener('pointerdown', event => {
@@ -318,9 +310,6 @@ if (storyList && editorPanel && editorHeader) {
   fontSelect.addEventListener('change', () => {
     if (fontSelect.value) runCommand('fontName', fontSelect.value);
   });
-  sizeSelect.addEventListener('change', () => {
-    if (sizeSelect.value) runCommand('fontSize', sizeSelect.value);
-  });
   colorInput.addEventListener('input', () => runCommand('foreColor', colorInput.value));
   backgroundInput.addEventListener('input', () => runCommand('backColor', backgroundInput.value));
 
@@ -328,8 +317,7 @@ if (storyList && editorPanel && editorHeader) {
     if (activeEditor && selectionInside(activeEditor)) captureSelection();
   });
 
-  const observer = new MutationObserver(() => queueMicrotask(upgradeStory));
-  observer.observe(storyList, { childList: true });
+  document.addEventListener('hhjcon:story-rendered', () => queueMicrotask(upgradeStory));
 
   setToolbarEnabled(false);
   getOne('documents', RICH_DOC_ID).then(saved => {

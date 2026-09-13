@@ -58,5 +58,3 @@ export async function requestDcSync({ writeUrl, timeoutMs = 30000 } = {}) {
     setTimeout(() => finish(reject, new Error('DC 브리지는 연결되었지만 동기화 응답이 없습니다. 잠시 후 다시 시도해주세요.')), timeoutMs);
   });
 }
-
-export const DcBridgeProtocol = Object.freeze({ REQUEST_TYPE, MESSAGE_TYPE, PING_TYPE, PONG_TYPE });

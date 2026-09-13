@@ -7,7 +7,6 @@ const collectionPanel = document.getElementById('collectionPanel');
 const packageList = document.getElementById('packageList');
 const collectionList = document.getElementById('collectionList');
 const storyDropZone = document.getElementById('storyDropZone');
-const WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
 const desktopQuery = window.matchMedia('(min-width: 901px)');
 let alignFrame = 0;
 
@@ -30,23 +29,17 @@ function arrangeHeader() {
 
   saveActions.append(saveButton, listButton);
   [...actionGroup.children].forEach(child => editActions.append(child));
-  const copyButton = document.querySelector('.story-html-copy');
-  if (copyButton) editActions.append(copyButton);
   top.append(titleGroup, saveActions);
   header.replaceChildren(top, editActions);
   header.classList.add('story-header-split');
 }
 
-function ensureCopyPlacement() {
+function ensureOutputPlacement() {
+  const toggleButton = document.querySelector('.story-html-toggle');
   const copyButton = document.querySelector('.story-html-copy');
   const editActions = header?.querySelector('.story-header-edit-actions');
+  if (toggleButton && editActions && toggleButton.parentElement !== editActions) editActions.append(toggleButton);
   if (copyButton && editActions && copyButton.parentElement !== editActions) editActions.append(copyButton);
-}
-
-function patchWarning(root = document) {
-  root.querySelectorAll?.('.story-save-warning').forEach(element => {
-    if (element.textContent !== WARNING) element.textContent = WARNING;
-  });
 }
 
 function makeSpacer(beforeNode, name) {
@@ -108,24 +101,12 @@ function scheduleTopSync() {
 
 if (header) {
   arrangeHeader();
-  ensureCopyPlacement();
-  patchWarning();
-
-  const bodyObserver = new MutationObserver(records => {
-    records.forEach(record => record.addedNodes.forEach(node => {
-      if (node.nodeType === 1) patchWarning(node);
-    }));
-  });
-  bodyObserver.observe(document.body, { childList: true });
+  ensureOutputPlacement();
 
   const panelObserver = new ResizeObserver(scheduleTopSync);
   [sidebar, libraryPanel, editorPanel].forEach(panel => { if (panel) panelObserver.observe(panel); });
 
-  const tabObserver = new MutationObserver(() => scheduleTopSync());
-  [packagePanel, collectionPanel].forEach(panel => {
-    if (panel) tabObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
-  });
-
+  document.addEventListener('hhjcon:library-sidebar-rendered', scheduleTopSync);
   desktopQuery.addEventListener?.('change', scheduleTopSync);
   window.addEventListener('resize', scheduleTopSync);
   scheduleTopSync();

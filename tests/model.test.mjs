@@ -13,7 +13,7 @@ import {
   makeStableConId,
   normalizeSyncPayload,
   preserveCollectionRefMeta,
-  removeIds,
+  preserveStoryConRefs,
   reorderOrderedIds,
   reorderIds
 } from '../src/model.js';
@@ -158,6 +158,19 @@ test('preserveCollectionRefMeta reuses the collection when owned metadata is alr
   assert.equal(preserveCollectionRefMeta(original, cons, packages), original);
 });
 
+test('preserveStoryConRefs keeps con names after the synced account changes', () => {
+  const story = { id: 'current', items: [{ id: 'story-1', type: 'con', conId: 'owned' }], updatedAt: 1 };
+  const cons = new Map([['owned', { id: 'owned', packageId: 'pkg', sourceNo: '42', name: '테스트 콘' }]]);
+  const packages = new Map([['pkg', { id: 'pkg', sourcePackageId: 'source-pkg', name: '테스트 묶음' }]]);
+
+  const preserved = preserveStoryConRefs(story, cons, packages);
+  assert.deepEqual(preserved.items[0].conRef, {
+    packageId: 'pkg', sourcePackageId: 'source-pkg', sourceNo: '42', name: '테스트 콘', packageName: '테스트 묶음'
+  });
+  assert.equal(preserveStoryConRefs(preserved, new Map(), new Map()), preserved);
+  assert.equal(story.items[0].conRef, undefined);
+});
+
 test('reorderIds moves one or several ids while preserving story order', () => {
   assert.deepEqual(reorderIds(collection(), ['b'], 'd').items, ['a', 'c', 'b', 'd']);
   assert.deepEqual(reorderIds(collection(), ['d', 'b'], 'c').items, ['a', 'b', 'd', 'c']);
@@ -184,16 +197,6 @@ test('reorderIds leaves the original object untouched when no moving id exists',
 
 test('reorderIds appends when the requested target does not exist', () => {
   assert.deepEqual(reorderIds(collection(), ['b'], 'missing').items, ['a', 'c', 'd', 'b']);
-});
-
-test('removeIds removes ids and their saved reference metadata', () => {
-  const original = {
-    ...collection(['a', 'b', 'c']),
-    refMeta: { a: { name: 'A' }, b: { name: 'B' }, c: { name: 'C' } }
-  };
-  const result = removeIds(original, ['b']);
-  assert.deepEqual(result.items, ['a', 'c']);
-  assert.deepEqual(result.refMeta, { a: { name: 'A' }, c: { name: 'C' } });
 });
 
 test('applyCollectionItemDraft reorders, removes, and deduplicates existing ids', () => {
@@ -299,6 +302,7 @@ test('collection import filters invalid items and resolves package names by sour
     packages: [{ sourcePackageId: 'source', name: '원본 묶음' }, null],
     refs: [
       { id: 'a', sourcePackageId: 'source', sourceNo: 3 },
+      { id: 'orphan', sourcePackageId: 'source', sourceNo: 4 },
       { id: 1, sourcePackageId: 'source' },
       null
     ]
@@ -308,5 +312,6 @@ test('collection import filters invalid items and resolves package names by sour
   assert.deepEqual(result.items, ['a']);
   assert.equal(result.refMeta.a.packageName, '원본 묶음');
   assert.equal(result.refMeta.a.sourceNo, '3');
+  assert.equal(result.refMeta.orphan, undefined);
   assert.equal(result.refMeta['1'], undefined);
 });

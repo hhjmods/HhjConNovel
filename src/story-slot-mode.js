@@ -1,4 +1,5 @@
-import { applyStoryDropTransfer } from './app.js?v=20260909-3';
+import { applyStoryDropTransfer } from './app.js?v=20260913-9';
+import { nearestRectIndex } from './story/story-dnd-geometry.js?v=20260913-1';
 import { CON_IDS_MIME, STORY_IDS_MIME, transferHasType } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
@@ -114,20 +115,7 @@ if (storyList) {
 
   function nearestRow(clientX, clientY) {
     const rows = logicalRows();
-    if (!rows.length) return null;
-    let best = null;
-    let bestDistance = Infinity;
-    for (const row of rows) {
-      const rect = row.getBoundingClientRect();
-      const dx = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
-      const dy = clientY < rect.top ? rect.top - clientY : clientY > rect.bottom ? clientY - rect.bottom : 0;
-      const distance = dx * dx + dy * dy;
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = row;
-      }
-    }
-    return best;
+    return rows[nearestRectIndex(rows.map(row => row.getBoundingClientRect()), clientX, clientY)] || null;
   }
 
   function isLowerTailPoint(clientY) {

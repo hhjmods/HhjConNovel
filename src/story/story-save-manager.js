@@ -1,13 +1,9 @@
 import { deleteOne, getAll, getOne, putOne } from '../db.js';
-import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
 import { downloadJson, makeDatedDefaultName, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
-import { showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260909-4';
+import { showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260913-9';
 import { saveToastForReload, showToast } from '../ui/toast.js?v=20260909-2';
+import { FORMAT, VERSION, exportBundle, exportSave, filtered, normalizeConRef, parseImportData } from './story-save-format.js?v=20260912-1';
 
-const FORMAT = 'hhjcon-story-save';
-const VERSION = 1;
-const BUNDLE_FORMAT = 'hhjcon-story-saves';
-const BUNDLE_VERSION = 1;
 const PREFIX = 'story-save:';
 const DOCS = {
   rich: 'rich-text-v1',
@@ -23,12 +19,6 @@ const clearButton = document.getElementById('clearStoryBtn');
 
 const clone = value => structuredClone(value);
 const asObject = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-
-function filtered(items, ids) {
-  const out = {};
-  Object.entries(asObject(items)).forEach(([id, value]) => { if (ids.has(id)) out[id] = clone(value); });
-  return out;
-}
 
 function readHeights(ids) {
   try {
@@ -59,15 +49,15 @@ async function captureSave(name, oldSave = null) {
   items.forEach(item => {
     if (item.type !== 'con') return;
     const con = conMap.get(item.conId);
-    if (!con) return;
-    const pkg = packageMap.get(con.packageId);
-    conRefs[item.conId] = {
+    const pkg = con ? packageMap.get(con.packageId) : null;
+    const ref = con ? {
       sourceNo: String(con.sourceNo || ''),
       packageId: String(con.packageId || ''),
       sourcePackageId: String(pkg?.sourcePackageId || con.packageId || ''),
       name: String(con.name || ''),
       packageName: String(pkg?.name || '')
-    };
+    } : normalizeConRef(item.conRef);
+    if (ref) conRefs[item.conId] = ref;
   });
   const now = Date.now();
   return {
@@ -87,68 +77,6 @@ async function captureSave(name, oldSave = null) {
     },
     conRefs
   };
-}
-
-function exportSave(save) {
-  return {
-    format: FORMAT,
-    version: VERSION,
-    exportedAt: new Date().toISOString(),
-    name: save.name,
-    story: clone(save.story),
-    metadata: clone(save.metadata || {}),
-    conRefs: clone(save.conRefs || {})
-  };
-}
-
-function exportBundle(saves) {
-  return {
-    format: BUNDLE_FORMAT,
-    version: BUNDLE_VERSION,
-    exportedAt: new Date().toISOString(),
-    saves: saves.map(exportSave)
-  };
-}
-
-function parseSave(data) {
-  if (!data || data.format !== FORMAT || Number(data.version) !== VERSION || !Array.isArray(data.story?.items) || !data.story.items.length) {
-    throw new Error('지원하지 않는 콘문학 원고 파일입니다.');
-  }
-  const seen = new Set();
-  const items = data.story.items.map(item => {
-    const id = String(item?.id || '');
-    if (!id || seen.has(id) || !['con', 'text'].includes(item?.type)) throw new Error('올바르지 않은 원고 블록이 있습니다.');
-    seen.add(id);
-    if (item.type === 'con') {
-      const conId = String(item.conId || '');
-      if (!conId) throw new Error('디시콘 블록 정보가 없습니다.');
-      return { id, type: 'con', conId };
-    }
-    return { id, type: 'text', text: String(item.text ?? '') };
-  });
-  const ids = new Set(items.map(item => item.id));
-  const meta = asObject(data.metadata);
-  return {
-    name: String(data.name || '가져온 콘문학').trim() || '가져온 콘문학',
-    story: { items, updatedAt: Date.now() },
-    metadata: {
-      rich: filtered(meta.rich, ids), display: filtered(meta.display, ids), breaks: filtered(meta.breaks, ids),
-      memo: filtered(meta.memo, ids), heights: filtered(meta.heights, ids)
-    },
-    conRefs: clone(asObject(data.conRefs))
-  };
-}
-
-function parseImportData(data) {
-  const typeMessage = wrongBackupTypeMessage(data?.format, 'story');
-  if (typeMessage) throw new Error(typeMessage);
-  if (data?.format === BUNDLE_FORMAT) {
-    if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || !data.saves.length) {
-      throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
-    }
-    return data.saves.map(parseSave);
-  }
-  return [parseSave(data)];
 }
 
 async function storeImportedSave(parsed, names) {
@@ -188,8 +116,10 @@ async function loadSave(save) {
   const byNo = new Map(cons.filter(con => con.sourceNo).map(con => [String(con.sourceNo), con]));
   const story = clone(save.story);
   story.items.forEach(item => {
-    if (item.type !== 'con' || byId.has(item.conId)) return;
-    const ref = save.conRefs?.[item.conId];
+    if (item.type !== 'con') return;
+    const ref = normalizeConRef(item.conRef || save.conRefs?.[item.conId]);
+    if (ref) item.conRef = ref;
+    if (byId.has(item.conId)) return;
     const match = ref?.sourceNo ? byNo.get(String(ref.sourceNo)) : null;
     if (match) item.conId = match.id;
   });
@@ -238,6 +168,12 @@ function stats(save) {
   return `${items.length}블록 · 콘 ${cons} · 텍스트 ${texts} · ${new Date(save.updatedAt).toLocaleString('ko-KR')}`;
 }
 
+function confirmStoryDeletion(firstLine) {
+  return showConfirm(`${firstLine}\n삭제된 원고는 복구할 수 없습니다.\n정말 삭제하시겠습니까?`, {
+    title: '원고 삭제', confirmText: '삭제', danger: true
+  });
+}
+
 function makeDialog() {
   const dialog = document.createElement('dialog');
   dialog.className = 'story-save-dialog';
@@ -251,7 +187,8 @@ function makeDialog() {
   const tools = document.createElement('div');
   tools.className = 'story-save-tools';
   const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = '현재 원고 저장';
-  tools.append(save);
+  const deleteSelected = document.createElement('button'); deleteSelected.type = 'button'; deleteSelected.className = 'danger'; deleteSelected.textContent = '선택한 원고 삭제';
+  tools.append(save, deleteSelected);
 
   const selectionTools = document.createElement('div');
   selectionTools.className = 'story-save-selection-tools';
@@ -266,12 +203,12 @@ function makeDialog() {
   const list = document.createElement('div'); list.className = 'story-save-list';
   const warning = document.createElement('div');
   warning.className = 'story-save-warning';
-  warning.textContent = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해주십시오.)';
+  warning.textContent = STORY_WARNING;
   dialog.append(head, tools, selectionTools, list, warning); document.body.append(dialog);
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
-  return { dialog, list, save, input, selectAll, clearAll, exportSelected };
+  return { dialog, list, save, deleteSelected, input, selectAll, clearAll, exportSelected };
 }
 
 async function renderList(list) {
@@ -294,17 +231,19 @@ async function renderList(list) {
     load.addEventListener('click', () => loadSave(save).catch(error => alert(`원고를 불러올 수 없습니다.\n${error.message || error}`)));
     exp.addEventListener('click', () => downloadJson(`${sanitizeDownloadName(save.name, '콘문학')}.hhjconstory.json`, exportSave(save)));
     del.addEventListener('click', async () => {
-      const ok = await showConfirm(`“${save.name}” 저장 원고를 삭제할까요?`, {
-        title: '저장 원고 삭제', confirmText: '삭제', danger: true
-      });
+      const ok = await confirmStoryDeletion(`“${save.name}” 원고를 삭제합니다.`);
       if (!ok) return;
       await deleteOne('documents', save.id); showToast(`“${save.name}” 저장 원고를 삭제했습니다.`); await renderList(list);
     });
   });
 }
 
+function selectedSaveIds(list) {
+  return new Set([...list.querySelectorAll('.story-save-check:checked')].map(input => input.value));
+}
+
 async function exportSelectedSaves(list) {
-  const selectedIds = new Set([...list.querySelectorAll('.story-save-check:checked')].map(input => input.value));
+  const selectedIds = selectedSaveIds(list);
   if (!selectedIds.size) return alert('내보낼 콘문학을 하나 이상 선택하세요.');
   const selected = (await getSaves()).filter(save => selectedIds.has(save.id));
   if (!selected.length) return;
@@ -316,9 +255,20 @@ async function exportSelectedSaves(list) {
   showToast(`${selected.length}개 콘문학 원고를 내보냈습니다.`);
 }
 
+async function deleteSelectedSaves(list) {
+  const selectedIds = selectedSaveIds(list);
+  if (!selectedIds.size) return alert('삭제할 원고를 한 개 이상 선택하세요.');
+  const ok = await confirmStoryDeletion(`선택된 원고 ${selectedIds.size}개를 삭제합니다.`);
+  if (!ok) return;
+  for (const id of selectedIds) await deleteOne('documents', id);
+  showToast(`${selectedIds.size}개 원고를 삭제했습니다.`);
+  await renderList(list);
+}
+
 async function openManager() {
   const ui = makeDialog();
   ui.save.addEventListener('click', async () => { if (await saveCurrent()) await renderList(ui.list); });
+  ui.deleteSelected.addEventListener('click', () => deleteSelectedSaves(ui.list).catch(error => alert(`원고를 삭제할 수 없습니다.\n${error.message || error}`)));
   ui.selectAll.addEventListener('click', () => ui.list.querySelectorAll('.story-save-check').forEach(input => { input.checked = true; }));
   ui.clearAll.addEventListener('click', () => ui.list.querySelectorAll('.story-save-check').forEach(input => { input.checked = false; }));
   ui.exportSelected.addEventListener('click', () => exportSelectedSaves(ui.list).catch(error => alert(`원고를 내보낼 수 없습니다.\n${error.message || error}`)));

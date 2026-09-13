@@ -1,6 +1,7 @@
 const libraryPanel = document.querySelector('.library-panel');
 const viewTabs = document.querySelector('.library-view-tabs');
 const CLOSE_ALL_EVENT = 'hhjcon:library-close-all';
+const TABS_RENDER_EVENT = 'hhjcon:library-tabs-rendered';
 
 if (libraryPanel && viewTabs) {
   const shell = document.createElement('div');
@@ -23,11 +24,8 @@ if (libraryPanel && viewTabs) {
 
   button.addEventListener('click', () => {
     viewTabs.dispatchEvent(new CustomEvent(CLOSE_ALL_EVENT));
-    updateViewState();
   });
 
-  const observer = new MutationObserver(updateViewState);
-
-  observer.observe(viewTabs, { childList: true });
+  viewTabs.addEventListener(TABS_RENDER_EVENT, updateViewState);
   updateViewState();
 }

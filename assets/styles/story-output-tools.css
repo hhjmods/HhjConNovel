@@ -16,9 +16,10 @@
 .story-html-preview[hidden] { display: none !important; }
 .story-detail-stats { min-height: 34px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 7px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .story-detail-stats strong { color: var(--text); font-weight: 600; }
+.story-detail-stats .over-limit,
+.story-detail-stats .over-limit strong { color: #e45656; font-weight: 700; }
 
-.story-html-copy { margin-left: auto; white-space: nowrap; }
-.text-format-toolbar > .story-html-copy + .story-html-toggle { margin-left: 0; }
+.story-html-copy { white-space: nowrap; }
 .text-format-toolbar.html-preview-active > .story-html-copy { opacity: 1 !important; pointer-events: auto !important; }
 
 :root[data-theme="light"] .story-image-placeholder { background: #fff8e8 !important; border-color: #d7b66b !important; }

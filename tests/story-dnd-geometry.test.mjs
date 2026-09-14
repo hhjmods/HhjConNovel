@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { edgeScrollDelta, nearestRectIndex } from '../src/story/story-dnd-geometry.js';
+import { edgeScrollDelta, nearestRectIndex, pointerIsAfterRect } from '../src/story/story-dnd-geometry.js';
 
 const rects = [
   { left: 0, right: 100, top: 0, bottom: 100 },
@@ -17,6 +17,14 @@ test('nearestRectIndex finds the containing or nearest rectangle', () => {
 
 test('nearestRectIndex returns -1 when no rectangles exist', () => {
   assert.equal(nearestRectIndex([], 10, 10), -1);
+});
+
+test('pointerIsAfterRect follows the visual flow axis', () => {
+  const rect = { left: 100, top: 200, width: 80, height: 60 };
+  assert.equal(pointerIsAfterRect(rect, 'x', 139, 230), false);
+  assert.equal(pointerIsAfterRect(rect, 'x', 140, 230), true);
+  assert.equal(pointerIsAfterRect(rect, 'y', 140, 229), false);
+  assert.equal(pointerIsAfterRect(rect, 'y', 140, 230), true);
 });
 
 test('edgeScrollDelta is idle in the center and outside the scroll lane', () => {

@@ -1,6 +1,4 @@
-import { applyStoryDropTransfer } from './app.js?v=20260913-9';
-import { nearestRectIndex } from './story/story-dnd-geometry.js?v=20260913-1';
-import { CON_IDS_MIME, STORY_IDS_MIME, transferHasType } from './story-dnd-utils.js?v=20260906-2';
+import { nearestRectIndex, pointerIsAfterRect } from './story/story-dnd-geometry.js?v=20260914-1';
 
 const storyList = document.getElementById('storyList');
 
@@ -9,7 +7,8 @@ if (storyList) {
   let sourceRow = null;
   let movingStoryIds = new Set();
   let guide = null;
-  let activeBoundary = null;
+  let pointerX = null;
+  let pointerY = null;
 
   function ensureGuide() {
     if (guide?.isConnected) return guide;
@@ -42,6 +41,7 @@ if (storyList) {
   }
 
   function dragKindFromTarget(target) {
+    if (target?.closest?.('.story-create-drag-source')) return 'block';
     const storyItem = target?.closest?.('.story-item');
     if (storyItem?.classList.contains('story-con')) return 'con';
     if (storyItem?.classList.contains('story-text') || storyItem?.classList.contains('story-image-placeholder')) return 'block';
@@ -49,12 +49,12 @@ if (storyList) {
     return null;
   }
 
-  function captureMovingRows(kind, row) {
+  function captureMovingRows(row) {
     movingStoryIds = new Set();
     if (!row?.dataset.storyId) return;
 
-    if (kind === 'con' && row.classList.contains('selected')) {
-      storyList.querySelectorAll(':scope > .story-con.selected[data-story-id]').forEach(item => {
+    if (row.classList.contains('selected')) {
+      storyList.querySelectorAll(':scope > .story-item.selected[data-story-id]').forEach(item => {
         movingStoryIds.add(item.dataset.storyId);
       });
       if (movingStoryIds.size) return;
@@ -68,7 +68,7 @@ if (storyList) {
   }
 
   function hideGuide() {
-    activeBoundary = null;
+    delete storyList.dataset.storyDropBeforeId;
     if (!guide) return;
     guide.classList.add('hidden');
     guide.classList.remove('horizontal', 'vertical');
@@ -83,10 +83,11 @@ if (storyList) {
   function showHorizontal(top) {
     const marker = ensureGuide();
     const rect = storyList.getBoundingClientRect();
+    const visibleTop = Math.min(Math.max(top, rect.top + 3), rect.bottom - 3);
     marker.classList.remove('hidden', 'vertical');
     marker.classList.add('horizontal');
     marker.style.left = `${rect.left + 8}px`;
-    marker.style.top = `${top - 3}px`;
+    marker.style.top = `${visibleTop - 3}px`;
     marker.style.width = `${Math.max(0, rect.width - 16)}px`;
     marker.style.height = '6px';
   }
@@ -94,23 +95,31 @@ if (storyList) {
   function showVerticalBefore(row) {
     const marker = ensureGuide();
     const rect = row.getBoundingClientRect();
+    const listRect = storyList.getBoundingClientRect();
+    const top = Math.max(rect.top, listRect.top);
+    const bottom = Math.min(rect.bottom, listRect.bottom);
+    if (bottom <= top) return hideGuide();
     marker.classList.remove('hidden', 'horizontal');
     marker.classList.add('vertical');
     marker.style.left = `${rect.left - 4}px`;
-    marker.style.top = `${rect.top}px`;
+    marker.style.top = `${top}px`;
     marker.style.width = '8px';
-    marker.style.height = `${rect.height}px`;
+    marker.style.height = `${bottom - top}px`;
   }
 
   function showVerticalAfter(row) {
     const marker = ensureGuide();
     const rect = row.getBoundingClientRect();
+    const listRect = storyList.getBoundingClientRect();
+    const top = Math.max(rect.top, listRect.top);
+    const bottom = Math.min(rect.bottom, listRect.bottom);
+    if (bottom <= top) return hideGuide();
     marker.classList.remove('hidden', 'horizontal');
     marker.classList.add('vertical');
     marker.style.left = `${rect.right - 4}px`;
-    marker.style.top = `${rect.top}px`;
+    marker.style.top = `${top}px`;
     marker.style.width = '8px';
-    marker.style.height = `${rect.height}px`;
+    marker.style.height = `${bottom - top}px`;
   }
 
   function nearestRow(clientX, clientY) {
@@ -125,7 +134,7 @@ if (storyList) {
   }
 
   function showBoundary(previous, next) {
-    activeBoundary = { previous, next };
+    storyList.dataset.storyDropBeforeId = next?.dataset?.storyId || '';
     const previousIsCon = Boolean(previous?.classList.contains('story-con'));
     const nextIsCon = Boolean(next?.classList.contains('story-con'));
 
@@ -155,6 +164,15 @@ if (storyList) {
     hideGuide();
   }
 
+  function showRowPointBoundary(row, clientX, clientY) {
+    const axis = row.classList.contains('story-con') ? 'x' : 'y';
+    if (pointerIsAfterRect(row.getBoundingClientRect(), axis, clientX, clientY)) {
+      showBoundary(row, nextStoryItem(row));
+    } else {
+      showBoundary(previousStoryItem(row), row);
+    }
+  }
+
   function showBlankPointBoundary(event) {
     if (isLowerTailPoint(event.clientY)) {
       const rows = logicalRows();
@@ -182,12 +200,7 @@ if (storyList) {
             nearest = row;
           }
         }
-        const rect = nearest.getBoundingClientRect();
-        if (event.clientX >= rect.left + rect.width / 2) {
-          showBoundary(nearest, nextStoryItem(nearest));
-        } else {
-          showBoundary(previousStoryItem(nearest), nearest);
-        }
+        showRowPointBoundary(nearest, event.clientX, event.clientY);
         return;
       }
     }
@@ -197,11 +210,13 @@ if (storyList) {
       hideGuide();
       return;
     }
-    showBoundary(previousStoryItem(row), row);
+    showRowPointBoundary(row, event.clientX, event.clientY);
   }
 
   function showGuideForEvent(event) {
     if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
 
     const slot = event.target.closest('.story-insert-slot');
     if (slot) {
@@ -233,7 +248,7 @@ if (storyList) {
       return;
     }
 
-    showBoundary(previousStoryItem(row), row);
+    showRowPointBoundary(row, event.clientX, event.clientY);
   }
 
   document.addEventListener('dragstart', event => {
@@ -241,7 +256,7 @@ if (storyList) {
     if (!kind) return;
     activeDragKind = kind;
     sourceRow = event.target?.closest?.('.story-item') || null;
-    captureMovingRows(kind, sourceRow);
+    captureMovingRows(sourceRow);
     storyList.classList.add('story-guide-dragging');
     if (kind === 'con') storyList.classList.add('story-con-dragging');
     if (kind === 'block') {
@@ -250,6 +265,22 @@ if (storyList) {
       });
     }
   }, true);
+
+  document.addEventListener('dragover', event => {
+    if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    if (storyList.contains(event.target)) return;
+    const rect = storyList.getBoundingClientRect();
+    if (pointerX < rect.left || pointerX > rect.right || pointerY < rect.top || pointerY > rect.bottom) return;
+    showBlankPointBoundary(event);
+  }, true);
+
+  storyList.addEventListener('scroll', () => {
+    if ((activeDragKind === 'block' || activeDragKind === 'con') && pointerX != null && pointerY != null) {
+      showBlankPointBoundary({ clientX: pointerX, clientY: pointerY });
+    }
+  });
 
   storyList.addEventListener('dragover', event => {
     if (activeDragKind !== 'block' && activeDragKind !== 'con') return;
@@ -263,26 +294,6 @@ if (storyList) {
     clearLegacyHighlights();
   });
 
-  storyList.addEventListener('drop', event => {
-    if (!activeBoundary || (activeDragKind !== 'block' && activeDragKind !== 'con')) return;
-    if (!transferHasType(event.dataTransfer, STORY_IDS_MIME) && !transferHasType(event.dataTransfer, CON_IDS_MIME)) return;
-
-    const directRow = event.target.closest?.('.story-item');
-    if (isMovingRow(directRow)) return;
-
-    const target = activeBoundary.next || storyList.querySelector(':scope > .story-tail-drop');
-    if (!target) return;
-    if (event.target === target || target.contains(event.target)) return;
-
-    const beforeId = activeBoundary.next?.dataset?.storyId || null;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    void applyStoryDropTransfer(event.dataTransfer, beforeId).catch(error => {
-      console.error('원고 drop 적용 중 오류가 발생했습니다.', error);
-    });
-  }, true);
-
   function finishDrag() {
     hideGuide();
     clearLegacyHighlights();
@@ -290,8 +301,11 @@ if (storyList) {
     activeDragKind = null;
     sourceRow = null;
     movingStoryIds = new Set();
+    pointerX = null;
+    pointerY = null;
   }
 
   document.addEventListener('dragend', finishDrag, true);
-  document.addEventListener('drop', () => queueMicrotask(finishDrag), true);
+  // Native event dispatch can run microtasks before the target drop handler.
+  document.addEventListener('drop', () => setTimeout(finishDrag, 0), true);
 }

@@ -58,8 +58,13 @@ const files = {
   boxSelection: read('src/core/box-selection.js'),
   storyOrder: read('src/story/story-order.js'),
   storyRender: read('src/story/story-render.js'),
+  createPayload: read('src/story/story-create-payload.js'),
   geometry: read('src/story/story-dnd-geometry.js'),
-  utils: read('src/story-dnd-utils.js')
+  utils: read('src/story-dnd-utils.js'),
+  selectionStyles: read('assets/styles/story-multiselect.css'),
+  themeStyles: read('assets/styles/theme.css'),
+  textDeleteGuard: read('src/story/text-delete-guard.js'),
+  textDeleteStyles: read('assets/styles/text-delete-guard.css')
 };
 
 for (const token of ['application/x-hhjcon-ids', 'application/x-hhjstory-ids', 'application/x-hhjstory-block']) {
@@ -71,7 +76,6 @@ for (const [path, source] of [
   ['src/story-drag-guard.js', files.guard],
   ['src/story-insertion.js', files.insertion],
   ['src/story-con-run-end-drop.js', files.runEnd],
-  ['src/story-slot-mode.js', files.slot],
   ['src/story-tail-blank-drop.js', files.tail],
   ['src/story-output-tools.js', files.outputTools]
 ]) {
@@ -85,27 +89,33 @@ if (files.dragStart.includes('application/x-hhj')) {
   fail('src/library/library-con-drag-source.js bypasses centralized DnD MIME helpers');
 }
 
-const directAppImport = './app.js?v=20260913-9';
+const directAppImport = './app.js?v=20260914-6';
 const directAppClients = [
-  ['src/story-insertion.js', files.insertion, '20260913-9'],
-  ['src/story-con-run-end-drop.js', files.runEnd, '20260913-9'],
-  ['src/story-slot-mode.js', files.slot, '20260913-10'],
-  ['src/story-tail-blank-drop.js', files.tail, '20260913-9'],
-  ['src/story-output-tools.js', files.outputTools, '20260914-3']
+  ['src/story-insertion.js', files.insertion, '20260914-6'],
+  ['src/story-con-run-end-drop.js', files.runEnd, '20260914-7'],
+  ['src/story-tail-blank-drop.js', files.tail, '20260914-7'],
+  ['src/story-output-tools.js', files.outputTools, '20260914-9']
 ];
 for (const [path, source, cacheVersion] of directAppClients) {
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
   if (!index.includes(`./${path}?v=${cacheVersion}`)) fail(`index.html does not load the current ${path} cache version`);
 }
-if (!index.includes('./src/app.js?v=20260913-9')) fail('index.html app module version differs from DnD clients');
-if (!index.includes('./src/story-drag-autoscroll.js?v=20260913-1')) fail('index.html does not load the tested autoscroll module version');
-if (!files.slot.includes("from './story/story-dnd-geometry.js?v=20260913-1'")
-  || !files.autoscroll.includes("from './story/story-dnd-geometry.js?v=20260913-1'")
+if (!index.includes('./src/app.js?v=20260914-6')) fail('index.html app module version differs from DnD clients');
+if (!index.includes('./src/story-slot-mode.js?v=20260914-7')) fail('index.html does not load the current slot guide cache version');
+if (!index.includes('./src/story-drag-autoscroll.js?v=20260914-2')) fail('index.html does not load the tested autoscroll module version');
+if (!files.slot.includes("from './story/story-dnd-geometry.js?v=20260914-1'")
+  || !files.autoscroll.includes("from './story/story-dnd-geometry.js?v=20260914-1'")
   || !files.geometry.includes('export function nearestRectIndex(')
+  || !files.geometry.includes('export function pointerIsAfterRect(')
   || !files.geometry.includes('export function edgeScrollDelta(')
   || files.slot.includes('let bestDistance = Infinity')
   || files.autoscroll.includes('function edgeScrollDelta(')) {
   fail('slot guide and edge autoscroll must share the tested geometry calculations');
+}
+if (!files.slot.includes("storyList.addEventListener('scroll'")
+  || !files.slot.includes('showRowPointBoundary(row, event.clientX, event.clientY)')
+  || !files.runEnd.includes("storyList.addEventListener('scroll'")) {
+  fail('drop guide and run-end target must follow the pointer while the story scrolls');
 }
 
 const storyRenderEvent = 'hhjcon:story-rendered';
@@ -135,7 +145,7 @@ if (!files.textFormatting.includes("storyList.dispatchEvent(new Event(RICH_EDITO
 }
 
 if (!index.includes('./src/story-dnd-health.js?v=20260907-1')) fail('index.html does not load the passive DnD health module version');
-if (!index.includes('./src/story-drag-guard.js?v=20260906-15')) fail('index.html does not load the low-churn story drag guard version');
+if (!index.includes('./src/story-drag-guard.js?v=20260914-1')) fail('index.html does not load the low-churn story drag guard version');
 if (!index.includes('./src/story-drag-stability.js?v=20260911-1')) fail('index.html does not load the drag cleanup module version');
 if (!files.health.includes('window.__HHJDND')) fail('story-dnd-health.js no longer exposes the diagnostic API');
 if (!files.health.includes("document.addEventListener('dragstart'")) fail('story-dnd-health.js no longer observes drag lifecycle start');
@@ -154,7 +164,7 @@ for (const forbidden of [
 }
 
 if (!files.app.includes('export async function applyStoryDropTransfer')) fail('app.js lost direct drop mutation bridge');
-if (!files.app.includes("./story/story-render.js?v=20260913-2")
+if (!files.app.includes("./story/story-render.js?v=20260914-4")
   || !files.app.includes('renderStoryList(el.storyList')
   || files.app.includes("document.createElement('textarea')")
   || !files.storyRender.includes("../story-dnd-utils.js?v=20260906-2")
@@ -182,6 +192,44 @@ if (!files.app.includes("./core/box-selection.js?v=20260913-2")
   || !files.app.includes('installBoxSelection(el.conGrid')) {
   fail('app.js does not install the shared story and library box-selection module');
 }
+if (!files.app.includes('function storyItemIds()')
+  || files.app.includes('function storyConIds()')
+  || !files.app.includes("querySelectorAll('.story-item[data-story-id]')")
+  || !files.app.includes("itemSelector: '.story-item[data-story-id]'")
+  || !files.app.includes('new Set(selectedItems.map(item => item.id))')
+  || files.app.includes("selectedItems.filter(item => item.type === 'con')")
+  || !files.storyRender.includes("row.classList.toggle('selected', selectedIds.has(item.id))")
+  || !files.guard.includes(':scope > .story-item.selected[data-story-id]')
+  || !files.insertion.includes(':scope > .story-item.selected[data-story-id]')
+  || !files.outputTools.includes(':scope > .story-item.selected[data-story-id]')
+  || !files.slot.includes(':scope > .story-item.selected[data-story-id]')
+  || !files.runEnd.includes(':scope > .story-item.selected[data-story-id]')
+  || !files.runEnd.includes("closest?.('.story-item[data-story-id]')")
+  || !files.selectionStyles.includes('.story-item.selected')
+  || !files.themeStyles.includes('.story-item.selected')
+  || !files.selectionStyles.includes('.story-item { user-select: none; }')
+  || !files.selectionStyles.includes('.story-item [contenteditable="true"]:focus { user-select: text; }')
+  || !index.includes('./assets/styles/story-multiselect.css?v=20260914-2')) {
+  fail('story selection, grouped movement, and selection styling must cover every story item type');
+}
+if (!files.storyRender.includes("const editing = event.target.closest('textarea, input, [contenteditable=\"true\"]');")
+  || !files.storyRender.includes('if (editing) return;')
+  || files.storyRender.includes('if (editing && !event.ctrlKey')
+  || !files.storyRender.includes("const dragHandle = event.target.closest('.story-drag-handle');")
+  || !files.storyRender.includes('(dragHandle && !event.ctrlKey && !event.metaKey && !event.shiftKey)')
+  || !files.insertion.includes('if (!event.ctrlKey && !event.metaKey && !event.shiftKey) event.stopPropagation();')
+  || !files.outputTools.includes('if (!event.ctrlKey && !event.metaKey && !event.shiftKey) event.stopPropagation();')
+  || !files.textDeleteGuard.includes('function deletionContext(target)')
+  || !files.textDeleteGuard.includes("row.classList.contains('selected')")
+  || !files.textDeleteGuard.includes('function selectedDialogueRows()')
+  || !files.textDeleteGuard.includes('if (armedByDeleteKey && !event.repeat)')
+  || !files.textDeleteGuard.includes('arm(match.dialogueRows, match.button)')
+  || !files.textDeleteStyles.includes('.story-item .text-delete-armed')
+  || !files.textDeleteStyles.includes('outline: 2px solid #d94f63;')
+  || !index.includes('./src/story/text-delete-guard.js?v=20260914-2')
+  || !index.includes('./assets/styles/text-delete-guard.css?v=20260914-2')) {
+  fail('outer story rows and drag handles must support modifier selection while editor input remains untouched and mixed dialogue deletion keeps the visible two-step guard');
+}
 if (!files.boxSelection.includes('if (!toggle) setSelection([]);')
   || !files.boxSelection.includes("selectionBox.style.width = '0';")
   || !files.boxSelection.includes("selectionBox.style.height = '0';")
@@ -196,6 +244,13 @@ if (!files.storyOrder.includes('export function planStorySelectionStep')) fail('
 if (!files.app.includes('insertStoryItemsBefore')) fail('app.js bypasses the pure story insertion planner');
 if (!files.storyOrder.includes('export function insertStoryItemsBefore')) fail('story-order.js lost the pure insertion planner');
 if (!files.app.includes('export async function appendStoryTextBlock')) fail('app.js lost the direct text block creation command');
+if (!files.app.includes('export async function insertStoryTextBlock')
+  || !files.app.includes('readStoryCreateText(dataTransfer)')
+  || !files.createPayload.includes("application/x-hhjstory-create")
+  || !files.createPayload.includes('writeStoryCreateTransfer')
+  || !files.createPayload.includes('readStoryCreateText')) {
+  fail('toolbar drag creation must use the direct insertion command and its dedicated payload helper');
+}
 for (const [path, source] of [
   ['src/story-insertion.js', files.insertion],
   ['src/story-output-tools.js', files.outputTools]
@@ -222,12 +277,31 @@ if (files.app.includes('writeStoryTransfer') || files.app.includes('writeConTran
 }
 if (!files.insertion.includes('writeStoryTransfer')) fail('story-insertion.js lost text/break drag payload ownership');
 if (!files.outputTools.includes('writeStoryTransfer')) fail('story-output-tools.js lost image drag payload ownership');
+if (!files.insertion.includes('writeStoryCreateTransfer')
+  || !files.outputTools.includes('writeStoryCreateTransfer')
+  || !files.slot.includes('.story-create-drag-source')
+  || !files.autoscroll.includes('.story-create-drag-source')
+  || !files.tail.includes("classList.contains('story-guide-dragging')")) {
+  fail('toolbar drag sources must participate in the existing guide, tail, and autoscroll paths');
+}
 if (files.stability.includes('writeStoryTransfer')) fail('story-drag-stability.js duplicated block drag payload writes');
 if (!files.stability.includes("document.addEventListener('dragend', clearDragDecorations, true)")) fail('story-drag-stability.js lost final drag decoration cleanup');
 if (files.stability.includes("addEventListener('drop'")) fail('story-drag-stability.js restored redundant DOM self-drop interception');
-if (!files.slot.includes('transferHasType')) fail('story-slot-mode.js no longer matches restored known-good routing checkpoint');
+if (files.slot.includes('transferHasType') || files.slot.includes('.types')) {
+  fail('story-slot-mode.js must trust its active drag session instead of unstable DataTransfer.types');
+}
+if (files.slot.includes("storyList.addEventListener('drop'")) {
+  fail('story-slot-mode.js must not replace the working native target drop path');
+}
+if (!files.slot.includes('storyList.dataset.storyDropBeforeId =')
+  || !files.app.includes("hasAttribute('data-story-drop-before-id')")) {
+  fail('the displayed slot boundary must be the beforeId used by the app mutation command');
+}
 if (!files.runEnd.includes('hitZone')) fail('story-con-run-end-drop.js lost run-end hit zone');
-if (!files.tail.includes('isLowerBlankPoint')) fail('story-tail-blank-drop.js lost lower blank boundary protection');
+if (!files.tail.includes('isLowerBlankPoint')
+  || !files.tail.includes("hasAttribute('data-story-drop-before-id')")) {
+  fail('story-tail-blank-drop.js must accept the displayed guide boundary and preserve lower blank protection');
+}
 if (!files.insertion.includes('story-insert-slot')) fail('story-insertion.js lost current insertion hit slots');
 
 for (const [path, source] of Object.entries(files)) {

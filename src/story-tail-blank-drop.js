@@ -1,9 +1,17 @@
-import { applyStoryDropTransfer } from './app.js?v=20260913-9';
+import { applyStoryDropTransfer } from './app.js?v=20260914-6';
 import { hasStoryAreaPayload, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
 
 if (storyList) {
+  function hasAcceptedPayload(dataTransfer) {
+    return hasStoryAreaPayload(dataTransfer) || storyList.classList.contains('story-guide-dragging');
+  }
+
+  function acceptedDropEffect(dataTransfer) {
+    return hasStoryAreaPayload(dataTransfer) ? storyAreaDropEffect(dataTransfer) : 'copy';
+  }
+
   function tailDrop() {
     return storyList.querySelector(':scope > .story-tail-drop');
   }
@@ -23,16 +31,18 @@ if (storyList) {
     return clientY >= last.getBoundingClientRect().bottom;
   }
 
+  function isAcceptedBlankPoint(event) {
+    return storyList.hasAttribute('data-story-drop-before-id') || isLowerBlankPoint(event.clientY);
+  }
+
   storyList.addEventListener('dragover', event => {
-    if (event.target !== storyList || !hasStoryAreaPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) {
+    if (event.target !== storyList || !hasAcceptedPayload(event.dataTransfer) || !isAcceptedBlankPoint(event)) {
       storyList.classList.remove('story-tail-blank-hover');
       return;
     }
-    const tail = ensureTailReady();
-    if (!tail) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = storyAreaDropEffect(event.dataTransfer);
-    storyList.classList.add('story-tail-blank-hover');
+    event.dataTransfer.dropEffect = acceptedDropEffect(event.dataTransfer);
+    storyList.classList.toggle('story-tail-blank-hover', isLowerBlankPoint(event.clientY));
   });
 
   storyList.addEventListener('dragleave', event => {
@@ -41,15 +51,13 @@ if (storyList) {
   });
 
   storyList.addEventListener('drop', event => {
-    if (event.target !== storyList || !hasStoryAreaPayload(event.dataTransfer) || !isLowerBlankPoint(event.clientY)) return;
-    const tail = ensureTailReady();
-    if (!tail) return;
+    if (event.target !== storyList || !hasAcceptedPayload(event.dataTransfer) || !isAcceptedBlankPoint(event)) return;
     event.preventDefault();
     event.stopPropagation();
     storyList.classList.remove('story-tail-blank-hover');
 
     void applyStoryDropTransfer(event.dataTransfer, null).catch(error => {
-      console.error('원고 하단 drop 적용 중 오류가 발생했습니다.', error);
+      console.error('원고 빈 경계 drop 적용 중 오류가 발생했습니다.', error);
     });
   });
 

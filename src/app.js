@@ -19,13 +19,14 @@ import {
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { installBoxSelection } from './core/box-selection.js?v=20260913-2';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260911-1';
-import { renderStoryList } from './story/story-render.js?v=20260913-2';
+import { renderStoryList } from './story/story-render.js?v=20260914-4';
 import { showToast } from './ui/toast.js?v=20260909-2';
 import {
   CON_IDS_MIME,
   STORY_IDS_MIME,
   readTransferIds
 } from './story-dnd-utils.js?v=20260906-2';
+import { readStoryCreateText } from './story/story-create-payload.js?v=20260914-1';
 
 const DC_WRITE_URL_KEY = 'hhjcon-dc-write-url';
 
@@ -220,14 +221,14 @@ function renderSelectionStatus() {
   el.selectionStatus.textContent = `${state.selectedIds.size}개 선택`;
 }
 
-function storyConIds() {
-  return state.story.items.filter(item => item.type === 'con').map(item => item.id);
+function storyItemIds() {
+  return state.story.items.map(item => item.id);
 }
 
 function setStorySelection(ids, anchorId = null) {
   state.storySelectedIds = new Set(ids);
   state.storySelectionAnchorId = anchorId;
-  el.storyList.querySelectorAll('.story-con').forEach(row => {
+  el.storyList.querySelectorAll('.story-item[data-story-id]').forEach(row => {
     row.classList.toggle('selected', state.storySelectedIds.has(row.dataset.storyId));
   });
   updateStoryStats();
@@ -241,7 +242,7 @@ function clearStorySelectionOutsideStory(target) {
 
 function handleStorySelection(event, itemId) {
   if (event.target.closest('.story-tools')) return;
-  const ids = storyConIds();
+  const ids = storyItemIds();
   const next = planOrderedSelection(ids, state.storySelectedIds, state.storySelectionAnchorId, itemId, {
     toggle: event.ctrlKey || event.metaKey,
     range: event.shiftKey
@@ -297,8 +298,8 @@ async function updateStoryText(itemId, text) {
 
 async function commitStoryItems(items, selectedItems = []) {
   state.story = preserveStoryConRefs({ ...state.story, items }, mapById(state.cons), mapById(state.packages));
-  state.storySelectedIds = new Set(selectedItems.filter(item => item.type === 'con').map(item => item.id));
-  state.storySelectionAnchorId = selectedItems.find(item => item.type === 'con')?.id || null;
+  state.storySelectedIds = new Set(selectedItems.map(item => item.id));
+  state.storySelectionAnchorId = selectedItems[0]?.id || null;
   await saveStory();
   renderStory();
   return true;
@@ -312,10 +313,14 @@ export async function clearCurrentStory() {
   await commitStoryItems([]);
 }
 
-export async function appendStoryTextBlock(text = '') {
+export async function insertStoryTextBlock(text = '', beforeId = null) {
   const item = { id: makeStoryItemId(), type: 'text', text: String(text ?? '') };
-  await commitStoryItems(insertStoryItemsBefore(state.story.items, [item]));
+  await commitStoryItems(insertStoryItemsBefore(state.story.items, [item], beforeId));
   return item.id;
+}
+
+export async function appendStoryTextBlock(text = '') {
+  return insertStoryTextBlock(text);
 }
 
 async function commitStoryOrder(plan) {
@@ -335,6 +340,9 @@ export async function moveStoryItemsBefore(movingIds, beforeId = null) {
 
 export async function applyStoryDropTransfer(dataTransfer, beforeId = null) {
   if (!dataTransfer) return false;
+  if (el.storyList.hasAttribute('data-story-drop-before-id')) {
+    beforeId = el.storyList.dataset.storyDropBeforeId || null;
+  }
   const storyIds = readStoryDragData({ dataTransfer });
   if (storyIds.length) {
     return moveStoryItemsBefore(storyIds, beforeId);
@@ -342,6 +350,11 @@ export async function applyStoryDropTransfer(dataTransfer, beforeId = null) {
   const conIds = readDragData({ dataTransfer });
   if (conIds.length) {
     await addConBlocks(conIds, beforeId);
+    return true;
+  }
+  const createText = readStoryCreateText(dataTransfer);
+  if (createText !== null) {
+    await insertStoryTextBlock(createText, beforeId);
     return true;
   }
   return false;
@@ -436,7 +449,7 @@ function renderAll() {
 }
 
 installBoxSelection(el.storyList, {
-  itemSelector: '.story-con',
+  itemSelector: '.story-item[data-story-id]',
   idKey: 'storyId',
   getSelectedIds: () => state.storySelectedIds,
   setSelection: setStorySelection
@@ -536,7 +549,7 @@ el.storyDropZone.addEventListener('drop', async event => {
 });
 
 window.addEventListener('keydown', event => {
-  if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
+  if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT' || document.activeElement?.isContentEditable) return;
 
   if (event.key === 'Delete' && state.storySelectedIds.size) {
     event.preventDefault();

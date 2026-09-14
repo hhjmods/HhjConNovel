@@ -1,4 +1,4 @@
-import { applyStoryDropTransfer } from './app.js?v=20260913-9';
+import { applyStoryDropTransfer } from './app.js?v=20260914-6';
 import { storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');
@@ -7,6 +7,8 @@ if (storyList) {
   let activeConDrag = false;
   let movingStoryIds = new Set();
   let targetStoryId = null;
+  let pointerX = null;
+  let pointerY = null;
 
   const hitZone = document.createElement('div');
   hitZone.setAttribute('aria-hidden', 'true');
@@ -80,25 +82,33 @@ if (storyList) {
     targetStoryId = point.next?.dataset?.storyId || null;
   }
 
+  function refreshZone() {
+    const point = findTrailingRunEnd(pointerX, pointerY);
+    if (point) showZoneFor(point);
+    else hideZone();
+  }
+
   document.addEventListener('dragstart', event => {
-    const storyCon = event.target?.closest?.('.story-con');
+    const storyItem = event.target?.closest?.('.story-item[data-story-id]');
     const libraryCon = event.target?.closest?.('.con-card');
-    if (!storyCon && !libraryCon) return;
+    if (!storyItem && !libraryCon) return;
 
     activeConDrag = true;
     movingStoryIds = new Set();
 
-    if (storyCon?.dataset.storyId) {
-      if (storyCon.classList.contains('selected')) {
-        storyList.querySelectorAll(':scope > .story-con.selected[data-story-id]').forEach(row => movingStoryIds.add(row.dataset.storyId));
+    if (storyItem) {
+      if (storyItem.classList.contains('selected')) {
+        storyList.querySelectorAll(':scope > .story-item.selected[data-story-id]').forEach(row => movingStoryIds.add(row.dataset.storyId));
       }
-      if (!movingStoryIds.size) movingStoryIds.add(storyCon.dataset.storyId);
+      if (!movingStoryIds.size) movingStoryIds.add(storyItem.dataset.storyId);
     }
   }, true);
 
   document.addEventListener('dragover', event => {
     if (!activeConDrag) return;
-    const point = findTrailingRunEnd(event.clientX, event.clientY);
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    const point = findTrailingRunEnd(pointerX, pointerY);
     if (!point) {
       if (event.target !== hitZone) hideZone();
       return;
@@ -107,6 +117,10 @@ if (storyList) {
     showZoneFor(point);
     allowDrop(event);
   }, true);
+
+  storyList.addEventListener('scroll', () => {
+    if (activeConDrag && pointerX != null && pointerY != null) refreshZone();
+  });
 
   hitZone.addEventListener('dragenter', event => {
     if (!activeConDrag) return;
@@ -138,6 +152,8 @@ if (storyList) {
   document.addEventListener('dragend', () => {
     activeConDrag = false;
     movingStoryIds = new Set();
+    pointerX = null;
+    pointerY = null;
     hideZone();
   }, true);
 }

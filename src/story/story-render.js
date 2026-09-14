@@ -58,7 +58,15 @@ export function renderStoryList(root, {
     const row = document.createElement('div');
     row.className = `story-item story-${item.type}`;
     row.dataset.storyId = item.id;
+    row.classList.toggle('selected', selectedIds.has(item.id));
     addDropHandlers(row, item.id, onDrop);
+    row.addEventListener('click', event => {
+      const dragHandle = event.target.closest('.story-drag-handle');
+      if (event.target.closest('.story-tools') || (dragHandle && !event.ctrlKey && !event.metaKey && !event.shiftKey)) return;
+      const editing = event.target.closest('textarea, input, [contenteditable="true"]');
+      if (editing) return;
+      onSelect(event, item.id);
+    });
 
     if (item.type === 'text') {
       const textarea = document.createElement('textarea');
@@ -72,7 +80,6 @@ export function renderStoryList(root, {
       const conRef = item.conRef && typeof item.conRef === 'object' ? item.conRef : {};
       const missing = !con;
       row.draggable = true;
-      row.classList.toggle('selected', selectedIds.has(item.id));
       row.classList.toggle('missing', missing);
       let thumbnail;
       if (con?.thumbnailUrl) {
@@ -86,7 +93,6 @@ export function renderStoryList(root, {
       label.textContent = con?.name || conRef.name || '미보유/미동기화 콘';
       row.append(thumbnail, label, storyTools(item, onMove, onRemove));
       row.addEventListener('click', event => {
-        onSelect(event, item.id);
         if (missing && !event.target.closest('.story-tools')) showMissingConNotice(conRef);
       });
     }

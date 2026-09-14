@@ -1,4 +1,4 @@
-import { addIdsToCollection, commitCollectionDraft } from '../app.js?v=20260913-9';
+import { addIdsToCollection, commitCollectionDraft } from '../app.js?v=20260914-6';
 import { getAll } from '../db.js';
 import { CON_IDS_MIME, readTransferIds, transferHasType } from '../story-dnd-utils.js?v=20260906-2';
 import {
@@ -408,7 +408,7 @@ if (packageList && collectionList && packagePanel && collectionPanel && libraryP
     if (event.key !== 'Delete') return;
     if (document.activeElement?.matches('textarea, input, [contenteditable="true"]')) return;
     if (!editDraft || !libraryDeleteArmed) return;
-    if (document.querySelector('.story-con.selected')) return;
+    if (document.querySelector('.story-item.selected')) return;
     if (activeView()?.type !== 'collections') return;
     event.preventDefault();
     event.stopImmediatePropagation();

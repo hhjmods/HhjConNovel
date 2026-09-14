@@ -48,7 +48,7 @@ const navigationRenderEvent = 'hhjcon:library-navigation-rendered';
 const gridRenderEvent = 'hhjcon:library-grid-rendered';
 const tabsRenderEvent = 'hhjcon:library-tabs-rendered';
 const collectionCreatedEvent = 'hhjcon:collection-created';
-const appImport = "../app.js?v=20260913-9";
+const appImport = "../app.js?v=20260914-6";
 const modelImport = "../model.js?v=20260912-1";
 const selectionImport = "../core/selection.js?v=20260907-1";
 const backupFormatImport = "../core/backup-format.js?v=20260910-1";
@@ -189,6 +189,9 @@ if (!app.includes('function clearStorySelectionOutsideStory(target)')
 if (app.includes('exportCollectionBtn') || app.includes('importCollectionInput')) {
   fail('app.js must not register legacy collection file handlers');
 }
+if (!workspace.includes("document.querySelector('.story-item.selected')")) {
+  fail('library Delete handling must yield to any selected story item type');
+}
 if (!collectionBackup.includes("exportButton.addEventListener('click', handleExport)")
   || !collectionBackup.includes("importInput.addEventListener('change', handleImport)")) {
   fail('collection backup module must own collection file handlers');
@@ -196,7 +199,7 @@ if (!collectionBackup.includes("exportButton.addEventListener('click', handleExp
 if (collectionBackup.includes('stopImmediatePropagation()') || collectionBackup.includes('capture: true')) {
   fail('collection file handlers must not rely on suppressing legacy listeners');
 }
-if (!actionDialogs.includes("from '../app.js?v=20260913-9'")
+if (!actionDialogs.includes("from '../app.js?v=20260914-6'")
   || !actionDialogs.includes('createNamedCollection,')
   || !actionDialogs.includes('deleteCollectionById,')
   || !actionDialogs.includes('clearCurrentStory,')
@@ -226,7 +229,7 @@ if (!actionDialogs.includes('if (!hasCurrentStoryItems()) return clearCurrentSto
   || app.includes("el.clearStoryBtn.addEventListener('click'")) {
   fail('clear-story dialog must call the app state command without button replay');
 }
-if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260913-9'")
+if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260914-6'")
   || !storySaveManager.includes('showConfirm, showPrompt')) {
   fail('story save manager must import the canonical async dialog API');
 }
@@ -275,12 +278,12 @@ if ([editorBackup, storySaveManager].some(source => source.includes('function de
   || !storySaveManager.includes("makeDatedDefaultName('콘문학')")) {
   fail('readable dated default names must have one tested owner');
 }
-if (!index.includes('./src/app.js?v=20260913-9')
+if (!index.includes('./src/app.js?v=20260914-6')
   || !index.includes('./src/collections/collection-missing-ui.js?v=20260912-1')
-  || !index.includes('./src/library/library-workspace.js?v=20260914-2')
+  || !index.includes('./src/library/library-workspace.js?v=20260914-8')
   || !index.includes('./src/library/library-tab-close-all.js?v=20260910-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260913-9')
-  || !index.includes('./src/story/story-save-manager.js?v=20260913-9')
+  || !index.includes('./src/ui/action-dialogs.js?v=20260914-6')
+  || !index.includes('./src/story/story-save-manager.js?v=20260914-6')
   || !index.includes('./src/collections/collection-backup.js?v=20260912-1')
   || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
   fail('index.html dialog and story-save cache versions are not canonical');
@@ -310,7 +313,7 @@ if (!themeInit.includes("classList.add('hhj-app-booting')")
 }
 if (!index.includes('./src/ui/theme-init.js?v=20260908-2')
   || !index.includes('./src/ui/layout-resizer.js?v=20260908-3')
-  || !index.includes('./assets/styles/theme.css?v=20260913-3')
+  || !index.includes('./assets/styles/theme.css?v=20260914-1')
   || !index.includes('./assets/styles/styles.css?v=20260913-2')
   || !baseStyles.includes('button:hover:not(:disabled)')
   || !themeStyles.includes('button:hover:not(:disabled)')
@@ -382,7 +385,7 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
   || !index.includes('./assets/styles/story-output-tools.css?v=20260914-1')
-  || !index.includes('./src/story-output-tools.js?v=20260914-3')
+  || !index.includes('./src/story-output-tools.js?v=20260914-9')
   || !index.includes('./src/story/story-html-copy.js?v=20260914-2')
   || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle)")
   || !storyOutputTools.includes('button.disabled = previewMode')
@@ -431,7 +434,7 @@ if (storySaveManager.includes("document.createElement('style')")
   || !storySaveManager.includes('selectionTools.append(selectAll, clearAll, exportSelected, label)')
   || !index.includes('./assets/styles/story-save-manager.css?v=20260908-1')
   || !storySaveManager.includes('warning.textContent = STORY_WARNING')
-  || !index.includes('./src/story/story-save-manager.js?v=20260913-9')) {
+  || !index.includes('./src/story/story-save-manager.js?v=20260914-6')) {
   fail('story save manager presentation must stay in its dedicated stylesheet');
 }
 if (!storySaveManager.includes("from './story-save-format.js?v=20260912-1'")
@@ -465,8 +468,8 @@ if (actionDialogs.includes("document.createElement('style')")
   || !actionDialogStyles.includes('.hhj-ui-dialog .danger-action {')
   || !actionDialogStyles.includes('.collection-backup-dialog {')
   || !index.includes('./assets/styles/action-dialogs.css?v=20260909-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260913-9')
-  || !index.includes('./src/story/story-save-manager.js?v=20260913-9')) {
+  || !index.includes('./src/ui/action-dialogs.js?v=20260914-6')
+  || !index.includes('./src/story/story-save-manager.js?v=20260914-6')) {
   fail('shared action dialog presentation must stay in its dedicated stylesheet');
 }
 const toastClients = [app, collectionBackup, editorBackup, storySaveManager, storyHtmlCopy];

@@ -84,12 +84,11 @@ test('planStorySelectionStep moves one item one boundary up or down', () => {
   );
 });
 
-test('planStorySelectionStep moves a selection as one ordered group', () => {
+test('planStorySelectionStep moves a mixed con and text selection as one ordered group', () => {
   const items = storyItems(['a', 'b', 'c', 'd', 'e']);
-  assert.deepEqual(
-    planStorySelectionStep(items, ['c', 'b'], -1).items.map(item => item.id),
-    ['b', 'c', 'a', 'd', 'e']
-  );
+  const movedUp = planStorySelectionStep(items, ['c', 'b'], -1);
+  assert.deepEqual(movedUp.items.map(item => item.id), ['b', 'c', 'a', 'd', 'e']);
+  assert.deepEqual(movedUp.movingItems.map(item => item.type), ['con', 'text']);
   assert.deepEqual(
     planStorySelectionStep(items, ['c', 'b'], 1).items.map(item => item.id),
     ['a', 'd', 'b', 'c', 'e']

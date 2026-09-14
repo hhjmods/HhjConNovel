@@ -6,7 +6,7 @@ const storyDropZone = document.getElementById('storyDropZone');
 storyList?.addEventListener('dragstart', event => {
   const row = event.target.closest('.story-con');
   if (!row || !event.dataTransfer) return;
-  const selectedRows = [...storyList.querySelectorAll('.story-con.selected')];
+  const selectedRows = [...storyList.querySelectorAll(':scope > .story-item.selected[data-story-id]')];
   const ids = row.classList.contains('selected')
     ? selectedRows.map(item => item.dataset.storyId).filter(Boolean)
     : [row.dataset.storyId].filter(Boolean);

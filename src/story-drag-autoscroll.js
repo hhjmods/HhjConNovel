@@ -1,4 +1,4 @@
-import { edgeScrollDelta } from './story/story-dnd-geometry.js?v=20260913-1';
+import { edgeScrollDelta } from './story/story-dnd-geometry.js?v=20260914-1';
 
 const storyList = document.getElementById('storyList');
 
@@ -9,7 +9,7 @@ if (storyList) {
   let frameId = null;
 
   function isSupportedDrag(target) {
-    return Boolean(target?.closest?.('.story-item, .con-card'));
+    return Boolean(target?.closest?.('.story-item, .con-card, .story-create-drag-source'));
   }
 
   function autoScrollFrame() {

@@ -1,5 +1,9 @@
+.story-item { user-select: none; }
+.story-item textarea:focus,
+.story-item input:focus,
+.story-item [contenteditable="true"]:focus { user-select: text; }
 .story-con { cursor: pointer; }
-.story-con.selected { outline: 2px solid var(--accent); background: #25334e; }
+.story-item.selected { outline: 2px solid var(--accent); background: #25334e; }
 .story-con.dragging { opacity: .45; }
 .story-item.story-drag-target { box-shadow: inset 4px 0 var(--accent); }
 .story-selection-box { position: fixed; z-index: 1000; pointer-events: none; border: 1px solid var(--accent); background: rgb(122 162 255 / 16%); }

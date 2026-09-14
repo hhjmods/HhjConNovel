@@ -35,7 +35,7 @@
 :root[data-theme="light"] .story-con img,
 :root[data-theme="light"] .missing-thumb { background: #eef1f5; }
 :root[data-theme="light"] .con-card.selected,
-:root[data-theme="light"] .story-con.selected { background: #e3ebfb; }
+:root[data-theme="light"] .story-item.selected { background: #e3ebfb; }
 :root[data-theme="light"] .story-drop-zone.drop-target,
 :root[data-theme="light"] .story-tail-drop.drop-target,
 :root[data-theme="light"] .story-direct-tail.drop-target { background: #e7efff; color: #244f9f; }

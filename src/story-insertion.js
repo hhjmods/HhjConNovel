@@ -1,4 +1,4 @@
-import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260913-9';
+import { appendStoryTextBlock, applyStoryDropTransfer } from './app.js?v=20260914-6';
 import { getOne, putOne } from './db.js';
 import {
   STORY_BLOCK_MIME,
@@ -6,11 +6,13 @@ import {
   transferHasType,
   writeStoryTransfer
 } from './story-dnd-utils.js?v=20260906-2';
+import { writeStoryCreateTransfer } from './story/story-create-payload.js?v=20260914-1';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const storyList = document.getElementById('storyList');
 const storyDropZone = document.getElementById('storyDropZone');
 const editorActions = document.querySelector('.editor-header > div:last-child');
+const textButton = document.getElementById('addTextBtn');
 
 if (storyList && editorActions) {
   const breakButton = document.createElement('button');
@@ -18,6 +20,19 @@ if (storyList && editorActions) {
   breakButton.textContent = '+ 줄바꿈';
   const clearButton = document.getElementById('clearStoryBtn');
   editorActions.insertBefore(breakButton, clearButton || null);
+
+  function enableCreateDrag(button, text, label) {
+    if (!button) return;
+    button.draggable = true;
+    button.classList.add('story-create-drag-source');
+    button.title = `클릭: 원고 끝에 ${label} 추가 · 드래그: 원하는 위치에 추가`;
+    button.addEventListener('dragstart', event => {
+      writeStoryCreateTransfer(event.dataTransfer, text);
+    });
+  }
+
+  enableCreateDrag(textButton, '', '대사');
+  enableCreateDrag(breakButton, BREAK_SENTINEL, '줄바꿈');
 
   if (storyDropZone) storyDropZone.classList.add('legacy-story-drop-zone');
 
@@ -72,7 +87,15 @@ if (storyList && editorActions) {
 
   function writeStoryDrag(event, row) {
     if (!event.dataTransfer || !row.dataset.storyId) return false;
-    if (!writeStoryTransfer(event.dataTransfer, [row.dataset.storyId], { block: true, plainText: true })) return false;
+    const selectedRows = [...storyList.querySelectorAll(':scope > .story-item.selected[data-story-id]')];
+    const ids = row.classList.contains('selected')
+      ? selectedRows.map(item => item.dataset.storyId)
+      : [row.dataset.storyId];
+    if (!row.classList.contains('selected')) {
+      selectedRows.forEach(item => item.classList.remove('selected'));
+      row.classList.add('selected');
+    }
+    if (!writeStoryTransfer(event.dataTransfer, ids, { block: true, plainText: true })) return false;
     row.classList.add('dragging');
     return true;
   }
@@ -90,7 +113,9 @@ if (storyList && editorActions) {
     handle.title = '드래그해서 이동';
     handle.setAttribute('aria-label', '드래그해서 이동');
     handle.draggable = true;
-    handle.addEventListener('click', event => event.stopPropagation());
+    handle.addEventListener('click', event => {
+      if (!event.ctrlKey && !event.metaKey && !event.shiftKey) event.stopPropagation();
+    });
     handle.addEventListener('dragstart', event => {
       event.stopPropagation();
       writeStoryDrag(event, row);

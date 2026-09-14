@@ -17,6 +17,13 @@ export function nearestRectIndex(rects, clientX, clientY) {
   return bestIndex;
 }
 
+export function pointerIsAfterRect(rect, axis, clientX, clientY) {
+  if (!rect) return false;
+  return axis === 'x'
+    ? clientX >= rect.left + rect.width / 2
+    : clientY >= rect.top + rect.height / 2;
+}
+
 export function edgeScrollDelta(pointerX, pointerY, rect) {
   if (pointerX == null || pointerY == null || !rect) return 0;
   if (pointerX < rect.left - OUTSIDE_TOLERANCE || pointerX > rect.right + OUTSIDE_TOLERANCE ||

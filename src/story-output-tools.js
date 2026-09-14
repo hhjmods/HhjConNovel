@@ -1,6 +1,7 @@
-import { appendStoryTextBlock } from './app.js?v=20260913-9';
+import { appendStoryTextBlock } from './app.js?v=20260914-6';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
+import { writeStoryCreateTransfer } from './story/story-create-payload.js?v=20260914-1';
 import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260914-1';
 import { DC_HTML_LIMIT } from './story/story-html-utils.js?v=20260912-3';
 
@@ -47,11 +48,21 @@ function ensureImageDragHandle(row) {
   handle.title = '드래그해서 이동';
   handle.setAttribute('aria-label', '드래그해서 이동');
   handle.draggable = true;
-  handle.addEventListener('click', event => event.stopPropagation());
+  handle.addEventListener('click', event => {
+    if (!event.ctrlKey && !event.metaKey && !event.shiftKey) event.stopPropagation();
+  });
   handle.addEventListener('dragstart', event => {
     if (!event.dataTransfer) return;
     event.stopPropagation();
-    if (!writeStoryTransfer(event.dataTransfer, [row.dataset.storyId], { block: true, plainText: true })) return;
+    const selectedRows = [...storyList.querySelectorAll(':scope > .story-item.selected[data-story-id]')];
+    const ids = row.classList.contains('selected')
+      ? selectedRows.map(item => item.dataset.storyId)
+      : [row.dataset.storyId];
+    if (!row.classList.contains('selected')) {
+      selectedRows.forEach(item => item.classList.remove('selected'));
+      row.classList.add('selected');
+    }
+    if (!writeStoryTransfer(event.dataTransfer, ids, { block: true, plainText: true })) return;
     row.classList.add('dragging');
   });
   handle.addEventListener('dragend', () => row.classList.remove('dragging'));
@@ -119,11 +130,16 @@ if (storyList && editorActions) {
   imageButton.type = 'button';
   imageButton.className = 'small';
   imageButton.textContent = '+ 이미지 마커';
-  imageButton.title = 'DC에서 이미지를 첨부할 위치 표시';
+  imageButton.title = '클릭: 원고 끝에 이미지 마커 추가 · 드래그: 원하는 위치에 추가';
+  imageButton.draggable = true;
+  imageButton.classList.add('story-create-drag-source');
   editorActions.insertBefore(imageButton, clearStoryButton || null);
 
   imageButton.addEventListener('click', async () => {
     await appendStoryTextBlock(IMAGE_SENTINEL);
+  });
+  imageButton.addEventListener('dragstart', event => {
+    writeStoryCreateTransfer(event.dataTransfer, IMAGE_SENTINEL);
   });
 }
 

@@ -8,6 +8,7 @@ const libraryEditControls = fs.readFileSync('src/library/library-edit-controls.j
 const libraryEditDraft = fs.readFileSync('src/library/library-edit-draft.js', 'utf8');
 const closeAll = fs.readFileSync('src/library/library-tab-close-all.js', 'utf8');
 const collectionMissingUi = fs.readFileSync('src/collections/collection-missing-ui.js', 'utf8');
+const dcconPurchaseUrl = fs.readFileSync('src/collections/dccon-purchase-url.js', 'utf8');
 const collectionBackup = fs.readFileSync('src/collections/collection-backup.js', 'utf8');
 const editorBackup = fs.readFileSync('src/backup/editor-backup.js', 'utf8');
 const editorBackupStyles = fs.readFileSync('assets/styles/editor-backup.css', 'utf8');
@@ -38,7 +39,9 @@ const actionDialogs = fs.readFileSync('src/ui/action-dialogs.js', 'utf8');
 const actionDialogStyles = fs.readFileSync('assets/styles/action-dialogs.css', 'utf8');
 const toastUi = fs.readFileSync('src/ui/toast.js', 'utf8');
 const storySaveManager = fs.readFileSync('src/story/story-save-manager.js', 'utf8');
+const db = fs.readFileSync('src/db.js', 'utf8');
 const storySaveFormat = fs.readFileSync('src/story/story-save-format.js', 'utf8');
+const storySaveFolders = fs.readFileSync('src/story/story-save-folders.js', 'utf8');
 const storyRender = fs.readFileSync('src/story/story-render.js', 'utf8');
 const app = fs.readFileSync('src/app.js', 'utf8');
 const model = fs.readFileSync('src/model.js', 'utf8');
@@ -48,7 +51,7 @@ const navigationRenderEvent = 'hhjcon:library-navigation-rendered';
 const gridRenderEvent = 'hhjcon:library-grid-rendered';
 const tabsRenderEvent = 'hhjcon:library-tabs-rendered';
 const collectionCreatedEvent = 'hhjcon:collection-created';
-const appImport = "../app.js?v=20260914-6";
+const appImport = "../app.js?v=20260914-8";
 const modelImport = "../model.js?v=20260912-1";
 const selectionImport = "../core/selection.js?v=20260907-1";
 const backupFormatImport = "../core/backup-format.js?v=20260910-1";
@@ -73,8 +76,13 @@ if (!libraryRender.includes(`root.dispatchEvent(new Event('${gridRenderEvent}'))
   || collectionMissingUi.includes('new MutationObserver')) {
   fail('missing con decoration must use the explicit grid render event');
 }
-if (!collectionMissingUi.includes('export function showMissingConNotice(meta)')
-  || !storyRender.includes("from '../collections/collection-missing-ui.js?v=20260912-1'")
+if (!collectionMissingUi.includes('export async function showMissingConNotice(meta)')
+  || !collectionMissingUi.includes("from './dccon-purchase-url.js?v=20260914-1'")
+  || !collectionMissingUi.includes("import('../ui/action-dialogs.js?v=20260915-1')")
+  || !collectionMissingUi.includes("window.open(purchaseUrl, '_blank', 'noopener,noreferrer')")
+  || !dcconPurchaseUrl.includes("const DCCON_SEARCH_URL = 'https://dccon.dcinside.com/new/1/title/'")
+  || !dcconPurchaseUrl.includes("!/^\\d+$/.test(sourcePackageId)")
+  || !storyRender.includes("from '../collections/collection-missing-ui.js?v=20260914-1'")
   || !storyRender.includes('showMissingConNotice(conRef)')
   || app.includes('해당 콘을 구매하지 않았습니다.')) {
   fail('library and story missing cons must share one notice function');
@@ -199,7 +207,7 @@ if (!collectionBackup.includes("exportButton.addEventListener('click', handleExp
 if (collectionBackup.includes('stopImmediatePropagation()') || collectionBackup.includes('capture: true')) {
   fail('collection file handlers must not rely on suppressing legacy listeners');
 }
-if (!actionDialogs.includes("from '../app.js?v=20260914-6'")
+if (!actionDialogs.includes("from '../app.js?v=20260914-8'")
   || !actionDialogs.includes('createNamedCollection,')
   || !actionDialogs.includes('deleteCollectionById,')
   || !actionDialogs.includes('clearCurrentStory,')
@@ -229,7 +237,7 @@ if (!actionDialogs.includes('if (!hasCurrentStoryItems()) return clearCurrentSto
   || app.includes("el.clearStoryBtn.addEventListener('click'")) {
   fail('clear-story dialog must call the app state command without button replay');
 }
-if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260914-6'")
+if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260915-1'")
   || !storySaveManager.includes('showConfirm, showPrompt')) {
   fail('story save manager must import the canonical async dialog API');
 }
@@ -278,12 +286,12 @@ if ([editorBackup, storySaveManager].some(source => source.includes('function de
   || !storySaveManager.includes("makeDatedDefaultName('콘문학')")) {
   fail('readable dated default names must have one tested owner');
 }
-if (!index.includes('./src/app.js?v=20260914-6')
-  || !index.includes('./src/collections/collection-missing-ui.js?v=20260912-1')
-  || !index.includes('./src/library/library-workspace.js?v=20260914-8')
+if (!index.includes('./src/app.js?v=20260914-8')
+  || !index.includes('./src/collections/collection-missing-ui.js?v=20260915-1')
+  || !index.includes('./src/library/library-workspace.js?v=20260914-10')
   || !index.includes('./src/library/library-tab-close-all.js?v=20260910-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260914-6')
-  || !index.includes('./src/story/story-save-manager.js?v=20260914-6')
+  || !index.includes('./src/ui/action-dialogs.js?v=20260915-1')
+  || !index.includes('./src/story/story-save-manager.js?v=20260915-14')
   || !index.includes('./src/collections/collection-backup.js?v=20260912-1')
   || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
   fail('index.html dialog and story-save cache versions are not canonical');
@@ -314,11 +322,16 @@ if (!themeInit.includes("classList.add('hhj-app-booting')")
 if (!index.includes('./src/ui/theme-init.js?v=20260908-2')
   || !index.includes('./src/ui/layout-resizer.js?v=20260908-3')
   || !index.includes('./assets/styles/theme.css?v=20260914-1')
-  || !index.includes('./assets/styles/styles.css?v=20260913-2')
+  || !index.includes('./assets/styles/styles.css?v=20260914-2')
   || !baseStyles.includes('button:hover:not(:disabled)')
   || !themeStyles.includes('button:hover:not(:disabled)')
   || !index.includes('./assets/styles/workspace-enhancements.css?v=20260913-1')) {
   fail('workspace UI cache versions are not canonical');
+}
+if (!baseStyles.includes('.con-card { min-height: 140px;')
+  || !baseStyles.includes('grid-template-columns: repeat(auto-fill, 116px)')
+  || !baseStyles.includes('width: 100px; height: 100px; align-self: center; aspect-ratio: 1 / 1')) {
+  fail('library con cards must keep fixed square 100px thumbnails');
 }
 if (!model.includes('export const COLLECTION_NAME_MAX_LENGTH = 40;')
   || !model.includes('trimmed.length > COLLECTION_NAME_MAX_LENGTH')
@@ -385,7 +398,7 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
   || !index.includes('./assets/styles/story-output-tools.css?v=20260914-1')
-  || !index.includes('./src/story-output-tools.js?v=20260914-9')
+  || !index.includes('./src/story-output-tools.js?v=20260914-11')
   || !index.includes('./src/story/story-html-copy.js?v=20260914-2')
   || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle)")
   || !storyOutputTools.includes('button.disabled = previewMode')
@@ -427,33 +440,61 @@ if (!storyHtmlUtils.includes('export function estimateDcHtmlCharCount(')
 }
 if (storySaveManager.includes("document.createElement('style')")
   || !storySaveStyles.includes('.story-save-dialog {')
-  || !storySaveStyles.includes('.story-save-row {')
+  || !storySaveStyles.includes('.story-save-row,')
+  || !storySaveStyles.includes('.story-folder-row {')
   || !storySaveStyles.includes('@media (max-width: 650px)')
   || !storySaveManager.includes("label.textContent = '원고 백업 불러오기'")
-  || !storySaveManager.includes('tools.append(save, deleteSelected)')
-  || !storySaveManager.includes('selectionTools.append(selectAll, clearAll, exportSelected, label)')
-  || !index.includes('./assets/styles/story-save-manager.css?v=20260908-1')
+  || !storySaveManager.includes('tools.append(save, newFolder, deleteSelected)')
+  || !storySaveManager.includes('selectionTools.append(selectAll, clearAll, moveSelected, exportSelected, label)')
+  || !index.includes('./assets/styles/story-save-manager.css?v=20260915-4')
   || !storySaveManager.includes('warning.textContent = STORY_WARNING')
-  || !index.includes('./src/story/story-save-manager.js?v=20260914-6')) {
+  || !index.includes('./src/story/story-save-manager.js?v=20260915-14')) {
   fail('story save manager presentation must stay in its dedicated stylesheet');
 }
-if (!storySaveManager.includes("from './story-save-format.js?v=20260912-1'")
+if (!storySaveManager.includes("from './story-save-folders.js?v=20260915-3'")
+  || !storySaveFolders.includes("STORY_FOLDER_DOCUMENT_ID = 'story-save-folders-v1'")
+  || !storySaveManager.includes("makeImportedSave(parsed, names, '', sortOrder)")
+  || !storySaveManager.includes('normalizeStoryFolderId(save.folderId, folders)')
+  || !storySaveManager.includes("moveSelected.textContent = '선택 항목 이동'")
+  || !storySaveManager.includes("newFolder.textContent = '+ 새 폴더'")
+  || !storySaveManager.includes("trigger.setAttribute('aria-haspopup', 'listbox')")
+  || !storySaveManager.includes("event.key === 'Escape'")) {
+  fail('story folders must preserve legacy top-level saves and use the accessible folder picker');
+}
+if (!storySaveManager.includes("remove.textContent = '폴더 안 원고도 삭제'")
+  || !storySaveManager.includes("title: '폴더와 원고 삭제', confirmText: '모두 삭제', danger: true")
+  || !storySaveManager.includes("row.addEventListener('dragenter', guideRowDrop)")
+  || !storySaveManager.includes("ui.up.addEventListener('dragenter'")
+  || !storySaveManager.includes("row.addEventListener('dragenter', guideFolderRowDrop)")) {
+  fail('story folder deletion must confirm contents twice, and native dragenter must accept save drops');
+}
+if (!storySaveManager.includes("event.dataTransfer.setData('application/x-hhj-story-folder'")
+  || !storySaveManager.includes('dropStoryFolders(ui, beforeId)')
+  || !storySaveFolders.includes('export function planStoryFolderPlacement(')
+  || !storySaveStyles.includes('.story-folder-row.story-drop-before')) {
+  fail('folder handles must reorder selected folders with native drag and visible drop guides');
+}
+if (!storySaveManager.includes("from './story-save-format.js?v=20260915-2'")
   || storySaveManager.includes('function parseImportData(')
   || storySaveManager.includes('function exportSave(')
   || !storySaveFormat.includes('export function parseImportData(')
   || !storySaveFormat.includes('export function exportSave(')) {
   fail('story save file parsing and serialization must stay in the tested pure format module');
 }
-if (!storySaveManager.includes("deleteSelected.textContent = '선택한 원고 삭제'")
-  || !storySaveManager.includes("if (!selectedIds.size) return alert('삭제할 원고를 한 개 이상 선택하세요.')")
+if (!storySaveManager.includes("deleteSelected.textContent = '선택 항목 삭제'")
+  || !storySaveManager.includes("if (!saveIds.size && !folderIds.size) return alert('삭제할 원고나 폴더를 하나 이상 선택하세요.')")
   || !storySaveManager.includes('function confirmStoryDeletion(firstLine)')
   || !storySaveManager.includes("title: '원고 삭제', confirmText: '삭제', danger: true")
   || storySaveManager.includes("title: '저장 원고 삭제'")
   || storySaveManager.includes("title: '선택 원고 삭제'")
   || !storySaveManager.includes('“${save.name}” 원고를 삭제합니다.')
-  || !storySaveManager.includes('선택된 원고 ${selectedIds.size}개를 삭제합니다.')
+  || !storySaveManager.includes('선택된 원고 ${saveIds.size}개를 삭제합니다.')
+  || !storySaveManager.includes('chooseStoryFolderDeletion(folderIds.size, contained.length, saveIds.size)')
+  || !storySaveManager.includes("applyMany('documents', folderIds.size ? [plan.document, ...plan.updates] : [], plan.deleteIds)")
+  || !storySaveFolders.includes('export function planStoryFolderSelectionRemoval(')
+  || !db.includes('export async function applyMany(')
   || !storySaveManager.includes("ui.deleteSelected.addEventListener('click'")) {
-  fail('single and selected story deletion must share the same danger confirmation');
+  fail('selected saves and folders must validate content and delete atomically after confirmation');
 }
 if (editorBackup.includes("document.createElement('style')")
   || !editorBackupStyles.includes('.editor-backup-dialog {')
@@ -468,8 +509,8 @@ if (actionDialogs.includes("document.createElement('style')")
   || !actionDialogStyles.includes('.hhj-ui-dialog .danger-action {')
   || !actionDialogStyles.includes('.collection-backup-dialog {')
   || !index.includes('./assets/styles/action-dialogs.css?v=20260909-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260914-6')
-  || !index.includes('./src/story/story-save-manager.js?v=20260914-6')) {
+  || !index.includes('./src/ui/action-dialogs.js?v=20260915-1')
+  || !index.includes('./src/story/story-save-manager.js?v=20260915-14')) {
   fail('shared action dialog presentation must stay in its dedicated stylesheet');
 }
 const toastClients = [app, collectionBackup, editorBackup, storySaveManager, storyHtmlCopy];

@@ -47,6 +47,11 @@ if (bridge.includes("querySelectorAll('img.written_dccon')")) failures.push('bri
 rejectWildcardPostMessage(adapter, adapterPath);
 rejectWildcardPostMessage(bridge, 'bridge/hhjcon-dc-bridge.user.js');
 requireText(app, 'await replaceStores({ packages: payload.packages, cons: payload.cons });', 'DC sync must replace packages and cons atomically');
+requireText(app, "const DC_WRITE_URL = 'https://gall.dcinside.com/mgallery/board/write/?id=legendofmortal';", 'DC sync does not use the fixed default write URL');
+requireText(app, 'requestDcSync({ writeUrl: DC_WRITE_URL })', 'DC sync does not pass the fixed write URL to the bridge');
+if (app.includes('DC_WRITE_URL_KEY') || app.includes('dcWriteUrlInput') || index.includes('id="dcWriteUrlInput"')) {
+  failures.push('DC write URL input or saved setting was restored');
+}
 if (app.includes("clearStore('packages')") || app.includes("clearStore('cons')")) {
   failures.push('DC sync restored separate destructive store clears');
 }

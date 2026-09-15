@@ -50,6 +50,14 @@ export async function putMany(storeName, values) {
   if (!values.length) return;
   return withStore(storeName, 'readwrite', store => { values.forEach(value => store.put(value)); return Promise.resolve(); });
 }
+export async function applyMany(storeName, values, deleteKeys) {
+  if (!values.length && !deleteKeys.length) return;
+  return withStore(storeName, 'readwrite', store => {
+    deleteKeys.forEach(key => store.delete(key));
+    values.forEach(value => store.put(value));
+    return Promise.resolve();
+  });
+}
 export async function deleteOne(storeName, key) { return withStore(storeName, 'readwrite', store => requestAsPromise(store.delete(key))); }
 export async function clearStore(storeName) { return withStore(storeName, 'readwrite', store => requestAsPromise(store.clear())); }
 export async function replaceStores(storeValues) {

@@ -1,12 +1,15 @@
 .story-con {
-  width: 148px;
+  width: 156px;
   grid-template-columns: minmax(0, 1fr) 34px;
   grid-template-rows: 104px auto;
   gap: 4px;
   align-items: center;
 }
 
-.story-con img {
+.story-con img,
+.story-con .missing-thumb {
+  width: 100px;
+  height: 100px;
   align-self: center;
 }
 
@@ -39,11 +42,12 @@
 }
 
 .story-con.story-con-big {
-  width: 234px;
-  grid-template-rows: 140px auto;
+  width: 256px;
+  grid-template-rows: 204px auto;
 }
 
-.story-con.story-con-big img {
-  width: 172px;
-  height: 136px;
+.story-con.story-con-big img,
+.story-con.story-con-big .missing-thumb {
+  width: 200px;
+  height: 200px;
 }

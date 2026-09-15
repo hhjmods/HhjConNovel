@@ -19,7 +19,7 @@ import {
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { installBoxSelection } from './core/box-selection.js?v=20260913-2';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260911-1';
-import { renderStoryList } from './story/story-render.js?v=20260914-4';
+import { renderStoryList } from './story/story-render.js?v=20260914-5';
 import { showToast } from './ui/toast.js?v=20260909-2';
 import {
   CON_IDS_MIME,
@@ -28,7 +28,7 @@ import {
 } from './story-dnd-utils.js?v=20260906-2';
 import { readStoryCreateText } from './story/story-create-payload.js?v=20260914-1';
 
-const DC_WRITE_URL_KEY = 'hhjcon-dc-write-url';
+const DC_WRITE_URL = 'https://gall.dcinside.com/mgallery/board/write/?id=legendofmortal';
 
 const state = {
   packages: [],
@@ -46,7 +46,7 @@ const state = {
 };
 
 const el = Object.fromEntries([
-  'syncDcBtn', 'dcWriteUrlInput',
+  'syncDcBtn',
   'packagePanel', 'collectionPanel', 'packageList', 'collectionList',
   'libraryTitle', 'selectionStatus', 'searchInput', 'selectAllBtn', 'clearSelectionBtn',
   'libraryEmpty', 'conGrid', 'storyList', 'storyDropZone', 'storyStats', 'addTextBtn',
@@ -82,7 +82,6 @@ async function loadState() {
   if (addedItemIds || state.story !== previousStory) await putOne('documents', state.story);
   state.activePackageId = state.packages[0]?.id || null;
   state.activeCollectionId = state.collections[0]?.id || null;
-  el.dcWriteUrlInput.value = localStorage.getItem(DC_WRITE_URL_KEY) || '';
   updateSyncStatus(meta);
   renderAll();
 }
@@ -471,10 +470,6 @@ document.querySelectorAll('[data-library-tab]').forEach(button => button.addEven
   renderLibrary();
 }));
 
-el.dcWriteUrlInput.addEventListener('change', () => {
-  localStorage.setItem(DC_WRITE_URL_KEY, el.dcWriteUrlInput.value.trim());
-});
-
 el.searchInput.addEventListener('input', () => {
   state.search = el.searchInput.value;
   renderGrid();
@@ -488,17 +483,10 @@ el.selectAllBtn.addEventListener('click', () => {
 el.clearSelectionBtn.addEventListener('click', () => setSelection([]));
 
 el.syncDcBtn.addEventListener('click', async () => {
-  const writeUrl = el.dcWriteUrlInput.value.trim();
-  if (!writeUrl) {
-    alert('먼저 사용할 갤러리의 글쓰기 페이지 주소를 입력해주세요.');
-    el.dcWriteUrlInput.focus();
-    return;
-  }
-  localStorage.setItem(DC_WRITE_URL_KEY, writeUrl);
   el.syncDcBtn.disabled = true;
   el.syncDcBtn.textContent = 'DC에서 읽는 중…';
   try {
-    const payload = await requestDcSync({ writeUrl });
+    const payload = await requestDcSync({ writeUrl: DC_WRITE_URL });
     await applySyncPayload(payload);
     showToast('디시콘 목록을 동기화했습니다.', 1800);
   } catch (error) {

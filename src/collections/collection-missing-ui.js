@@ -1,11 +1,20 @@
 import { getAll } from '../db.js';
+import { makeDcconPurchaseUrl } from './dccon-purchase-url.js?v=20260914-1';
 
 let refMetaByConId = new Map();
 let refreshPromise = null;
 
-export function showMissingConNotice(meta) {
+export async function showMissingConNotice(meta) {
   const packageName = meta?.packageName || '원본 디시콘 묶음 이름을 확인할 수 없습니다.';
-  alert(`해당 콘을 구매하지 않았습니다.\n\n디시콘 묶음: ${packageName}`);
+  const message = `해당 콘을 구매하지 않았습니다.\n\n디시콘 묶음: ${packageName}`;
+  const purchaseUrl = makeDcconPurchaseUrl(meta);
+  if (!purchaseUrl) return alert(message);
+
+  const { showConfirm } = await import('../ui/action-dialogs.js?v=20260915-1');
+  const openPurchase = await showConfirm(message, {
+    title: '미보유 디시콘', cancelText: '닫기', confirmText: '구매 페이지 열기'
+  });
+  if (openPurchase) window.open(purchaseUrl, '_blank', 'noopener,noreferrer');
 }
 
 async function refreshMetadata() {
@@ -60,7 +69,7 @@ document.addEventListener('click', async event => {
     await refreshMetadata();
     meta = refMetaByConId.get(card.dataset.conId);
   }
-  showMissingConNotice(meta);
+  await showMissingConNotice(meta);
 }, true);
 
 document.getElementById('conGrid')?.addEventListener('hhjcon:library-grid-rendered', annotateMissingCards);

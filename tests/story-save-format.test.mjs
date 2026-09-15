@@ -15,7 +15,7 @@ const sample = () => ({
 test('story save export and import preserve blocks, owned metadata, and con references', () => {
   const exported = exportSave(sample());
   assert.equal(exported.format, FORMAT);
-  const [parsed] = parseImportData(exported);
+  const { saves: [parsed] } = parseImportData(exported);
   assert.deepEqual(parsed.story.items[0].conRef, {
     sourceNo: '10', packageId: '', sourcePackageId: '', name: '콘 이름', packageName: '원본 묶음'
   });
@@ -25,7 +25,31 @@ test('story save export and import preserve blocks, owned metadata, and con refe
 test('story save bundles reuse the single-save format', () => {
   const bundle = exportBundle([sample(), { ...sample(), name: '두 번째' }]);
   assert.equal(bundle.format, BUNDLE_FORMAT);
-  assert.deepEqual(parseImportData(bundle).map(save => save.name), ['테스트 원고', '두 번째']);
+  assert.deepEqual(parseImportData(bundle).saves.map(save => save.name), ['테스트 원고', '두 번째']);
+  assert.deepEqual(parseImportData(bundle).folders, []);
+});
+
+test('story folder backups keep the folder name, save order, and empty folders', () => {
+  const bundle = exportBundle([{ ...sample(), name: '첫 번째' }, { ...sample(), name: '두 번째' }], '자료');
+  assert.equal(bundle.folderName, '자료');
+  assert.deepEqual(parseImportData(bundle).folders[0].saves.map(save => save.name), ['첫 번째', '두 번째']);
+  assert.deepEqual(parseImportData(exportBundle([], '빈 폴더')).folders, [{ name: '빈 폴더', saves: [] }]);
+  assert.throws(() => parseImportData(exportBundle([])), /지원하지 않는 콘문학 백업/);
+  assert.throws(() => parseImportData({ ...bundle, folderName: ' ' }), /지원하지 않는 콘문학 백업/);
+});
+
+test('mixed story backups keep root saves and multiple folders without flattening', () => {
+  const mixed = exportBundle([sample()], '', [
+    { name: '자료', saves: [{ ...sample(), name: '폴더 원고' }] },
+    { name: '빈 폴더', saves: [] }
+  ]);
+  const parsed = parseImportData(mixed);
+  assert.deepEqual(parsed.saves.map(save => save.name), ['테스트 원고']);
+  assert.deepEqual(parsed.folders.map(folder => [folder.name, folder.saves.map(save => save.name)]), [
+    ['자료', ['폴더 원고']], ['빈 폴더', []]
+  ]);
+  assert.throws(() => parseImportData({ ...mixed, folders: [{ name: '잘못된 폴더', saves: [{}] }] }), /지원하지 않는 콘문학 원고/);
+  assert.throws(() => parseImportData({ ...mixed, folderName: '겹침' }), /지원하지 않는 콘문학 백업/);
 });
 
 test('story save import rejects duplicate block ids and other backup types', () => {

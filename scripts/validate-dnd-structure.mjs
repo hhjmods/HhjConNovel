@@ -53,6 +53,7 @@ const files = {
   outputTools: read('src/story-output-tools.js'),
   breakCount: read('src/story/break-count.js'),
   conSize: read('src/story/con-size-mode.js'),
+  conSizeStyles: read('assets/styles/story-con-controls.css'),
   textFormatting: read('src/story/text-formatting.js'),
   storyEditorResize: read('src/story/story-editor-resize.js'),
   boxSelection: read('src/core/box-selection.js'),
@@ -89,18 +90,18 @@ if (files.dragStart.includes('application/x-hhj')) {
   fail('src/library/library-con-drag-source.js bypasses centralized DnD MIME helpers');
 }
 
-const directAppImport = './app.js?v=20260914-6';
+const directAppImport = './app.js?v=20260914-8';
 const directAppClients = [
-  ['src/story-insertion.js', files.insertion, '20260914-6'],
-  ['src/story-con-run-end-drop.js', files.runEnd, '20260914-7'],
-  ['src/story-tail-blank-drop.js', files.tail, '20260914-7'],
-  ['src/story-output-tools.js', files.outputTools, '20260914-9']
+  ['src/story-insertion.js', files.insertion, '20260914-8'],
+  ['src/story-con-run-end-drop.js', files.runEnd, '20260914-9'],
+  ['src/story-tail-blank-drop.js', files.tail, '20260914-9'],
+  ['src/story-output-tools.js', files.outputTools, '20260914-11']
 ];
 for (const [path, source, cacheVersion] of directAppClients) {
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
   if (!index.includes(`./${path}?v=${cacheVersion}`)) fail(`index.html does not load the current ${path} cache version`);
 }
-if (!index.includes('./src/app.js?v=20260914-6')) fail('index.html app module version differs from DnD clients');
+if (!index.includes('./src/app.js?v=20260914-8')) fail('index.html app module version differs from DnD clients');
 if (!index.includes('./src/story-slot-mode.js?v=20260914-7')) fail('index.html does not load the current slot guide cache version');
 if (!index.includes('./src/story-drag-autoscroll.js?v=20260914-2')) fail('index.html does not load the tested autoscroll module version');
 if (!files.slot.includes("from './story/story-dnd-geometry.js?v=20260914-1'")
@@ -136,6 +137,13 @@ if (!index.includes('./src/story/break-count.js?v=20260910-1')
   || !index.includes('./src/story/text-formatting.js?v=20260914-1')) {
   fail('index.html story decorator cache versions are not canonical');
 }
+if (!index.includes('./assets/styles/story-con-controls.css?v=20260914-1')
+  || !files.conSizeStyles.includes('width: 156px;')
+  || !files.conSizeStyles.includes('width: 100px;\n  height: 100px;')
+  || !files.conSizeStyles.includes('width: 256px;')
+  || !files.conSizeStyles.includes('width: 200px;\n  height: 200px;')) {
+  fail('story con previews must preserve the 100px/200px DC display sizes');
+}
 if (!files.textFormatting.includes("storyList.dispatchEvent(new Event(RICH_EDITORS_RENDERED_EVENT))")
   || !files.storyEditorResize.includes('storyList.addEventListener(RICH_EDITORS_RENDERED_EVENT, refreshEditors)')
   || !files.storyEditorResize.includes("document.addEventListener('hhjcon:story-rendered', refreshEditors)")
@@ -164,11 +172,11 @@ for (const forbidden of [
 }
 
 if (!files.app.includes('export async function applyStoryDropTransfer')) fail('app.js lost direct drop mutation bridge');
-if (!files.app.includes("./story/story-render.js?v=20260914-4")
+if (!files.app.includes("./story/story-render.js?v=20260914-5")
   || !files.app.includes('renderStoryList(el.storyList')
   || files.app.includes("document.createElement('textarea')")
   || !files.storyRender.includes("../story-dnd-utils.js?v=20260906-2")
-  || !files.storyRender.includes("../collections/collection-missing-ui.js?v=20260912-1")
+  || !files.storyRender.includes("../collections/collection-missing-ui.js?v=20260914-1")
   || !files.storyRender.includes('export function renderStoryList(')
   || !files.storyRender.includes("tail.className = 'story-tail-drop'")) {
   fail('story DOM construction must remain delegated to the story renderer');

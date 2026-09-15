@@ -4,13 +4,13 @@ import {
   createNamedCollection,
   deleteCollectionById,
   hasCurrentStoryItems
-} from '../app.js?v=20260914-6';
+} from '../app.js?v=20260914-8';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
 let alertChain = Promise.resolve();
 
-function createDialog(title, tone = '') {
+export function createDialog(title, tone = '') {
   const dialog = document.createElement('dialog');
   dialog.className = `hhj-ui-dialog${tone ? ` ${tone}` : ''}`;
   const head = document.createElement('div');

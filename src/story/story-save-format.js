@@ -36,11 +36,13 @@ export function exportSave(save) {
   };
 }
 
-export function exportBundle(saves) {
+export function exportBundle(saves, folderName = '', folders = []) {
   return {
     format: BUNDLE_FORMAT,
     version: BUNDLE_VERSION,
     exportedAt: new Date().toISOString(),
+    ...(folderName ? { folderName } : {}),
+    ...(folders.length ? { folders: folders.map(folder => ({ name: folder.name, saves: folder.saves.map(exportSave) })) } : {}),
     saves: saves.map(exportSave)
   };
 }
@@ -76,14 +78,29 @@ function parseSave(data) {
   };
 }
 
+function parseFolder(name, saves) {
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 40 || !Array.isArray(saves)) {
+    throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
+  }
+  return { name: name.trim(), saves: saves.map(parseSave) };
+}
+
 export function parseImportData(data) {
   const typeMessage = wrongBackupTypeMessage(data?.format, 'story');
   if (typeMessage) throw new Error(typeMessage);
   if (data?.format === BUNDLE_FORMAT) {
-    if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || !data.saves.length) {
+    const hasFolder = Object.hasOwn(data, 'folderName');
+    const hasFolders = Object.hasOwn(data, 'folders');
+    if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || hasFolder && hasFolders
+      || hasFolders && (!Array.isArray(data.folders) || !data.folders.length)
+      || !hasFolder && !hasFolders && !data.saves.length) {
       throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
     }
-    return data.saves.map(parseSave);
+    return {
+      saves: hasFolder ? [] : data.saves.map(parseSave),
+      folders: hasFolder ? [parseFolder(data.folderName, data.saves)]
+        : hasFolders ? data.folders.map(folder => parseFolder(folder?.name, folder?.saves)) : []
+    };
   }
-  return [parseSave(data)];
+  return { saves: [parseSave(data)], folders: [] };
 }

@@ -63,9 +63,9 @@ body.workspace-resizing { cursor: col-resize; user-select: none; }
 .library-toolbar { min-height: 58px; }
 .library-heading { display: flex; gap: 10px; align-items: baseline; }
 .toolbar-actions { display: flex; gap: 6px; }
-.con-grid { padding: 12px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); align-content: start; gap: 9px; flex: 1; }
-.con-card { min-height: 132px; padding: 7px; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; gap: 6px; background: #151b25; user-select: none; }
-.con-card img, .missing-thumb { width: 100%; aspect-ratio: 4 / 3; border-radius: 7px; object-fit: contain; background: #0c1016; }
+.con-grid { padding: 12px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, 116px); justify-content: start; align-content: start; gap: 9px; flex: 1; }
+.con-card { min-height: 140px; padding: 7px; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; gap: 6px; background: #151b25; user-select: none; }
+.con-card img, .missing-thumb { width: 100px; height: 100px; align-self: center; aspect-ratio: 1 / 1; border-radius: 7px; object-fit: contain; background: #0c1016; }
 .missing-thumb { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); }
 .missing-thumb strong { font-size: 32px; line-height: 1; }
 .missing-thumb small { margin-top: 4px; font-size: 11px; line-height: 1; }

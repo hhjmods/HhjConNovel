@@ -24,6 +24,7 @@ const textFormattingStyles = fs.readFileSync('assets/styles/text-formatting.css'
 const controlRowPagerStyles = fs.readFileSync('assets/styles/control-row-pager.css', 'utf8');
 const controlRowPager = fs.readFileSync('src/ui/control-row-pager.js', 'utf8');
 const textFormatControls = fs.readFileSync('src/story/text-format-control-fix.js', 'utf8');
+const formatPresets = fs.readFileSync('src/story/format-presets.js', 'utf8');
 const colorUtils = fs.readFileSync('src/story/color-utils.js', 'utf8');
 const storyHeaderLayout = fs.readFileSync('src/story/story-header-layout.js', 'utf8');
 const storyHeaderLayoutStyles = fs.readFileSync('assets/styles/story-header-layout.css', 'utf8');
@@ -321,7 +322,7 @@ if (!themeInit.includes("classList.add('hhj-app-booting')")
 }
 if (!index.includes('./src/ui/theme-init.js?v=20260908-2')
   || !index.includes('./src/ui/layout-resizer.js?v=20260908-3')
-  || !index.includes('./assets/styles/theme.css?v=20260914-1')
+  || !index.includes('./assets/styles/theme.css?v=20260916-5')
   || !index.includes('./assets/styles/styles.css?v=20260914-2')
   || !baseStyles.includes('button:hover:not(:disabled)')
   || !themeStyles.includes('button:hover:not(:disabled)')
@@ -363,7 +364,18 @@ if (!textFormatControls.includes("from './color-utils.js?v=20260908-1'")
   || !textFormatControls.includes("pendingElement.style.fontSize === 'xxx-large'")
   || !textFormatControls.includes("parent?.tagName === 'SPAN' && parent.childNodes.length === 1")
   || !textFormatControls.includes('activeEditor.dataset.fontSizePx = pixelSize;\n    captureSelection();\n    normalizeFontSize(pixelSize);\n    restoreSelection();\n    captureSelection();')
-  || !index.includes('./src/story/text-format-control-fix.js?v=20260914-3')) {
+  || !textFormatControls.includes("toolbar.addEventListener('hhjcon:apply-format-preset'")
+  || !textFormatControls.includes('if (preset.align) applyCommand(preset.align);')
+  || !textFormatControls.includes("applyCommand('removeFormat')")
+  || !textFormatControls.includes("applyCommand('justifyLeft');")
+  || !textFormatControls.includes("toolbar.addEventListener('hhjcon:open-format-color-picker'")
+  || !textFormatControls.includes("source.closest('dialog[open]') || document.body")
+  || !textFormatControls.includes('data-popup-action="reset"')
+  || !textFormatControls.includes('function clearSelectedTextColor()')
+  || !textFormatControls.includes('function removeEmptyInlineElements(root)')
+  || textFormatControls.includes("applyCommand('foreColor', 'inherit')")
+  || !textFormatControls.includes("applyCommand('hiliteColor', 'transparent', 'backColor')")
+  || !index.includes('./src/story/text-format-control-fix.js?v=20260916-7')) {
   fail('text format controls must use the shared tested color utility module');
 }
 if (textFormatControls.includes("document.createElement('style')")
@@ -372,14 +384,19 @@ if (textFormatControls.includes("document.createElement('style')")
   || !textFormattingStyles.includes('.format-color-sv {')
   || !textFormattingStyles.includes('.format-color-hue {')
   || !textFormattingStyles.includes('font-size: 12px;')
-  || !index.includes('./assets/styles/text-formatting.css?v=20260913-1')) {
+  || !textFormattingStyles.includes('.format-preset-dialog {')
+  || !textFormattingStyles.includes('.format-color-reset-icon {')
+  || !textFormatting.includes('class="format-color-reset-icon"')
+  || !textFormattingStyles.includes('.format-align-menu:popover-open {')
+  || !textFormattingStyles.includes('.format-align svg {')
+  || !index.includes('./assets/styles/text-formatting.css?v=20260916-5')) {
   fail('the color popup must keep its presentation in the text formatting stylesheet');
 }
 if (storyHeaderLayout.includes("document.createElement('style')")
   || !storyHeaderLayoutStyles.includes(':root { --workspace-row-height: 42px; }')
   || !storyHeaderLayoutStyles.includes('.editor-header.story-header-split {')
   || !storyHeaderLayoutStyles.includes('@media (max-width: 900px)')
-  || !index.includes('./assets/styles/story-header-layout.css?v=20260914-1')
+  || !index.includes('./assets/styles/story-header-layout.css?v=20260916-1')
   || storyHeaderLayout.includes('patchWarning')
   || storyHeaderLayout.includes('bodyObserver')
   || storyHeaderLayout.includes('new MutationObserver')
@@ -395,12 +412,12 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.story-image-placeholder {')
   || !storyOutputStyles.includes('.story-html-preview {')
   || !storyOutputStyles.includes('.story-html-copy {')
-  || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy)')
+  || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy):not(.story-format-presets)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
-  || !index.includes('./assets/styles/story-output-tools.css?v=20260914-1')
-  || !index.includes('./src/story-output-tools.js?v=20260914-11')
+  || !index.includes('./assets/styles/story-output-tools.css?v=20260916-1')
+  || !index.includes('./src/story-output-tools.js?v=20260916-1')
   || !index.includes('./src/story/story-html-copy.js?v=20260914-2')
-  || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle)")
+  || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle):not(.story-format-presets)")
   || !storyOutputTools.includes('button.disabled = previewMode')
   || !storyOutputTools.includes("from './story/story-html.js?v=20260914-1'")
   || !storyOutputTools.includes("toolbar.insertBefore(toggle, toolbar.querySelector('.story-html-copy'))")
@@ -423,7 +440,23 @@ if (!storyHtml.includes("from './rich-html.js?v=20260914-1'")
   || !textFormatting.includes('<option value="96px">96</option>')
   || !textFormatting.includes("String(document.queryCommandValue('fontSize')) === '7'")
   || !textFormatting.includes("sizeSelect.value = '12px'")
-  || !index.includes('./src/story/text-formatting.js?v=20260914-1')) {
+  || textFormatting.includes('data-action="clear-background"')
+  || !textFormatting.includes('data-color-apply="color"')
+  || !textFormatting.includes('data-color-apply="background"')
+  || !textFormatting.includes('data-action="toggle-align-menu"')
+  || !textFormatting.includes("alignIcon('center')")
+  || !textFormatting.includes('aria-label="문단 정렬"')
+  || !textFormatting.includes('class="format-align-menu" role="menu" popover="manual"')
+  || !textFormatting.includes('alignMenu.showPopover()')
+  || !textFormatting.includes('function setAlignMenuOpen(open)')
+  || textFormatting.includes('data-action="format-presets"')
+  || !formatPresets.includes('data-use="align"')
+  || !formatPresets.includes("trigger.textContent = '서식 프리셋'")
+  || !formatPresets.includes("trigger.className = 'small story-format-presets'")
+  || !formatPresets.includes("toolbar?.querySelector('[data-format=\"font\"]')?.before(trigger)")
+  || !formatPresets.includes("trigger.addEventListener('pointerdown', event => event.preventDefault())")
+  || !index.includes('./src/story/text-formatting.js?v=20260916-6')
+  || !index.includes('./src/story/format-presets.js?v=20260916-5')) {
   fail('rich text paste and story output must share the canonical sanitizer');
 }
 if (!storyHtml.includes("from './story-html-utils.js?v=20260912-3'")

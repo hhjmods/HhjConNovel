@@ -8,8 +8,8 @@
 .story-image-placeholder > .story-tools { grid-column: 3; grid-row: 1; }
 
 .story-html-toggle { margin-left: auto; white-space: nowrap; }
-.text-format-toolbar.html-preview-active:not(.hhj-control-row-paged) > :not(.story-html-toggle):not(.story-html-copy),
-.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy) { opacity: .4; pointer-events: none; }
+.text-format-toolbar.html-preview-active:not(.hhj-control-row-paged) > :not(.story-html-toggle):not(.story-html-copy):not(.story-format-presets),
+.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy):not(.story-format-presets) { opacity: .4; pointer-events: none; }
 .editor-panel.html-preview-mode > .story-list,
 .editor-panel.html-preview-mode > .story-drop-zone { display: none !important; }
 .story-html-preview { flex: 1; min-height: 180px; margin: 10px; padding: 12px; overflow: auto; border: 1px solid var(--line); border-radius: 9px; background: #0f141b; color: var(--text); font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; tab-size: 2; user-select: text; }

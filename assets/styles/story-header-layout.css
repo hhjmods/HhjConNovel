@@ -1,12 +1,6 @@
 :root { --workspace-row-height: 42px; }
 :root[data-theme="dark"] { --workspace-control-bg: #202735; }
 :root[data-theme="light"] { --workspace-control-bg: #e2e7ee; }
-:root[data-theme="dark"] .sidebar .panel-title-row button:not(.primary):not(.active),
-:root[data-theme="dark"] .collection-transfer-row button:not(.primary):not(.active),
-:root[data-theme="dark"] .collection-transfer-row .file-button,
-:root[data-theme="dark"] .library-toolbar button:not(.primary):not(.active),
-:root[data-theme="dark"] .editor-header button:not(.primary):not(.active),
-:root[data-theme="dark"] .text-format-toolbar button:not(.primary):not(.active) { background: #171d27; }
 .sidebar > .tabs,
 .sidebar .panel-title-row,
 .collection-transfer-row,

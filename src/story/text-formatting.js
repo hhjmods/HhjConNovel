@@ -18,6 +18,13 @@ if (storyList && editorPanel && editorHeader) {
 
   const toolbar = document.createElement('div');
   toolbar.className = 'text-format-toolbar';
+  const colorResetIcon = `<svg class="format-color-reset-icon" viewBox="0 0 24 18" aria-hidden="true" focusable="false" shape-rendering="geometricPrecision"><rect x="0.75" y="0.75" width="22.5" height="16.5" rx="0.5" fill="#fff" stroke="#d92332" stroke-width="1.5"/><path d="M1.5 1.5 22.5 16.5" fill="none" stroke="#d92332" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const alignPaths = {
+    left: 'M2 4h16 M2 9h10 M2 14h14',
+    center: 'M2 4h16 M5 9h10 M3 14h14',
+    right: 'M2 4h16 M8 9h10 M4 14h14'
+  };
+  const alignIcon = side => `<svg viewBox="0 0 20 18" aria-hidden="true" focusable="false"><path d="${alignPaths[side]}"/></svg>`;
   toolbar.innerHTML = `
     <select data-format="font" aria-label="글꼴" title="글꼴">
       <option value="">글꼴</option>
@@ -63,16 +70,20 @@ if (storyList && editorPanel && editorHeader) {
       <option value="72px">72</option>
       <option value="96px">96</option>
     </select>
-    <label class="format-color" title="글자색"><span>글자색</span><input data-format="color" type="color" value="#e8edf5" aria-label="글자색"></label>
-    <label class="format-color" title="배경색"><span>배경색</span><input data-format="background" type="color" value="#27344f" aria-label="배경색"></label>
+    <span class="format-color"><button type="button" data-color-apply="color" title="현재 글자색 적용">글자색</button><span class="format-color-chip"><input data-format="color" type="color" value="#e8edf5" aria-label="글자색 선택" title="글자색 선택">${colorResetIcon}</span></span>
+    <span class="format-color"><button type="button" data-color-apply="background" title="현재 배경색 적용">배경색</button><span class="format-color-chip"><input data-format="background" type="color" value="#27344f" aria-label="배경색 선택" title="배경색 선택">${colorResetIcon}</span></span>
     <button type="button" class="format-toggle" data-command="bold" title="굵게"><strong>B</strong></button>
     <button type="button" class="format-toggle" data-command="italic" title="기울임"><em>I</em></button>
     <button type="button" class="format-toggle" data-command="underline" title="밑줄"><u>U</u></button>
     <button type="button" class="format-toggle" data-command="strikeThrough" title="취소선"><s>S</s></button>
-    <button type="button" data-command="justifyLeft" title="왼쪽 정렬">왼쪽</button>
-    <button type="button" data-command="justifyCenter" title="가운데 정렬">가운데</button>
-    <button type="button" data-command="justifyRight" title="오른쪽 정렬">오른쪽</button>
-    <button type="button" data-action="clear-background">배경 없음</button>
+    <span class="format-align">
+      <button type="button" data-action="toggle-align-menu" aria-haspopup="menu" aria-expanded="false" aria-label="문단 정렬" title="문단 정렬">${alignIcon('left')}<span aria-hidden="true">▾</span></button>
+      <span class="format-align-menu" role="menu" popover="manual">
+        <button type="button" data-command="justifyLeft" role="menuitem" aria-label="왼쪽 정렬" title="왼쪽 정렬">${alignIcon('left')}</button>
+        <button type="button" data-command="justifyCenter" role="menuitem" aria-label="가운데 정렬" title="가운데 정렬">${alignIcon('center')}</button>
+        <button type="button" data-command="justifyRight" role="menuitem" aria-label="오른쪽 정렬" title="오른쪽 정렬">${alignIcon('right')}</button>
+      </span>
+    </span>
     <button type="button" data-action="remove-format">서식 초기화</button>
   `;
   editorPanel.insertBefore(toolbar, editorHeader.nextSibling);
@@ -82,6 +93,26 @@ if (storyList && editorPanel && editorHeader) {
   const sizeSelect = toolbar.querySelector('[data-format="size"]');
   const colorInput = toolbar.querySelector('[data-format="color"]');
   const backgroundInput = toolbar.querySelector('[data-format="background"]');
+  const alignMenu = toolbar.querySelector('.format-align-menu');
+  const alignMenuTrigger = toolbar.querySelector('[data-action="toggle-align-menu"]');
+
+  function setAlignMenuOpen(open) {
+    if (!open) {
+      if (alignMenu.matches(':popover-open')) alignMenu.hidePopover();
+      alignMenuTrigger.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    alignMenu.showPopover();
+    const triggerRect = alignMenuTrigger.getBoundingClientRect();
+    const width = alignMenu.offsetWidth;
+    const height = alignMenu.offsetHeight;
+    const left = Math.max(8, Math.min(triggerRect.left, window.innerWidth - width - 8));
+    let top = triggerRect.bottom + 5;
+    if (top + height > window.innerHeight - 8) top = Math.max(8, triggerRect.top - height - 5);
+    alignMenu.style.left = `${Math.round(left)}px`;
+    alignMenu.style.top = `${Math.round(top)}px`;
+    alignMenuTrigger.setAttribute('aria-expanded', String(open));
+  }
 
   function setToolbarEnabled(enabled) {
     controls.forEach(control => { control.disabled = !enabled; });
@@ -295,17 +326,27 @@ if (storyList && editorPanel && editorHeader) {
   toolbar.addEventListener('click', event => {
     const button = event.target.closest('button');
     if (!button || !activeEditor) return;
+    if (button === alignMenuTrigger) {
+      setAlignMenuOpen(!alignMenu.matches(':popover-open'));
+      return;
+    }
     const command = button.dataset.command;
     if (command) {
       runCommand(command);
-      return;
-    }
-    if (button.dataset.action === 'clear-background') {
-      runCommand('backColor', 'transparent');
+      if (command.startsWith('justify')) setAlignMenuOpen(false);
       return;
     }
     if (button.dataset.action === 'remove-format') runCommand('removeFormat');
   });
+
+  document.addEventListener('pointerdown', event => {
+    if (!event.target.closest('.format-align')) setAlignMenuOpen(false);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setAlignMenuOpen(false);
+  });
+  window.addEventListener('resize', () => setAlignMenuOpen(false));
+  window.addEventListener('scroll', () => setAlignMenuOpen(false), true);
 
   fontSelect.addEventListener('change', () => {
     if (fontSelect.value) runCommand('fontName', fontSelect.value);

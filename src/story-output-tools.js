@@ -192,7 +192,7 @@ if (toolbar && editorPanel) {
     previewMode = !previewMode;
     editorPanel.classList.toggle('html-preview-mode', previewMode);
     toolbar.classList.toggle('html-preview-active', previewMode);
-    document.querySelectorAll('.story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle)').forEach(button => { button.disabled = previewMode; });
+    document.querySelectorAll('.story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle):not(.story-format-presets)').forEach(button => { button.disabled = previewMode; });
     preview.hidden = !previewMode;
     toggle.textContent = previewMode ? '블록 보기' : 'HTML 보기';
     toggle.title = previewMode ? '블록 편집 화면으로 돌아가기' : '현재 작성된 원고 HTML 코드 보기';

@@ -4,6 +4,74 @@
   font-size: 12px;
 }
 
+.bridge-setup-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+
+.bridge-help { display: inline-flex; }
+.bridge-help-trigger {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+}
+.bridge-help-panel {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: min(390px, calc(100vw - 24px));
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity .12s ease, transform .12s ease, visibility .12s;
+}
+.bridge-help-panel strong:not(:first-child) { margin-top: 4px; }
+.bridge-help:hover .bridge-help-panel,
+.bridge-help:focus-within .bridge-help-panel {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (max-width: 760px) {
+  .bridge-help-panel { right: auto; left: 0; }
+}
+
+@media (min-width: 761px) and (max-width: 1200px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar > div:first-child { flex: none; white-space: nowrap; }
+  .top-actions { flex: 1 1 700px; justify-content: flex-start; }
+  .dc-connect-box { display: contents; }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  body { height: 100dvh; display: flex; flex-direction: column; }
+  .topbar { flex-shrink: 0; }
+  .layout { height: auto; flex: 1; min-height: 0; }
+}
+
 .collection-transfer-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

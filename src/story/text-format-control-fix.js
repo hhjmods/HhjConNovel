@@ -25,6 +25,7 @@ if (toolbar && storyList) {
       <input class="format-color-popup-hex" type="text" maxlength="7" spellcheck="false" autocomplete="off" aria-label="색상 코드">
     </div>
     <div class="format-color-popup-actions">
+      <button type="button" data-popup-action="reset"></button>
       <button type="button" data-popup-action="cancel">취소</button>
       <button type="button" data-popup-action="confirm">확인</button>
     </div>
@@ -38,8 +39,10 @@ if (toolbar && storyList) {
   const hueMarker = popup.querySelector('.format-color-hue-marker');
   const preview = popup.querySelector('.format-color-preview');
   const popupHex = popup.querySelector('.format-color-popup-hex');
+  const popupReset = popup.querySelector('[data-popup-action="reset"]');
   let popupSource = null;
   let popupKind = null;
+  let popupAppliesFormatting = true;
   let hue = 0;
   let saturation = 0;
   let value = 0;
@@ -92,6 +95,112 @@ if (toolbar && storyList) {
     return true;
   }
 
+  function setColorMode(source, mode) {
+    source.dataset.colorMode = mode;
+    source.closest('.format-color-chip')?.classList.toggle('is-reset', mode !== 'color');
+  }
+
+  function stripInlineColor(element) {
+    element.style?.removeProperty('color');
+    element.removeAttribute?.('color');
+    if (element.hasAttribute?.('style') && !element.getAttribute('style').trim()) element.removeAttribute('style');
+  }
+
+  function hasInlineColor(element) {
+    return Boolean(element.style?.getPropertyValue('color') || element.hasAttribute?.('color'));
+  }
+
+  function fragmentHasContent(fragment) {
+    return fragment.textContent !== '' || Boolean(fragment.querySelector('br'));
+  }
+
+  function removeEmptyInlineElements(root) {
+    root.querySelectorAll('span, font').forEach(element => {
+      if (!element.textContent && !element.querySelector('br')) element.remove();
+    });
+  }
+
+  function splitColoredAncestor(marker, ancestor) {
+    const beforeRange = document.createRange();
+    beforeRange.selectNodeContents(ancestor);
+    beforeRange.setEndBefore(marker);
+    const before = beforeRange.cloneContents();
+    const afterRange = document.createRange();
+    afterRange.selectNodeContents(ancestor);
+    afterRange.setStartAfter(marker);
+    const after = afterRange.cloneContents();
+    const replacements = [];
+    if (fragmentHasContent(before)) {
+      const clone = ancestor.cloneNode(false);
+      clone.append(before);
+      replacements.push(clone);
+    }
+    const middle = ancestor.cloneNode(false);
+    stripInlineColor(middle);
+    middle.append(marker);
+    if (middle.tagName === 'SPAN' && !middle.attributes.length) replacements.push(marker);
+    else replacements.push(middle);
+    if (fragmentHasContent(after)) {
+      const clone = ancestor.cloneNode(false);
+      clone.append(after);
+      replacements.push(clone);
+    }
+    ancestor.replaceWith(...replacements);
+  }
+
+  function clearSelectedTextColor() {
+    if (!restoreSelection()) return false;
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return false;
+    const marker = document.createElement('span');
+    marker.dataset.hhjColorReset = '';
+    marker.append(range.extractContents());
+    range.insertNode(marker);
+    marker.querySelectorAll('*').forEach(stripInlineColor);
+    let ancestor = marker.parentElement;
+    while (ancestor && ancestor !== activeEditor) {
+      if (hasInlineColor(ancestor)) {
+        splitColoredAncestor(marker, ancestor);
+        ancestor = marker.parentElement;
+      } else {
+        ancestor = ancestor.parentElement;
+      }
+    }
+    [...marker.querySelectorAll('span')].reverse().forEach(span => {
+      if (!span.attributes.length) span.replaceWith(...span.childNodes);
+    });
+    removeEmptyInlineElements(marker);
+    const nodes = [...marker.childNodes];
+    if (!nodes.length) {
+      marker.remove();
+      return false;
+    }
+    const nextRange = document.createRange();
+    marker.replaceWith(...nodes);
+    removeEmptyInlineElements(activeEditor);
+    nextRange.setStartBefore(nodes[0]);
+    nextRange.setEndAfter(nodes.at(-1));
+    selection.removeAllRanges();
+    selection.addRange(nextRange);
+    savedRange = nextRange.cloneRange();
+    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+
+  function applyCurrentColor(kind) {
+    const source = kind === 'color' ? colorInput : backgroundInput;
+    if (!source) return false;
+    if ((source.dataset.colorMode || 'color') === 'color') {
+      return kind === 'color'
+        ? applyCommand('foreColor', source.value)
+        : applyCommand('hiliteColor', source.value, 'backColor');
+    }
+    return kind === 'color'
+      ? clearSelectedTextColor()
+      : applyCommand('hiliteColor', 'transparent', 'backColor');
+  }
+
   function normalizeFontSize(pixelSize) {
     activeEditor?.querySelectorAll('font[size="7"]').forEach(font => {
       const parent = font.parentElement;
@@ -125,6 +234,23 @@ if (toolbar && storyList) {
     return applied;
   }
 
+  toolbar.addEventListener('hhjcon:apply-format-preset', event => {
+    const preset = event.detail?.preset;
+    if (!preset || !activeEditor || !savedRange || savedRange.collapsed || !rangeInsideEditor(savedRange, activeEditor)) return;
+    delete activeEditor.dataset.fontSizePx;
+    if (!applyCommand('removeFormat')) return;
+    applyCommand('justifyLeft');
+    if (preset.font) applyCommand('fontName', preset.font);
+    if (preset.color) applyCommand('foreColor', preset.color);
+    if (preset.background) applyCommand('hiliteColor', preset.background, 'backColor');
+    ['bold', 'italic', 'underline', 'strikeThrough'].forEach(command => {
+      if (preset[command] && !document.queryCommandState(command)) applyCommand(command);
+    });
+    if (preset.align) applyCommand(preset.align);
+    if (preset.size) applyFontSize(preset.size);
+    event.detail.applied = true;
+  });
+
   storyList.addEventListener('input', event => {
     const editor = event.target.closest?.('.rich-text-editor');
     if (editor !== activeEditor || !editor.dataset.fontSizePx) return;
@@ -133,8 +259,10 @@ if (toolbar && storyList) {
 
   function closePopup() {
     popup.hidden = true;
+    if (popup.parentElement !== document.body) document.body.append(popup);
     popupSource = null;
     popupKind = null;
+    popupAppliesFormatting = true;
     popupHex.classList.remove('invalid');
     svPointerId = null;
     huePointerId = null;
@@ -152,17 +280,21 @@ if (toolbar && storyList) {
     popup.style.top = `${Math.round(top)}px`;
   }
 
-  function openPopup(source, kind) {
-    if (!source || !activeEditor || !savedRange) return;
-    captureSelection();
+  function openPopup(source, kind, applyFormatting = true) {
+    if (!source || (applyFormatting && (!activeEditor || !savedRange))) return;
+    if (applyFormatting) captureSelection();
+    (source.closest('dialog[open]') || document.body).append(popup);
     const initial = normalizeHex(source.value) || '#000000';
     const hsv = hexToHsv(initial);
     popupSource = source;
     popupKind = kind;
+    popupAppliesFormatting = applyFormatting;
     hue = hsv.h;
     saturation = hsv.s;
     value = hsv.v;
     popupTitle.textContent = kind === 'color' ? '글자색' : '배경색';
+    popupReset.textContent = kind === 'color' ? '기본색 설정' : '투명색 설정';
+    popupReset.hidden = !applyFormatting;
     popup.hidden = false;
     renderPicker();
     positionPopup(source);
@@ -208,6 +340,13 @@ if (toolbar && storyList) {
   }, true);
 
   toolbar.addEventListener('click', event => {
+    const applyButton = event.target.closest('button[data-color-apply]');
+    if (applyButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      applyCurrentColor(applyButton.dataset.colorApply);
+      return;
+    }
     if (!event.target.closest('input[type="color"][data-format]')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -221,6 +360,14 @@ if (toolbar && storyList) {
     event.stopImmediatePropagation();
     openPopup(source, source.matches('[data-format="color"]') ? 'color' : 'background');
   }, true);
+
+  toolbar.addEventListener('hhjcon:open-format-color-picker', event => {
+    const { source, kind } = event.detail || {};
+    if (!(source instanceof HTMLInputElement) || source.type !== 'color' || !['color', 'background'].includes(kind)) return;
+    openPopup(source, kind, false);
+    event.detail.opened = true;
+  });
+  toolbar.addEventListener('hhjcon:close-format-color-picker', closePopup);
 
   toolbar.addEventListener('change', event => {
     const control = event.target;
@@ -304,6 +451,13 @@ if (toolbar && storyList) {
       closePopup();
       return;
     }
+    if (button.dataset.popupAction === 'reset') {
+      const mode = popupKind === 'color' ? 'default' : 'transparent';
+      setColorMode(popupSource, mode);
+      applyCurrentColor(popupKind);
+      closePopup();
+      return;
+    }
     const valueHex = normalizeHex(popupHex.value) || normalizeHex(pendingColor);
     if (!valueHex || !popupSource || !popupKind) {
       popupHex.classList.add('invalid');
@@ -311,8 +465,11 @@ if (toolbar && storyList) {
       return;
     }
     popupSource.value = valueHex;
-    if (popupKind === 'color') applyCommand('foreColor', valueHex);
-    else applyCommand('hiliteColor', valueHex, 'backColor');
+    if (popupSource.matches('[data-format]')) setColorMode(popupSource, 'color');
+    if (popupAppliesFormatting) {
+      if (popupKind === 'color') applyCommand('foreColor', valueHex);
+      else applyCommand('hiliteColor', valueHex, 'backColor');
+    }
     closePopup();
   });
 

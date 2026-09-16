@@ -389,7 +389,9 @@ if (textFormatControls.includes("document.createElement('style')")
   || !textFormatting.includes('class="format-color-reset-icon"')
   || !textFormattingStyles.includes('.format-align-menu:popover-open {')
   || !textFormattingStyles.includes('.format-align svg {')
-  || !index.includes('./assets/styles/text-formatting.css?v=20260916-5')) {
+  || !textFormattingStyles.includes('.format-preset-dialog[open] { display: flex; flex-direction: column; }')
+  || !textFormattingStyles.includes('.format-preset-dialog .hhj-ui-dialog-body { min-height: 0; overflow-y: auto; }')
+  || !index.includes('./assets/styles/text-formatting.css?v=20260916-7')) {
   fail('the color popup must keep its presentation in the text formatting stylesheet');
 }
 if (storyHeaderLayout.includes("document.createElement('style')")
@@ -453,10 +455,15 @@ if (!storyHtml.includes("from './rich-html.js?v=20260914-1'")
   || !formatPresets.includes('data-use="align"')
   || !formatPresets.includes("trigger.textContent = '서식 프리셋'")
   || !formatPresets.includes("trigger.className = 'small story-format-presets'")
+  || !formatPresets.includes("sample.textContent = '가나다 ABCabc123'")
+  || !formatPresets.includes("edit.textContent = '수정'")
+  || !formatPresets.includes("id: editingId || crypto.randomUUID()")
+  || !formatPresets.includes("presets.map(item => item.id === editingId ? preset : item)")
+  || !textFormattingStyles.includes('grid-template-columns: 184px minmax(0, 1fr)')
   || !formatPresets.includes("toolbar?.querySelector('[data-format=\"font\"]')?.before(trigger)")
   || !formatPresets.includes("trigger.addEventListener('pointerdown', event => event.preventDefault())")
   || !index.includes('./src/story/text-formatting.js?v=20260916-6')
-  || !index.includes('./src/story/format-presets.js?v=20260916-5')) {
+  || !index.includes('./src/story/format-presets.js?v=20260916-7')) {
   fail('rich text paste and story output must share the canonical sanitizer');
 }
 if (!storyHtml.includes("from './story-html-utils.js?v=20260912-3'")

@@ -11,13 +11,14 @@
   <link rel="stylesheet" href="./assets/styles/workspace-enhancements.css?v=20260913-1">
   <link rel="stylesheet" href="./assets/styles/control-row-pager.css?v=20260914-1">
   <link rel="stylesheet" href="./assets/styles/interaction-fixes.css?v=20260913-1">
-  <link rel="stylesheet" href="./assets/styles/text-formatting.css?v=20260916-5">
+  <link rel="stylesheet" href="./assets/styles/text-formatting.css?v=20260916-7">
   <link rel="stylesheet" href="./assets/styles/story-editor-resize.css?v=20260905-1">
   <link rel="stylesheet" href="./assets/styles/story-tail-blank-drop.css?v=20260905-1">
   <link rel="stylesheet" href="./assets/styles/collection-backup.css?v=20260905-1">
   <link rel="stylesheet" href="./assets/styles/library-tab-close-all.css?v=20260907-1">
   <link rel="stylesheet" href="./assets/styles/theme.css?v=20260916-5">
-  <link rel="stylesheet" href="./assets/styles/topbar-setup-controls.css?v=20260916-3">
+  <link rel="stylesheet" href="./assets/styles/topbar-setup-controls.css?v=20260916-4">
+  <link rel="stylesheet" href="./assets/styles/feature-tooltip.css?v=20260916-1">
   <link rel="stylesheet" href="./assets/styles/story-con-controls.css?v=20260914-1">
   <link rel="stylesheet" href="./assets/styles/break-count.css?v=20260905-1">
   <link rel="stylesheet" href="./assets/styles/text-delete-guard.css?v=20260914-2">
@@ -37,25 +38,34 @@
       <div class="dc-connect-box">
         <button id="themeToggleBtn" class="setup-link-button" type="button" aria-label="라이트 모드로 전환">☀ 라이트모드</button>
         <a class="file-button setup-link-button" href="https://github.com/hhjmods/HhjConNovel/blob/main/USAGE.md" target="_blank" rel="noopener">사용법</a>
+        <button id="tooltipToggle" class="setup-link-button tooltip-toggle" type="button" role="switch" aria-label="설명 툴팁" aria-checked="true" data-tooltip-title="설명 툴팁" data-tooltip-description="버튼 위에 마우스를 올리거나 키보드로 선택했을 때 짧은 설명을 표시합니다."><span>설명 툴팁</span><span class="tooltip-toggle-track" aria-hidden="true"></span><span class="tooltip-toggle-state" aria-hidden="true">ON</span></button>
         <span class="bridge-setup-group" role="group" aria-label="DC 브리지 설치 도구">
           <a class="file-button setup-link-button" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey 설치</a>
           <a class="file-button setup-link-button" href="./bridge/hhjcon-dc-bridge.user.js?v=0.6.10" target="_blank" rel="noopener">DC 브리지 설치</a>
           <span class="bridge-help">
             <button class="bridge-help-trigger" type="button" aria-label="Tampermonkey와 DC 브리지 설치 안내" aria-describedby="bridgeHelpPanel">?</button>
             <span id="bridgeHelpPanel" class="bridge-help-panel" role="tooltip">
+              <span>활협전 콘문학 에디터에서 디시콘을 불러오고 글을 DCInside에 올리려면 아래 두 가지를 설치해야 합니다.</span>
               <strong>Tampermonkey</strong>
               <span>DCInside 페이지에서 DC 브리지를 실행하는 브라우저 확장 프로그램입니다.</span>
               <strong>DC 브리지</strong>
               <span>현재 브라우저에 로그인된 DCInside 계정의 보유 디시콘을 동기화하고, <b>작성내용 복사</b>로 붙여넣은 콘의 최신 인증값을 채웁니다.</span>
               <strong>설치 순서</strong>
-              <span>① Tampermonkey 설치 → ② DC 브리지 설치 및 사용자 스크립트 설치 확인 → ③ DCInside 로그인 → ④ 편집기에서 DC 동기화</span>
+              <span>① Tampermonkey 설치</span>
+              <span>② DC 브리지 설치 및 사용자 스크립트 설치 확인</span>
+              <span>③ DCInside 로그인</span>
+              <span>④ 편집기에서 DC 동기화</span>
               <strong>Chrome 추가 설정</strong>
-              <span>Chrome에서는 사용자 스크립트 실행 권한을 따로 켜야 할 수 있습니다. 주소창에서 <code>chrome://extensions</code>를 열고 Tampermonkey의 <b>세부정보</b>로 들어가 <b>사용자 스크립트 허용</b>을 켜주세요.</span>
-              <span>편집기에 DCInside 아이디나 비밀번호를 입력하지 않습니다. 연결되지 않으면 Tampermonkey에서 브리지가 켜져 있는지 확인하고 DC 브리지를 다시 설치한 뒤 페이지를 새로고침하세요.</span>
+              <span>Chrome에서는 사용자 스크립트 실행 권한을 따로 켜야 할 수 있습니다.</span>
+              <span>① 주소창에 <code>chrome://extensions</code>를 입력해 열거나, 오른쪽 위 점 세 개(⋮) 버튼을 눌러 <b>확장 프로그램 → 확장 프로그램 관리</b>로 들어갑니다.</span>
+              <span>② 목록에서 <b>Tampermonkey</b>를 찾아 <b>세부정보</b>를 누릅니다.</span>
+              <span>③ <b>사용자 스크립트 허용</b>을 켭니다.</span>
+              <strong>동기화가 안 될 때</strong>
+              <span>편집기는 DCInside 아이디나 비밀번호를 입력받지 않습니다. 동기화가 작동하지 않으면 DCInside 로그인 상태와 Tampermonkey에서 브리지가 켜져 있는지 확인하고 DC 브리지를 다시 설치한 뒤 페이지를 새로고침해보세요.</span>
             </span>
           </span>
         </span>
-        <button id="syncDcBtn" class="primary">DC 동기화</button>
+        <button id="syncDcBtn" class="primary" data-tooltip-title="DC 동기화" data-tooltip-description="로그인한 DCInside 계정의 보유 디시콘을 불러옵니다.">DC 동기화</button>
         <button id="editorBackupBtn" type="button">에디터 백업</button>
         <button id="editorBackupRestoreBtn" type="button">백업 불러오기</button>
       </div>
@@ -103,7 +113,7 @@
     <aside class="panel editor-panel">
       <div class="editor-header">
         <div><h2>원고</h2><span id="storyStats" class="muted">0블록</span></div>
-        <div><button id="addSelectedConsBtn" class="small">선택한 콘 추가</button><button id="addTextBtn" class="small">+ 대사</button><button id="clearStoryBtn" class="small danger">비우기</button></div>
+        <div><button id="addSelectedConsBtn" class="small">+ 선택한 콘</button><button id="addTextBtn" class="small">+ 대사</button><button id="clearStoryBtn" class="small danger">비우기</button></div>
       </div>
       <div id="storyDropZone" class="story-drop-zone">선택한 콘을 여기에 끌어다 놓거나 콘을 더블클릭하세요.</div>
       <div id="storyList" class="story-list"></div>
@@ -128,7 +138,7 @@
   <script type="module" src="./src/story-drag-stability.js?v=20260911-1"></script>
   <script type="module" src="./src/story/text-formatting.js?v=20260916-6"></script>
   <script type="module" src="./src/story/text-format-control-fix.js?v=20260916-7"></script>
-  <script type="module" src="./src/story/format-presets.js?v=20260916-5"></script>
+  <script type="module" src="./src/story/format-presets.js?v=20260916-7"></script>
   <script type="module" src="./src/story/story-editor-resize.js?v=20260912-1"></script>
   <script type="module" src="./src/story-tail-blank-drop.js?v=20260914-9"></script>
   <script type="module" src="./src/story/break-count.js?v=20260910-1"></script>
@@ -142,5 +152,6 @@
   <script type="module" src="./src/collections/collection-backup.js?v=20260912-1"></script>
   <script type="module" src="./src/backup/editor-backup.js?v=20260910-1"></script>
   <script type="module" src="./src/ui/app-ready.js?v=20260908-1"></script>
+  <script type="module" src="./src/ui/feature-tooltips.js?v=20260916-1"></script>
 </body>
 </html>

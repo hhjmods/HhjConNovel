@@ -41,10 +41,14 @@
 :root[data-theme="light"] .format-align-menu { background: #fff; }
 
 .format-preset-dialog { width: min(560px, calc(100vw - 28px)); }
+.format-preset-dialog[open] { display: flex; flex-direction: column; }
+.format-preset-dialog .hhj-ui-dialog-head,
+.format-preset-dialog .hhj-ui-dialog-footer { flex-shrink: 0; }
+.format-preset-dialog .hhj-ui-dialog-body { min-height: 0; overflow-y: auto; }
 .format-preset-guide, .format-preset-empty { margin: 0; color: var(--muted); font-size: 12px; }
 .format-preset-list { display: grid; gap: 7px; margin: 12px 0; }
-.format-preset-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
-.format-preset-apply { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; text-align: left; }
+.format-preset-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.format-preset-apply { display: grid; grid-template-columns: 184px minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; text-align: left; }
 .format-preset-sample { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; white-space: nowrap; }
 .format-preset-text { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .format-preset-text strong, .format-preset-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -65,4 +69,7 @@
 :root[data-theme="light"] .format-preset-delete { color: #b42335; }
 @media (max-width: 560px) {
   .format-preset-fields { grid-template-columns: 1fr; }
+}
+@media (max-width: 500px) {
+  .format-preset-apply { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }

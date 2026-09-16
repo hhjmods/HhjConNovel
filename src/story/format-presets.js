@@ -58,7 +58,7 @@ if (toolbar && trigger.isConnected) {
   function presetSample(preset) {
     const sample = document.createElement('span');
     sample.className = 'format-preset-sample';
-    sample.textContent = '가나다';
+    sample.textContent = '가나다 ABCabc123';
     if (preset.font) sample.style.fontFamily = preset.font;
     if (preset.size) sample.style.fontSize = `${Math.min(Number.parseInt(preset.size, 10), 20)}px`;
     if (preset.color) sample.style.color = preset.color;
@@ -117,11 +117,42 @@ if (toolbar && trigger.isConnected) {
     formSize.value = sizeSelect.value || '12px';
     form.elements.color.value = colorInput.value;
     form.elements.background.value = backgroundInput.value;
+    let editingId = null;
 
     function syncOptionalControls() {
       form.querySelectorAll('[data-use]').forEach(check => {
         form.elements[check.dataset.use].disabled = !check.checked;
       });
+    }
+
+    function closeForm() {
+      toolbar.dispatchEvent(new Event('hhjcon:close-format-color-picker'));
+      form.hidden = true;
+      editingId = null;
+      form.querySelector('.format-preset-error').textContent = '';
+    }
+
+    function openForm(preset = null) {
+      toolbar.dispatchEvent(new Event('hhjcon:close-format-color-picker'));
+      editingId = preset?.id || null;
+      form.reset();
+      form.elements.name.value = preset?.name || '';
+      ['font', 'size', 'color', 'background', 'align'].forEach(key => {
+        form.querySelector(`[data-use="${key}"]`).checked = Boolean(preset?.[key]);
+      });
+      formFont.value = preset?.font || fontSelect.value || fonts[0];
+      formSize.value = preset?.size || sizeSelect.value || '12px';
+      form.elements.color.value = preset?.color || colorInput.value;
+      form.elements.background.value = preset?.background || backgroundInput.value;
+      form.elements.align.value = preset?.align || 'justifyLeft';
+      ['bold', 'italic', 'underline', 'strikeThrough'].forEach(key => {
+        form.elements[key].checked = Boolean(preset?.[key]);
+      });
+      syncOptionalControls();
+      form.querySelector('[type="submit"]').textContent = preset ? '변경 저장' : '저장';
+      form.querySelector('.format-preset-error').textContent = '';
+      form.hidden = false;
+      form.elements.name.focus();
     }
 
     function renderList() {
@@ -154,6 +185,11 @@ if (toolbar && trigger.isConnected) {
           toolbar.dispatchEvent(new CustomEvent('hhjcon:apply-format-preset', { detail }));
           showToast(detail.applied ? `“${preset.name}” 서식을 적용했습니다.` : '대사에서 적용할 글자를 먼저 선택해주세요.');
         });
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.textContent = '수정';
+        edit.setAttribute('aria-label', `${preset.name} 프리셋 수정`);
+        edit.addEventListener('click', () => openForm(preset));
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'format-preset-delete';
@@ -162,18 +198,18 @@ if (toolbar && trigger.isConnected) {
         remove.addEventListener('click', () => {
           const next = loadPresets().filter(item => item.id !== preset.id);
           if (!savePresets(next)) return;
+          if (editingId === preset.id) closeForm();
           renderList();
           showToast(`“${preset.name}” 프리셋을 삭제했습니다.`);
         });
-        row.append(apply, remove);
+        row.append(apply, edit, remove);
         list.append(row);
       });
     }
 
     add.addEventListener('click', () => {
-      form.hidden = !form.hidden;
-      if (form.hidden) toolbar.dispatchEvent(new Event('hhjcon:close-format-color-picker'));
-      if (!form.hidden) form.elements.name.focus();
+      if (!form.hidden && !editingId) closeForm();
+      else openForm();
     });
     form.querySelectorAll('[data-use]').forEach(check => check.addEventListener('change', syncOptionalControls));
     const openColorPicker = source => {
@@ -198,21 +234,21 @@ if (toolbar && trigger.isConnected) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }, true);
-    form.querySelector('[data-form-action="cancel"]').addEventListener('click', () => {
-      toolbar.dispatchEvent(new Event('hhjcon:close-format-color-picker'));
-      form.hidden = true;
-      form.querySelector('.format-preset-error').textContent = '';
-    });
+    form.querySelector('[data-form-action="cancel"]').addEventListener('click', closeForm);
     form.addEventListener('submit', event => {
       event.preventDefault();
       const presets = loadPresets();
       const error = form.querySelector('.format-preset-error');
-      if (presets.length >= FORMAT_PRESET_LIMIT) {
+      if (!editingId && presets.length >= FORMAT_PRESET_LIMIT) {
         error.textContent = `프리셋은 최대 ${FORMAT_PRESET_LIMIT}개까지 저장할 수 있습니다.`;
         return;
       }
+      if (editingId && !presets.some(item => item.id === editingId)) {
+        error.textContent = '수정할 프리셋을 찾을 수 없습니다.';
+        return;
+      }
       const raw = {
-        id: crypto.randomUUID(),
+        id: editingId || crypto.randomUUID(),
         name: form.elements.name.value
       };
       ['font', 'size', 'color', 'background', 'align'].forEach(key => {
@@ -226,17 +262,12 @@ if (toolbar && trigger.isConnected) {
         error.textContent = raw.name.trim() ? '적용할 서식을 한 개 이상 선택하세요.' : '프리셋 이름을 입력하세요.';
         return;
       }
-      if (!savePresets([...presets, preset])) return;
-      form.reset();
-      formFont.value = fontSelect.value || fonts[0];
-      formSize.value = sizeSelect.value || '12px';
-      form.elements.color.value = colorInput.value;
-      form.elements.background.value = backgroundInput.value;
-      syncOptionalControls();
-      form.hidden = true;
-      error.textContent = '';
+      const updated = Boolean(editingId);
+      const next = updated ? presets.map(item => item.id === editingId ? preset : item) : [...presets, preset];
+      if (!savePresets(next)) return;
+      closeForm();
       renderList();
-      showToast(`“${preset.name}” 프리셋을 저장했습니다.`);
+      showToast(`“${preset.name}” 프리셋을 ${updated ? '수정' : '저장'}했습니다.`);
     });
 
     const close = document.createElement('button');

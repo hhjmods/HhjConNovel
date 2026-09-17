@@ -250,6 +250,27 @@ if (storyList && editorPanel && editorHeader) {
     saveEditor(activeEditor);
   }
 
+  function clearRepeatedAlignment(command) {
+    if (!savedRange || savedRange.collapsed || !restoreSelection()) return false;
+    const range = window.getSelection().getRangeAt(0);
+    const alignment = command.slice('justify'.length).toLowerCase();
+    const texts = document.createTreeWalker(activeEditor, NodeFilter.SHOW_TEXT);
+    while (texts.nextNode()) {
+      const node = texts.currentNode;
+      if (node.textContent.trim() && range.intersectsNode(node)
+        && getComputedStyle(node.parentElement).textAlign !== alignment) return false;
+    }
+    const aligned = [activeEditor, ...activeEditor.querySelectorAll('[style*="text-align"]')]
+      .filter(element => element.style.textAlign === alignment && range.intersectsNode(element));
+    if (!aligned.length) return false;
+    aligned.forEach(element => {
+      element.style.removeProperty('text-align');
+      if (!element.getAttribute('style')?.trim()) element.removeAttribute('style');
+    });
+    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+
   function removeEditorForBreak(row, textarea) {
     row.querySelector('.rich-text-editor')?.remove();
     textarea.classList.remove('rich-text-source');
@@ -332,7 +353,7 @@ if (storyList && editorPanel && editorHeader) {
     }
     const command = button.dataset.command;
     if (command) {
-      runCommand(command);
+      if (!command.startsWith('justify') || !clearRepeatedAlignment(command)) runCommand(command);
       if (command.startsWith('justify')) setAlignMenuOpen(false);
       return;
     }

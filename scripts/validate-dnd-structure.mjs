@@ -134,7 +134,7 @@ for (const [path, source] of [
 }
 if (!index.includes('./src/story/break-count.js?v=20260910-1')
   || !index.includes('./src/story/con-size-mode.js?v=20260910-1')
-  || !index.includes('./src/story/text-formatting.js?v=20260916-6')) {
+  || !index.includes('./src/story/text-formatting.js?v=20260917-1')) {
   fail('index.html story decorator cache versions are not canonical');
 }
 if (!index.includes('./assets/styles/story-con-controls.css?v=20260914-1')

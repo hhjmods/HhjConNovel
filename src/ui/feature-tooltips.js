@@ -15,7 +15,7 @@ const descriptions = [
   ['#exportCollectionBtn', '콘묶음 내보내기', '콘묶음을 파일로 백업합니다.'],
   ['.collection-transfer-row .file-button', '콘묶음 불러오기', '백업한 콘묶음 파일을 불러옵니다.'],
   ['#packageList .nav-item', '디시콘 묶음 열기', '이 디시콘 묶음의 콘을 새 탭에서 봅니다.'],
-  ['#collectionList .collection-main', '내 콘묶음 열기', '이 콘묶음의 콘을 새 탭에서 봅니다.'],
+  ['#collectionList .collection-main', '내 콘묶음 열기', '이 콘묶음의 콘을 새 탭에서 봅니다. 이곳에 디시콘을 끌어다 놓으면 콘묶음에 그 콘을 추가할 수 있습니다.'],
   ['#collectionList .collection-row > .icon-button', '콘묶음 삭제', '이 콘묶음을 삭제합니다.'],
   ['.library-view-tab-main', '콘 탭 전환', '열어 둔 디시콘 또는 콘묶음으로 이동합니다.'],
   ['.library-view-tab-close', '탭 닫기', '이 콘 탭만 닫습니다.'],
@@ -60,7 +60,7 @@ const descriptions = [
   ['.story-drag-handle', '블록 이동 손잡이', '끌어 놓아 이 블록을 원고 안에서 이동합니다. Ctrl/Shift를 누른 채 클릭하면 여러 블록을 선택할 수 있습니다.'],
   ['.story-break, .story-break-count-control, .story-break-count-input', '줄바꿈 블록', target => `이 위치에서 ${Number(target.closest('.story-break')?.dataset.breakCount) || 1}줄 줄바꿈합니다. 숫자 입력칸에서 줄 수를 바꿀 수 있습니다. 연속된 콘 삽입시 필요하다면 콘과 콘 사이 줄바꿈을 위해서도 사용합니다.`],
   ['.story-image-placeholder, .story-image-memo-input', '이미지 자료 위치 마커', '나중에 DC 글쓰기에서 이미지를 넣을 위치를 표시합니다. 메모로 어떤 이미지인지 구분할 수 있습니다.'],
-  ['.story-text, .story-text .rich-text-editor', '대사 블록', '대사를 입력합니다. 글자를 드래그해 선택한 뒤 위 메뉴의 서식 버튼으로 글꼴·크기·색 등을 적용할 수 있습니다. 엔터로 줄바꿈하며 장문의 서술을 입력할 때 사용해도 됩니다.'],
+  ['.story-text, .story-text .rich-text-editor', '대사 블록', '대사를 입력합니다. 글자를 드래그해 선택한 뒤 위 메뉴의 서식 버튼으로 글꼴·크기·색 등을 적용할 수 있습니다. 엔터로 줄바꿈하며 장문의 서술을 입력할 때 사용해도 됩니다. 우측 하단을 잡고 끌어 대사입력창의 크기를 조절 할 수 있습니다.'],
   ['#addSelectedConsBtn', '선택한 콘 추가', '라이브러리에서 선택한 콘을 원고 끝에 추가합니다.'],
   ['.story-header-edit-actions .story-create-drag-source', button => button.textContent.trim().replace(/^\\+\\s*/, ''), '클릭하면 원고 끝에 추가하고, 끌어 놓으면 원하는 위치에 넣습니다.'],
   ['#clearStoryBtn', '원고 비우기', '현재 원고의 블록을 모두 비웁니다.'],
@@ -77,7 +77,7 @@ const descriptions = [
   ['.text-format-toolbar [data-command="italic"]', '기울임', '선택한 글자를 기울여 표시하거나 해제합니다.'],
   ['.text-format-toolbar [data-command="underline"]', '밑줄', '선택한 글자에 밑줄을 넣거나 해제합니다.'],
   ['.text-format-toolbar [data-command="strikeThrough"]', '취소선', '선택한 글자에 취소선을 넣거나 해제합니다.'],
-  ['.text-format-toolbar [data-action="toggle-align-menu"]', '문단 정렬', '대사를 왼쪽·가운데·오른쪽으로 정렬합니다.'],
+  ['.text-format-toolbar [data-action="toggle-align-menu"]', '문단 정렬', '대사를 왼쪽·가운데·오른쪽으로 정렬하거나 해제합니다.'],
   ['.text-format-toolbar [data-action="remove-format"]', '서식 초기화', '선택한 글자의 서식을 지웁니다.']
 ];
 

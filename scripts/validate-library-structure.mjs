@@ -329,7 +329,7 @@ if (!layoutResizer.includes('const MIN_RATIO = 0.3;')
 if (!index.includes('id="workspaceSplitter"')
   || !index.includes('data-tooltip-title="화면 구분선"')
   || !index.includes('data-tooltip-anchor="pointer"')
-  || !index.includes('./src/ui/feature-tooltips.js?v=20260917-9')
+  || !index.includes('./src/ui/feature-tooltips.js?v=20260917-12')
   || !featureTooltips.includes("active.dataset.tooltipAnchor === 'pointer'")) {
   fail('workspace splitter tooltip must use the shared pointer-anchored tooltip');
 }
@@ -476,6 +476,8 @@ if (!storyHtml.includes("from './rich-html.js?v=20260914-1'")
   || !textFormatting.includes('class="format-align-menu" role="menu" popover="manual"')
   || !textFormatting.includes('alignMenu.showPopover()')
   || !textFormatting.includes('function setAlignMenuOpen(open)')
+  || !textFormatting.includes('function clearRepeatedAlignment(command)')
+  || !textFormatting.includes("element.style.removeProperty('text-align')")
   || textFormatting.includes('data-action="format-presets"')
   || !formatPresets.includes('data-use="align"')
   || !formatPresets.includes("trigger.textContent = '서식 프리셋'")
@@ -487,7 +489,7 @@ if (!storyHtml.includes("from './rich-html.js?v=20260914-1'")
   || !textFormattingStyles.includes('grid-template-columns: 184px minmax(0, 1fr)')
   || !formatPresets.includes("toolbar?.querySelector('[data-format=\"font\"]')?.before(trigger)")
   || !formatPresets.includes("trigger.addEventListener('pointerdown', event => event.preventDefault())")
-  || !index.includes('./src/story/text-formatting.js?v=20260916-6')
+  || !index.includes('./src/story/text-formatting.js?v=20260917-1')
   || !index.includes('./src/story/format-presets.js?v=20260917-3')) {
   fail('rich text paste and story output must share the canonical sanitizer');
 }

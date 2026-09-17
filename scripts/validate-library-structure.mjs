@@ -329,8 +329,9 @@ if (!layoutResizer.includes('const MIN_RATIO = 0.3;')
 if (!index.includes('id="workspaceSplitter"')
   || !index.includes('data-tooltip-title="화면 구분선"')
   || !index.includes('data-tooltip-anchor="pointer"')
-  || !index.includes('./src/ui/feature-tooltips.js?v=20260917-12')
-  || !featureTooltips.includes("active.dataset.tooltipAnchor === 'pointer'")) {
+  || !index.includes('./src/ui/feature-tooltips.js?v=20260918-1')
+  || !featureTooltips.includes("active.dataset.tooltipAnchor === 'pointer'")
+  || !featureTooltips.includes('left: rect.left, width: rect.width, top: pointerY, bottom: pointerY')) {
   fail('workspace splitter tooltip must use the shared pointer-anchored tooltip');
 }
 if (!themeStyles.includes(':root[data-theme="light"] .library-view-tab .library-view-tab-main,')

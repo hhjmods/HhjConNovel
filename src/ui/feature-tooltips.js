@@ -159,7 +159,7 @@ if (toggle) {
       const rect = active.getBoundingClientRect();
       const size = tooltip.getBoundingClientRect();
       const anchor = active.dataset.tooltipAnchor === 'pointer' && pointerY !== null
-        ? { ...rect, top: pointerY, bottom: pointerY } : rect;
+        ? { left: rect.left, width: rect.width, top: pointerY, bottom: pointerY } : rect;
       const position = placeFeatureTooltip(anchor, size, { width: innerWidth, height: innerHeight });
       tooltip.style.left = `${position.left}px`;
       tooltip.style.top = `${position.top}px`;

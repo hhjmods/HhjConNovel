@@ -27,6 +27,18 @@ export function validateStoryFolderName(value, folders, ignoredId = '') {
   return name;
 }
 
+export function nextAvailableStoryName(value, names, maxLength = Infinity, caseInsensitive = false) {
+  const base = String(value || '').trim().slice(0, maxLength);
+  const key = name => caseInsensitive ? name.toLocaleLowerCase('ko-KR') : name;
+  const used = new Set([...names].map(name => key(String(name))));
+  let candidate = base;
+  for (let number = 2; used.has(key(candidate)); number++) {
+    const suffix = ` (${number})`;
+    candidate = `${base.slice(0, maxLength - suffix.length)}${suffix}`;
+  }
+  return candidate;
+}
+
 export function makeStoryFolderDocument(folders) {
   return { id: STORY_FOLDER_DOCUMENT_ID, version: 1, items: structuredClone(folders), updatedAt: Date.now() };
 }

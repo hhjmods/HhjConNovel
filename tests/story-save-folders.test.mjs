@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeStoryFolderId,
   normalizeStoryFolders,
+  nextAvailableStoryName,
   nextStorySaveOrder,
   planStoryFolderPlacement,
   planStoryFolderRemoval,
@@ -11,6 +12,16 @@ import {
   sortStorySavesInFolder,
   validateStoryFolderName
 } from '../src/story/story-save-folders.js';
+
+test('중복 원고·폴더 이름에 다음 번호를 붙이고 최대 길이를 지킨다', () => {
+  assert.equal(nextAvailableStoryName('원고', new Set(['원고'])), '원고 (2)');
+  assert.equal(nextAvailableStoryName('원고', ['원고', '원고 (2)'], 80), '원고 (3)');
+  assert.equal(nextAvailableStoryName('자료', ['자료', '자료 (2)'], 40), '자료 (3)');
+  assert.equal(nextAvailableStoryName('자료', ['자료', '자료 (2)', '자료 (3)'], 40), '자료 (4)');
+  assert.equal(nextAvailableStoryName('자료', ['자료', '자료 (2)'], 40, true), '자료 (3)');
+  assert.equal(nextAvailableStoryName('Folder', ['folder'], 40, true), 'Folder (2)');
+  assert.equal(nextAvailableStoryName('가'.repeat(80), ['가'.repeat(80)], 80), `${'가'.repeat(76)} (2)`);
+});
 
 test('원고 폴더 정규화와 기존 최상위 원고 호환', () => {
   const folders = normalizeStoryFolders({ items: [

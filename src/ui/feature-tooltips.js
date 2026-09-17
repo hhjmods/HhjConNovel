@@ -7,7 +7,7 @@ const descriptions = [
   ['.dc-connect-box a[href^="https://www.tampermonkey.net/"]', 'Tampermonkey 설치', 'DC 브리지를 실행하는 브라우저 확장 프로그램을 설치합니다.'],
   ['.dc-connect-box a[href^="./bridge/"]', 'DC 브리지 설치', '디시콘 동기화와 DC 글쓰기 붙여넣기에 필요한 스크립트를 설치합니다.'],
   ['#editorBackupBtn', '에디터 백업', '콘묶음·원고·설정 등 편집기 데이터를 파일로 저장합니다.'],
-  ['#editorBackupRestoreBtn', '백업 불러오기', '에디터 백업 파일을 불러와 저장된 데이터를 복원합니다.'],
+  ['#editorBackupRestoreBtn', '에디터 백업 불러오기', '에디터 백업 파일을 불러와 저장된 데이터를 복원합니다.'],
   ['#demoBtn', '개발용 데모', '동작 확인을 위한 예시 데이터를 불러옵니다.'],
   ['[data-library-tab="packages"]', '디시콘', '동기화된 디시콘 묶음 목록을 봅니다.'],
   ['[data-library-tab="collections"]', '내 콘묶음', '직접 만든 콘묶음 목록을 봅니다.'],
@@ -21,6 +21,8 @@ const descriptions = [
   ['.library-view-tab-close', '탭 닫기', '이 콘 탭만 닫습니다.'],
   ['.library-view-close-all', '탭 전체 닫기', '열려 있는 콘 탭을 모두 닫습니다.'],
   ['#searchInput', '콘 이름 검색', '현재 열린 목록에서 콘 이름을 검색합니다.'],
+  ['.con-card.missing', '미보유 디시콘', '현재 계정에 없는 콘입니다. 클릭하면 원본 디시콘 묶음과 구매 페이지를 안내합니다.'],
+  ['.con-card', '디시콘', '더블클릭하면 원고 끝에 추가하고, 끌어 놓으면 원하는 위치에 넣습니다. Ctrl/Shift+클릭으로 여러 개를 선택할 수 있습니다. 내 콘묶음으로 끌어 놓으면 그 묶음에 추가됩니다.'],
   ['#selectAllBtn', '전체 선택', '현재 목록에 표시된 콘을 모두 선택합니다.'],
   ['#clearSelectionBtn', '선택 해제', '현재 선택한 콘을 모두 해제합니다.'],
   ['.collection-edit-controls button:nth-child(1)', '콘 편집', '이 콘묶음에서 콘 삭제나 순서 변경을 시작합니다.'],
@@ -29,6 +31,36 @@ const descriptions = [
   ['.collection-edit-controls button:nth-child(4)', '편집 취소', '저장하지 않은 콘묶음 편집을 취소합니다.'],
   ['.story-header-save-actions button:first-child', '원고 저장', '현재 작성 중인 원고를 저장합니다.'],
   ['.story-header-save-actions button:last-child', '원고 목록', '저장한 원고와 폴더를 관리합니다.'],
+  ['.story-save-head .icon-button', '원고 목록 닫기', '원고 목록을 닫습니다.'],
+  ['.story-save-head-actions > button:nth-child(2)', '현재 원고 저장', '현재 작성 중인 원고의 이름과 저장 위치를 확인한 뒤 저장합니다.'],
+  ['.story-save-head-actions > button:nth-child(3)', '새 폴더', '저장 원고를 정리할 폴더를 만듭니다.'],
+  ['.story-save-select-group > input', '전체 선택', '체크하면 현재 목록의 원고와 폴더를 모두 선택하고, 해제하면 선택을 지웁니다.'],
+  ['.story-save-select-menu summary', '선택 종류', '폴더만 선택하거나 원고만 선택할 수 있습니다.'],
+  ['.story-save-select-options [data-select="folders"]', '폴더 선택', '현재 목록의 폴더만 모두 선택합니다.'],
+  ['.story-save-select-options [data-select="saves"]', '원고 선택', '현재 목록의 원고만 모두 선택합니다.'],
+  ['.story-save-select-options [data-select="clear"]', '선택 해제', '현재 목록의 선택을 모두 지웁니다.'],
+  ['.story-save-selection-tools > button:nth-child(2)', '선택 항목 삭제', '체크한 원고와 폴더를 삭제합니다. 폴더 안의 원고를 함께 삭제할지 선택할 수 있습니다.'],
+  ['.story-save-selection-tools > button:nth-child(3)', '선택 항목 내보내기', '체크한 원고와 폴더를 백업 파일로 내보냅니다.'],
+  ['.story-save-selection-tools .file-button', '원고 백업 불러오기', '백업 파일에서 원고를 불러옵니다.'],
+  ['.story-save-location > button', '최상위로 이동', '폴더 밖의 최상위 원고 목록으로 돌아갑니다.'],
+  ['.story-folder-row .story-save-drag-handle', '폴더 이동 손잡이', '끌어 놓아 폴더 순서를 바꿉니다.'],
+  ['.story-folder-check, .story-save-check', '항목 선택', '여러 원고와 폴더를 함께 이동·내보내기·삭제할 때 체크합니다.'],
+  ['.story-folder-main', '폴더 열기', '이 폴더에 저장된 원고 목록을 엽니다.'],
+  ['.story-folder-row .story-save-actions > button:nth-child(1)', '폴더 내보내기', '이 폴더와 안의 원고를 백업 파일로 내보냅니다.'],
+  ['.story-folder-row .story-save-actions > button:nth-child(2)', '폴더 이름 변경', '폴더 이름을 바꿉니다.'],
+  ['.story-folder-row .story-save-actions > button:nth-child(3)', '폴더 삭제', '폴더를 삭제합니다. 안의 원고를 남길지 함께 삭제할지 선택할 수 있습니다.'],
+  ['.story-save-row .story-save-actions > button:nth-child(1)', '원고 불러오기', '저장된 원고를 편집기로 불러옵니다.'],
+  ['.story-save-row .story-save-actions > button:nth-child(2)', '원고 내보내기', '이 원고를 백업 파일로 내보냅니다.'],
+  ['.story-save-row .story-save-actions > button:nth-child(3)', '원고 이름 변경', '저장된 원고의 이름을 바꿉니다.'],
+  ['.story-save-row .story-save-actions > button:nth-child(4)', '원고 삭제', '이 원고를 삭제합니다. 삭제 전 확인창이 열립니다.'],
+  ['.story-tools > button:nth-last-child(3)', '위로 이동', '이 블록을 한 칸 위로 옮깁니다. 여러 블록을 선택했다면 함께 이동합니다.'],
+  ['.story-tools > button:nth-last-child(2)', '아래로 이동', '이 블록을 한 칸 아래로 옮깁니다. 여러 블록을 선택했다면 함께 이동합니다.'],
+  ['.story-tools > button:last-child', '블록 삭제', '이 블록 또는 선택한 블록들을 삭제합니다. 대사가 포함되면 한 번 더 눌러 확인합니다.'],
+  ['.story-tools .con-size-toggle', '대왕콘 전환', '일반콘과 대왕콘 크기를 전환합니다. 여러 콘을 선택했다면 함께 바뀝니다.'],
+  ['.story-drag-handle', '블록 이동 손잡이', '끌어 놓아 이 블록을 원고 안에서 이동합니다. Ctrl/Shift를 누른 채 클릭하면 여러 블록을 선택할 수 있습니다.'],
+  ['.story-break, .story-break-count-control, .story-break-count-input', '줄바꿈 블록', target => `이 위치에서 ${Number(target.closest('.story-break')?.dataset.breakCount) || 1}줄 줄바꿈합니다. 숫자 입력칸에서 줄 수를 바꿀 수 있습니다. 연속된 콘 삽입시 필요하다면 콘과 콘 사이 줄바꿈을 위해서도 사용합니다.`],
+  ['.story-image-placeholder, .story-image-memo-input', '이미지 자료 위치 마커', '나중에 DC 글쓰기에서 이미지를 넣을 위치를 표시합니다. 메모로 어떤 이미지인지 구분할 수 있습니다.'],
+  ['.story-text, .story-text .rich-text-editor', '대사 블록', '대사를 입력합니다. 글자를 드래그해 선택한 뒤 위 메뉴의 서식 버튼으로 글꼴·크기·색 등을 적용할 수 있습니다. 엔터로 줄바꿈하며 장문의 서술을 입력할 때 사용해도 됩니다.'],
   ['#addSelectedConsBtn', '선택한 콘 추가', '라이브러리에서 선택한 콘을 원고 끝에 추가합니다.'],
   ['.story-header-edit-actions .story-create-drag-source', button => button.textContent.trim().replace(/^\\+\\s*/, ''), '클릭하면 원고 끝에 추가하고, 끌어 놓으면 원하는 위치에 넣습니다.'],
   ['#clearStoryBtn', '원고 비우기', '현재 원고의 블록을 모두 비웁니다.'],
@@ -71,14 +103,15 @@ if (toggle) {
 
   function findDescription(node) {
     if (!(node instanceof Element)) return null;
-    const target = node.closest('button, a, label, input, select, [data-tooltip-title]');
+    const target = node.closest('button, a, label, input, select, textarea, summary, [contenteditable="true"], [data-tooltip-title], .story-item');
     if (!target) return null;
+    if (target === document.activeElement && target.matches('.rich-text-editor, .story-image-memo-input')) return null;
     if (target.dataset.tooltipTitle) {
       return { target, title: target.dataset.tooltipTitle, description: target.dataset.tooltipDescription || '' };
     }
     for (const [selector, title, description] of descriptions) {
       if (target.matches(selector)) {
-        return { target, title: typeof title === 'function' ? title(target) : title, description };
+        return { target, title: typeof title === 'function' ? title(target) : title, description: typeof description === 'function' ? description(target) : description };
       }
     }
     return null;
@@ -86,6 +119,8 @@ if (toggle) {
 
   // 기존 title 브라우저 팝업과 새 설명이 겹치지 않게 한다. 아이콘의 접근성 이름은 남긴다.
   function suppressNativeTitle(target) {
+    const storyRow = target.closest('.story-item');
+    if (storyRow && storyRow !== target) storyRow.removeAttribute('title');
     if (!target.hasAttribute('title')) return;
     if (!target.hasAttribute('aria-label') && (target.textContent.trim().length <= 2 || target.querySelector('svg'))) {
       target.setAttribute('aria-label', target.title);
@@ -117,6 +152,8 @@ if (toggle) {
     timer = window.setTimeout(() => {
       timer = 0;
       if (!enabled || !active?.isConnected) { hide(); return; }
+      const host = active.closest('dialog[open]') || document.body;
+      if (tooltip.parentElement !== host) host.append(tooltip);
       tooltip.hidden = false;
       tooltip.style.visibility = 'hidden';
       const rect = active.getBoundingClientRect();
@@ -144,7 +181,10 @@ if (toggle) {
   document.addEventListener('pointerover', event => {
     if (event.pointerType === 'touch') return;
     const entry = findDescription(event.target);
-    if (!entry) return;
+    if (!entry) {
+      if (active?.contains(event.target)) hide();
+      return;
+    }
     suppressNativeTitle(entry.target);
     schedule(entry, 190);
   });

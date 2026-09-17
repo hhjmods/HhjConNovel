@@ -19,7 +19,7 @@ import {
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { installBoxSelection } from './core/box-selection.js?v=20260913-2';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260911-1';
-import { renderStoryList } from './story/story-render.js?v=20260914-5';
+import { renderStoryList } from './story/story-render.js?v=20260917-1';
 import { showToast } from './ui/toast.js?v=20260909-2';
 import {
   CON_IDS_MIME,

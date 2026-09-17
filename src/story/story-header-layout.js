@@ -18,7 +18,8 @@ function arrangeHeader() {
   const actionGroup = groups[1];
   const saveButton = [...actionGroup.querySelectorAll('button')].find(button => button.textContent.trim() === '원고 저장');
   const listButton = [...actionGroup.querySelectorAll('button')].find(button => button.textContent.trim() === '원고 목록');
-  if (!saveButton || !listButton) return;
+  const nameInput = actionGroup.querySelector('#storyNameInput');
+  if (!saveButton || !listButton || !nameInput) return;
 
   const top = document.createElement('div');
   top.className = 'story-header-top';
@@ -29,7 +30,7 @@ function arrangeHeader() {
 
   saveActions.append(saveButton, listButton);
   [...actionGroup.children].forEach(child => editActions.append(child));
-  top.append(titleGroup, saveActions);
+  top.append(titleGroup, nameInput, saveActions);
   header.replaceChildren(top, editActions);
   header.classList.add('story-header-split');
 }

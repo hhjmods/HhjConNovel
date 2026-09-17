@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:;">
   <title>활협전 콘문학 에디터</title>
+  <link rel="icon" href="./favicon.ico?v=20260917-1">
   <script src="./src/ui/theme-init.js?v=20260908-2"></script>
-  <link rel="stylesheet" href="./assets/styles/styles.css?v=20260914-2">
+  <link rel="stylesheet" href="./assets/styles/styles.css?v=20260917-3">
   <link rel="stylesheet" href="./assets/styles/story-multiselect.css?v=20260914-2">
   <link rel="stylesheet" href="./assets/styles/workspace-enhancements.css?v=20260913-1">
   <link rel="stylesheet" href="./assets/styles/control-row-pager.css?v=20260914-1">
@@ -22,23 +23,25 @@
   <link rel="stylesheet" href="./assets/styles/story-con-controls.css?v=20260914-1">
   <link rel="stylesheet" href="./assets/styles/break-count.css?v=20260905-1">
   <link rel="stylesheet" href="./assets/styles/text-delete-guard.css?v=20260914-2">
-  <link rel="stylesheet" href="./assets/styles/story-header-layout.css?v=20260916-1">
+  <link rel="stylesheet" href="./assets/styles/story-header-layout.css?v=20260917-3">
   <link rel="stylesheet" href="./assets/styles/story-output-tools.css?v=20260916-1">
-  <link rel="stylesheet" href="./assets/styles/story-save-manager.css?v=20260915-4">
+  <link rel="stylesheet" href="./assets/styles/story-save-manager.css?v=20260917-6">
   <link rel="stylesheet" href="./assets/styles/editor-backup.css?v=20260908-1">
   <link rel="stylesheet" href="./assets/styles/action-dialogs.css?v=20260909-1">
 </head>
 <body>
   <header class="topbar">
-    <div>
+    <div class="site-brand">
+      <img src="./assets/logo.png" width="42" height="42" alt="">
       <h1>활협전 콘문학 에디터</h1>
-      <p>디시콘을 분류해서 사용하는 콘문학 편집기</p>
     </div>
     <div class="top-actions">
       <div class="dc-connect-box">
-        <button id="themeToggleBtn" class="setup-link-button" type="button" aria-label="라이트 모드로 전환">☀ 라이트모드</button>
+        <button id="themeToggleBtn" class="setup-link-button" type="button" aria-label="라이트 모드로 전환">☀</button>
         <a class="file-button setup-link-button" href="https://github.com/hhjmods/HhjConNovel/blob/main/USAGE.md" target="_blank" rel="noopener">사용법</a>
         <button id="tooltipToggle" class="setup-link-button tooltip-toggle" type="button" role="switch" aria-label="설명 툴팁" aria-checked="true" data-tooltip-title="설명 툴팁" data-tooltip-description="버튼 위에 마우스를 올리거나 키보드로 선택했을 때 짧은 설명을 표시합니다."><span>설명 툴팁</span><span class="tooltip-toggle-track" aria-hidden="true"></span><span class="tooltip-toggle-state" aria-hidden="true">ON</span></button>
+        <button id="editorBackupBtn" class="setup-link-button" type="button">에디터 백업</button>
+        <button id="editorBackupRestoreBtn" class="setup-link-button" type="button">백업 불러오기</button>
         <span class="bridge-setup-group" role="group" aria-label="DC 브리지 설치 도구">
           <a class="file-button setup-link-button" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey 설치</a>
           <a class="file-button setup-link-button" href="./bridge/hhjcon-dc-bridge.user.js?v=0.6.10" target="_blank" rel="noopener">DC 브리지 설치</a>
@@ -66,8 +69,6 @@
           </span>
         </span>
         <button id="syncDcBtn" class="primary" data-tooltip-title="DC 동기화" data-tooltip-description="로그인한 DCInside 계정의 보유 디시콘을 불러옵니다.">DC 동기화</button>
-        <button id="editorBackupBtn" type="button">에디터 백업</button>
-        <button id="editorBackupRestoreBtn" type="button">백업 불러오기</button>
       </div>
     </div>
   </header>
@@ -121,37 +122,37 @@
   </main>
 
   <div id="toast" class="toast" aria-live="polite"></div>
-  <script src="./src/ui/theme-toggle.js?v=20260907-1"></script>
+  <script src="./src/ui/theme-toggle.js?v=20260916-1"></script>
   <script type="module" src="./src/ui/layout-resizer.js?v=20260908-3"></script>
   <script type="module" src="./src/story-dnd-health.js?v=20260907-1"></script>
   <script type="module" src="./src/story-drag-guard.js?v=20260914-1"></script>
-  <script type="module" src="./src/collections/collection-missing-ui.js?v=20260915-1"></script>
-  <script type="module" src="./src/app.js?v=20260914-8"></script>
-  <script type="module" src="./src/ui/action-dialogs.js?v=20260915-1"></script>
-  <script type="module" src="./src/library/library-workspace.js?v=20260914-10"></script>
+  <script type="module" src="./src/collections/collection-missing-ui.js?v=20260917-1"></script>
+  <script type="module" src="./src/app.js?v=20260917-1"></script>
+  <script type="module" src="./src/ui/action-dialogs.js?v=20260917-1"></script>
+  <script type="module" src="./src/library/library-workspace.js?v=20260917-1"></script>
   <script type="module" src="./src/library/library-tab-close-all.js?v=20260910-1"></script>
   <script type="module" src="./src/library/library-con-drag-source.js?v=20260907-1"></script>
-  <script type="module" src="./src/story-insertion.js?v=20260914-8"></script>
-  <script type="module" src="./src/story-con-run-end-drop.js?v=20260914-9"></script>
+  <script type="module" src="./src/story-insertion.js?v=20260917-1"></script>
+  <script type="module" src="./src/story-con-run-end-drop.js?v=20260917-1"></script>
   <script type="module" src="./src/story-slot-mode.js?v=20260914-7"></script>
   <script type="module" src="./src/story-drag-autoscroll.js?v=20260914-2"></script>
   <script type="module" src="./src/story-drag-stability.js?v=20260911-1"></script>
   <script type="module" src="./src/story/text-formatting.js?v=20260916-6"></script>
   <script type="module" src="./src/story/text-format-control-fix.js?v=20260916-7"></script>
-  <script type="module" src="./src/story/format-presets.js?v=20260916-7"></script>
+  <script type="module" src="./src/story/format-presets.js?v=20260917-2"></script>
   <script type="module" src="./src/story/story-editor-resize.js?v=20260912-1"></script>
-  <script type="module" src="./src/story-tail-blank-drop.js?v=20260914-9"></script>
+  <script type="module" src="./src/story-tail-blank-drop.js?v=20260917-1"></script>
   <script type="module" src="./src/story/break-count.js?v=20260910-1"></script>
   <script type="module" src="./src/story/text-delete-guard.js?v=20260914-2"></script>
   <script type="module" src="./src/story/con-size-mode.js?v=20260910-1"></script>
-  <script type="module" src="./src/story-output-tools.js?v=20260916-1"></script>
+  <script type="module" src="./src/story-output-tools.js?v=20260917-2"></script>
   <script type="module" src="./src/story/story-html-copy.js?v=20260914-2"></script>
-  <script type="module" src="./src/story/story-save-manager.js?v=20260915-14"></script>
-  <script type="module" src="./src/story/story-header-layout.js?v=20260914-1"></script>
+  <script type="module" src="./src/story/story-save-manager.js?v=20260917-10"></script>
+  <script type="module" src="./src/story/story-header-layout.js?v=20260917-1"></script>
   <script type="module" src="./src/ui/control-row-pager.js?v=20260913-1"></script>
   <script type="module" src="./src/collections/collection-backup.js?v=20260912-1"></script>
   <script type="module" src="./src/backup/editor-backup.js?v=20260910-1"></script>
   <script type="module" src="./src/ui/app-ready.js?v=20260908-1"></script>
-  <script type="module" src="./src/ui/feature-tooltips.js?v=20260916-1"></script>
+  <script type="module" src="./src/ui/feature-tooltips.js?v=20260917-8"></script>
 </body>
 </html>

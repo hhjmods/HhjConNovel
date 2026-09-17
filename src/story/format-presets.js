@@ -1,4 +1,4 @@
-import { createDialog } from '../ui/action-dialogs.js?v=20260915-1';
+import { createDialog } from '../ui/action-dialogs.js?v=20260917-1';
 import { showToast } from '../ui/toast.js?v=20260909-2';
 import {
   FORMAT_PRESET_LIMIT,
@@ -58,7 +58,7 @@ if (toolbar && trigger.isConnected) {
   function presetSample(preset) {
     const sample = document.createElement('span');
     sample.className = 'format-preset-sample';
-    sample.textContent = '가나다 ABCabc123';
+    sample.textContent = '가나다ABCabc123';
     if (preset.font) sample.style.fontFamily = preset.font;
     if (preset.size) sample.style.fontSize = `${Math.min(Number.parseInt(preset.size, 10), 20)}px`;
     if (preset.color) sample.style.color = preset.color;

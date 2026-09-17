@@ -4,7 +4,7 @@ import {
   createNamedCollection,
   deleteCollectionById,
   hasCurrentStoryItems
-} from '../app.js?v=20260914-8';
+} from '../app.js?v=20260917-1';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
@@ -203,11 +203,14 @@ document.addEventListener('click', async event => {
     };
   } else if (button.id === 'clearStoryBtn') {
     task = async () => {
-      if (!hasCurrentStoryItems()) return clearCurrentStory();
-      const ok = await showConfirm('현재 원고를 모두 비울까요?\n이 동작은 현재 편집 중인 내용을 비웁니다.', {
-        title: '원고 비우기', confirmText: '비우기', danger: true
-      });
-      if (ok) await clearCurrentStory();
+      if (hasCurrentStoryItems()) {
+        const ok = await showConfirm('현재 원고를 모두 비울까요?\n이 동작은 현재 편집 중인 원고의 모든 내용을 비웁니다.', {
+          title: '원고 비우기', confirmText: '비우기', danger: true
+        });
+        if (!ok) return;
+      }
+      await clearCurrentStory();
+      document.dispatchEvent(new Event('hhjcon:story-cleared'));
     };
   }
 

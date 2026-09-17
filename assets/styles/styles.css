@@ -1,3 +1,10 @@
+@font-face {
+  font-family: "Yeongyang Dimibang";
+  src: url("../fonts/dimibang.woff") format("woff"), url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2104@1.1/dimibang_new.woff") format("woff");
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
   color: #e8edf5;
@@ -25,8 +32,8 @@ button:disabled { opacity: .55; cursor: default; }
 input, textarea { border: 1px solid var(--line); border-radius: 8px; background: #121720; color: var(--text); padding: 8px 10px; }
 input[type="search"] { min-width: 180px; }
 .topbar { min-height: 72px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); background: #151a23; }
-.topbar h1 { font-size: 20px; margin: 0 0 3px; }
-.topbar p { margin: 0; color: var(--muted); font-size: 12px; }
+.site-brand { display: flex; align-items: center; gap: 0; }
+.topbar h1 { font-family: "Yeongyang Dimibang", Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif; font-size: 28px; margin: 0; }
 .top-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .dc-connect-box { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .dc-connect-box input { width: min(330px, 45vw); }

@@ -1,10 +1,11 @@
 import { applyMany, deleteOne, getAll, getOne, putMany, putOne } from '../db.js?v=20260915-1';
 import { downloadJson, makeDatedDefaultName, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
-import { createDialog, showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260915-1';
+import { createDialog, showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260917-1';
 import { saveToastForReload, showToast } from '../ui/toast.js?v=20260909-2';
 import { FORMAT, VERSION, exportBundle, exportSave, filtered, normalizeConRef, parseImportData } from './story-save-format.js?v=20260915-2';
 import {
   makeStoryFolderDocument,
+  nextAvailableStoryName,
   nextStorySaveOrder,
   normalizeStoryFolderId,
   normalizeStoryFolders,
@@ -16,7 +17,7 @@ import {
   STORY_FOLDER_DOCUMENT_ID,
   STORY_FOLDER_NAME_MAX_LENGTH,
   validateStoryFolderName
-} from './story-save-folders.js?v=20260915-3';
+} from './story-save-folders.js?v=20260917-1';
 
 const PREFIX = 'story-save:';
 const DOCS = {
@@ -26,10 +27,24 @@ const DOCS = {
   memo: 'image-marker-memo-v1'
 };
 const HEIGHT_KEY = 'hhjcon-rich-text-heights-v1';
+const NAME_KEY = 'hhjcon-story-save-name';
+const FOLDER_KEY = 'hhjcon-story-save-folder';
 const STORY_WARNING = '(저장한 원고는 브라우저 데이터 삭제시 지워집니다. 원고 내보내기로 백업을 해두십시오.)';
 const storyList = document.getElementById('storyList');
 const editorActions = document.querySelector('.editor-header > div:last-child');
 const clearButton = document.getElementById('clearStoryBtn');
+let storyNameInput = null;
+
+function rememberSaveTarget(name, folderId = '') {
+  if (storyNameInput) {
+    storyNameInput.value = name;
+    storyNameInput.dataset.folderId = folderId;
+  }
+  try {
+    localStorage.setItem(NAME_KEY, name);
+    localStorage.setItem(FOLDER_KEY, folderId);
+  } catch { /* 저장소를 사용할 수 없어도 현재 화면에서는 이름을 유지한다. */ }
+}
 
 const clone = value => structuredClone(value);
 const asObject = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -100,9 +115,7 @@ async function captureSave(name, folderId = '', oldSave = null, sortOrder = unde
 }
 
 function makeImportedSave(parsed, names, folderId = '', sortOrder = undefined) {
-  let name = parsed.name;
-  let n = 2;
-  while (names.has(name)) name = `${parsed.name} (${n++})`;
+  const name = nextAvailableStoryName(parsed.name, names);
   names.add(name);
   const now = Date.now();
   return {
@@ -158,6 +171,7 @@ async function loadSave(save) {
     putOne('documents', doc(DOCS.breaks, m.breaks)), putOne('documents', doc(DOCS.memo, m.memo))
   ]);
   localStorage.setItem(HEIGHT_KEY, JSON.stringify(asObject(m.heights)));
+  rememberSaveTarget(save.name, save.folderId || '');
   saveToastForReload(`“${save.name}” 원고를 불러왔습니다.`);
   location.reload();
 }
@@ -262,7 +276,7 @@ function appendStoryWarning(body) {
   body.append(note);
 }
 
-function showSavePrompt(folders) {
+function showSavePrompt(folders, initialName = '', initialFolderId = '') {
   const { dialog, body, footer } = createDialog('원고 저장');
   const message = document.createElement('p');
   message.className = 'hhj-ui-dialog-message';
@@ -273,12 +287,12 @@ function showSavePrompt(folders) {
   label.textContent = '원고 이름';
   const input = document.createElement('input');
   input.type = 'text';
-  input.value = makeDatedDefaultName('콘문학');
+  input.value = initialName || makeDatedDefaultName('콘문학');
   input.maxLength = 80;
   const error = document.createElement('div');
   error.className = 'hhj-ui-dialog-error';
   field.append(label, input, error);
-  const folderSelect = createFolderSelect(folders);
+  const folderSelect = createFolderSelect(folders, initialFolderId);
   body.append(message, field, folderSelect.element);
   appendStoryWarning(body);
   const cancel = document.createElement('button');
@@ -319,72 +333,93 @@ function showSavePrompt(folders) {
   });
 }
 
-function showFolderPicker(folders, initialFolderId = '') {
-  const { dialog, body, footer } = createDialog('원고 이동');
-  const message = document.createElement('p');
-  message.className = 'hhj-ui-dialog-message';
-  message.textContent = '선택한 원고를 이동할 위치를 선택하세요.';
-  const folderSelect = createFolderSelect(folders, initialFolderId);
-  body.append(message, folderSelect.element);
-  const cancel = document.createElement('button');
-  cancel.type = 'button';
-  cancel.textContent = '취소';
-  const confirm = document.createElement('button');
-  confirm.type = 'button';
-  confirm.className = 'primary';
-  confirm.textContent = '이동';
-  footer.append(cancel, confirm);
-  cancel.addEventListener('click', () => dialog.close('cancel'));
-  confirm.addEventListener('click', () => {
-    dialog.dataset.folderId = folderSelect.getValue();
-    dialog.close('confirm');
-  });
-  return new Promise(resolve => {
-    dialog.addEventListener('close', () => {
-      folderSelect.dispose();
-      resolve(dialog.returnValue === 'confirm' ? dialog.dataset.folderId || '' : null);
-    }, { once: true });
-    dialog.showModal();
-  });
-}
-
-function showFolderOrderPicker(count) {
-  const { dialog, body, footer } = createDialog('원고 폴더 이동');
-  const message = document.createElement('p');
-  message.className = 'hhj-ui-dialog-message';
-  message.textContent = `선택한 폴더 ${count}개를 최상위 목록의 어느 쪽으로 이동할까요?`;
-  body.append(message);
-  for (const [value, label] of [['cancel', '취소'], ['first', '맨 앞으로'], ['last', '맨 뒤로']]) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = label;
-    if (value !== 'cancel') button.className = 'primary';
-    button.addEventListener('click', () => dialog.close(value));
-    footer.append(button);
+function chooseStoryNameConflict(title, message, matches, existingText, separateText) {
+  const { dialog, body, footer } = createDialog(title, 'warning');
+  dialog.classList.add('story-save-conflict-dialog');
+  const explanation = document.createElement('p');
+  explanation.className = 'hhj-ui-dialog-message';
+  explanation.textContent = message;
+  body.append(explanation);
+  let selectedId = matches.length === 1 ? matches[0].id : '';
+  const existing = document.createElement('button'); existing.type = 'button'; existing.textContent = existingText;
+  existing.disabled = !selectedId;
+  if (matches.length === 1) {
+    const note = document.createElement('p');
+    note.className = 'hhj-ui-dialog-note';
+    note.textContent = `기존 항목: ${matches[0].label}`;
+    body.append(note);
+  } else {
+    const field = document.createElement('label'); field.className = 'hhj-ui-dialog-field';
+    const caption = document.createElement('span'); caption.textContent = '기존 항목 선택';
+    const select = document.createElement('select'); select.className = 'story-save-conflict-select';
+    select.append(new Option('기존 항목을 선택하세요', ''));
+    matches.forEach(item => select.append(new Option(item.label, item.id)));
+    select.addEventListener('change', () => { selectedId = select.value; existing.disabled = !selectedId; });
+    field.append(caption, select); body.append(field);
   }
+  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = '취소';
+  const separate = document.createElement('button'); separate.type = 'button'; separate.className = 'primary'; separate.textContent = separateText;
+  footer.append(cancel, separate, existing);
+  cancel.addEventListener('click', () => dialog.close('cancel'));
+  separate.addEventListener('click', () => dialog.close('separate'));
+  existing.addEventListener('click', () => { if (selectedId) dialog.close('existing'); });
   return new Promise(resolve => {
-    dialog.addEventListener('close', () => resolve(['first', 'last'].includes(dialog.returnValue) ? dialog.returnValue : null), { once: true });
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'existing' ? { action: 'existing', id: selectedId }
+      : dialog.returnValue === 'separate' ? { action: 'separate' } : null), { once: true });
     dialog.showModal();
+    queueMicrotask(() => cancel.focus());
   });
 }
 
 async function saveCurrent() {
   const folders = await getFolders();
-  const input = await showSavePrompt(folders);
+  const draftName = storyNameInput?.value.trim() || '';
+  const input = await showSavePrompt(folders, draftName,
+    draftName ? normalizeStoryFolderId(storyNameInput.dataset.folderId, folders) : '');
   if (!input) return false;
   const { name, folderId } = input;
   const saves = await getSaves();
-  const oldSave = saves.find(save => save.name === name && normalizeStoryFolderId(save.folderId, folders) === folderId) || null;
-  if (oldSave) {
-    const overwrite = await showConfirm(`“${name}” 저장 원고가 이미 있습니다.\n현재 내용으로 덮어쓸까요?`, {
-      title: '원고 덮어쓰기', confirmText: '덮어쓰기', tone: 'warning'
-    });
-    if (!overwrite) return false;
+  const matches = saves.filter(save => save.name === name);
+  let targetName = name;
+  let targetFolderId = folderId;
+  let oldSave = null;
+  if (matches.length) {
+    const separateName = nextAvailableStoryName(name, saves.map(save => save.name), 80);
+    const targets = matches.map(save => ({ id: save.id,
+      label: `${folders.find(folder => folder.id === save.folderId)?.name || '최상위'} · ${save.story?.items?.length || 0}블록 · ${new Date(save.updatedAt).toLocaleString('ko-KR')} · ${save.id.slice(-6)}` }));
+    const locations = [...new Set(matches.map(save => {
+      const folder = folders.find(folder => folder.id === save.folderId);
+      return folder ? `“${folder.name}” 폴더` : '최상위';
+    }))];
+    const where = locations.length === 1 ? `${locations[0]}에 있습니다.` : `다음 위치에 있습니다: ${locations.join(', ')}.`;
+    const choice = await chooseStoryNameConflict('원고 이름 중복',
+      `“${name}” 원고가 이미 ${where}\n덮어쓰면 기존 원고의 저장 위치가 유지됩니다. 별도 저장을 선택하면 “${separateName}”로 저장합니다.`,
+      targets, '덮어쓰기', '별도 저장');
+    if (!choice) return false;
+    if (choice.action === 'separate') targetName = separateName;
+    else {
+      oldSave = matches.find(save => save.id === choice.id);
+      targetFolderId = normalizeStoryFolderId(oldSave.folderId, folders);
+    }
   }
   try {
-    const sortOrder = oldSave?.sortOrder ?? nextStorySaveOrder(saves, folders, folderId);
-    await putOne('documents', await captureSave(name, folderId, oldSave, sortOrder));
-    showToast(oldSave ? `“${name}” 원고를 덮어썼습니다.` : `“${name}” 원고를 저장했습니다.`);
+    if (targetFolderId && !(await getFolders()).some(folder => folder.id === targetFolderId)) {
+      throw new Error('저장할 폴더가 변경되었습니다. 다시 저장해주세요.');
+    }
+    const sortOrder = oldSave?.sortOrder ?? nextStorySaveOrder(saves, folders, targetFolderId);
+    const record = await captureSave(targetName, targetFolderId, oldSave, sortOrder);
+    const latestSaves = await getSaves();
+    if (oldSave) {
+      const latest = latestSaves.find(save => save.id === oldSave.id);
+      if (!latest || latest.name !== oldSave.name || latest.folderId !== oldSave.folderId || latest.updatedAt !== oldSave.updatedAt) {
+        throw new Error('덮어쓸 원고가 변경되었습니다. 다시 확인한 뒤 저장해주세요.');
+      }
+    } else if (latestSaves.some(save => save.name === targetName)) {
+      throw new Error('같은 이름의 원고가 새로 생겼습니다. 다시 저장해주세요.');
+    }
+    await putOne('documents', record);
+    rememberSaveTarget(targetName, targetFolderId);
+    showToast(oldSave ? `“${targetName}” 원고를 덮어썼습니다.` : `“${targetName}” 원고를 저장했습니다.`);
     return true;
   } catch (error) {
     alert(error.message || '원고를 저장할 수 없습니다.');
@@ -432,46 +467,59 @@ function makeDialog() {
   dialog.className = 'story-save-dialog';
   const head = document.createElement('div');
   head.className = 'story-save-head';
-  head.innerHTML = '<strong>저장된 콘문학</strong>';
+  head.innerHTML = '<strong>원고 목록</strong>';
+  const headActions = document.createElement('div');
+  headActions.className = 'story-save-head-actions';
   const close = document.createElement('button');
   close.type = 'button'; close.className = 'icon-button'; close.textContent = '×'; close.title = '닫기';
-  head.append(close);
-
-  const tools = document.createElement('div');
-  tools.className = 'story-save-tools';
   const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = '현재 원고 저장';
   const newFolder = document.createElement('button'); newFolder.type = 'button'; newFolder.textContent = '+ 새 폴더';
+  headActions.append(head.querySelector('strong'), save, newFolder);
+  head.append(headActions, close);
+
   const deleteSelected = document.createElement('button'); deleteSelected.type = 'button'; deleteSelected.className = 'danger'; deleteSelected.textContent = '선택 항목 삭제';
-  tools.append(save, newFolder, deleteSelected);
 
   const selectionTools = document.createElement('div');
   selectionTools.className = 'story-save-selection-tools';
-  const selectAll = document.createElement('button'); selectAll.type = 'button'; selectAll.textContent = '전체 선택';
-  const clearAll = document.createElement('button'); clearAll.type = 'button'; clearAll.textContent = '선택 해제';
-  const moveSelected = document.createElement('button'); moveSelected.type = 'button'; moveSelected.textContent = '선택 항목 이동';
+  const selectGroup = document.createElement('div'); selectGroup.className = 'story-save-select-group';
+  const selectAll = document.createElement('input'); selectAll.type = 'checkbox'; selectAll.setAttribute('aria-label', '현재 목록 전체 선택');
+  const selectionMenu = document.createElement('details'); selectionMenu.className = 'story-save-select-menu';
+  const summary = document.createElement('summary'); summary.textContent = '▾'; summary.setAttribute('aria-label', '선택 종류');
+  const options = document.createElement('div'); options.className = 'story-save-select-options';
+  for (const [action, text] of [['folders', '폴더 선택'], ['saves', '원고 선택'], ['clear', '선택 해제']]) {
+    const button = document.createElement('button'); button.type = 'button'; button.dataset.select = action; button.textContent = text;
+    options.append(button);
+  }
+  selectionMenu.append(summary, options); selectGroup.append(selectAll, selectionMenu);
   const exportSelected = document.createElement('button'); exportSelected.type = 'button'; exportSelected.className = 'primary'; exportSelected.textContent = '선택 항목 내보내기';
   const label = document.createElement('label'); label.className = 'file-button'; label.textContent = '원고 백업 불러오기';
   const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = 'application/json,.json,.hhjconstory,.hhjconstories';
   label.append(input);
-  selectionTools.append(selectAll, clearAll, moveSelected, exportSelected, label);
+  selectionTools.append(selectGroup, deleteSelected, exportSelected, label);
 
   const location = document.createElement('div');
   location.className = 'story-save-location';
   const up = document.createElement('button');
   up.type = 'button';
   up.textContent = '← 최상위';
-  const locationName = document.createElement('strong');
-  location.append(up, locationName);
+  const locationName = document.createElement('span');
+  const parentDrop = document.createElement('div'); parentDrop.className = 'story-save-parent-drop'; parentDrop.hidden = true;
+  parentDrop.textContent = '원고를 놓으면 최상위로 이동';
+  location.append(up, locationName, parentDrop);
 
   const list = document.createElement('div'); list.className = 'story-save-list';
   const warning = document.createElement('div');
   warning.className = 'story-save-warning';
   warning.textContent = STORY_WARNING;
-  dialog.append(head, tools, selectionTools, location, list, warning); document.body.append(dialog);
+  dialog.append(head, selectionTools, location, list, warning); document.body.append(dialog);
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener('pointerdown', e => { if (!selectionMenu.contains(e.target)) selectionMenu.open = false; }, true);
+  dialog.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && selectionMenu.open) { e.preventDefault(); e.stopPropagation(); selectionMenu.open = false; }
+  }, true);
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
-  return { dialog, list, save, newFolder, deleteSelected, input, selectAll, clearAll, moveSelected, exportSelected, up, locationName, currentFolderId: '', draggedSaveIds: [], draggedFolderIds: [] };
+  return { dialog, list, save, newFolder, deleteSelected, input, selectAll, selectionMenu, exportSelected, up, parentDrop, locationName, currentFolderId: '', draggedSaveIds: [], draggedFolderIds: [] };
 }
 
 function clearStoryDropGuide(ui) {
@@ -510,6 +558,7 @@ async function dropStoryFolders(ui, beforeId, ids = ui.draggedFolderIds) {
 
 async function dropStorySaves(ui, folderId, beforeId = '', ids = ui.draggedSaveIds) {
   ui.draggedSaveIds = [];
+  ui.parentDrop.hidden = true;
   clearStoryDropGuide(ui);
   const [saves, folders] = await Promise.all([getSaves(), getFolders()]);
   const updates = planStorySavePlacement(saves, folders, ids, folderId, beforeId);
@@ -519,12 +568,21 @@ async function dropStorySaves(ui, folderId, beforeId = '', ids = ui.draggedSaveI
   await renderList(ui);
 }
 
+function syncSelectionCheckbox(ui) {
+  const items = [...ui.list.querySelectorAll('.story-save-check, .story-folder-check')];
+  const selected = items.filter(input => input.checked).length;
+  ui.selectAll.disabled = !items.length;
+  ui.selectAll.checked = !!items.length && selected === items.length;
+  ui.selectAll.indeterminate = selected > 0 && selected < items.length;
+}
+
 async function renderList(ui) {
   const [saves, folders] = await Promise.all([getSaves(), getFolders()]);
   ui.currentFolderId = normalizeStoryFolderId(ui.currentFolderId, folders);
   const currentFolder = folders.find(folder => folder.id === ui.currentFolderId);
   ui.up.hidden = !currentFolder;
-  ui.locationName.textContent = `위치: ${currentFolder?.name || '최상위'}`;
+  ui.parentDrop.hidden = true;
+  ui.locationName.textContent = `현재 위치: ${currentFolder?.name || '최상위'}`;
   ui.list.replaceChildren();
   if (!currentFolder) folders.forEach((folder, folderIndex) => {
     const row = document.createElement('div');
@@ -547,7 +605,7 @@ async function renderList(ui) {
     const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = '이름 변경';
     const del = document.createElement('button'); del.type = 'button'; del.className = 'danger'; del.textContent = '삭제';
     actions.append(exp, rename, del);
-    row.append(handle, check, open, actions);
+    row.append(check, handle, open, actions);
     ui.list.append(row);
     handle.addEventListener('dragstart', event => {
       const checked = selectedFolderIds(ui.list);
@@ -637,10 +695,10 @@ async function renderList(ui) {
   });
   const visibleSaves = sortStorySavesInFolder(saves, folders, ui.currentFolderId);
   visibleSaves.forEach((save, rowIndex) => {
-    const row = document.createElement('div'); row.className = 'story-save-row';
+    const row = document.createElement('div'); row.className = 'story-save-row'; row.draggable = true;
+    row.dataset.tooltipTitle = '저장된 원고';
+    row.dataset.tooltipDescription = '저장된 원고입니다. 드래그해서 폴더에 넣거나 뺄 수 있습니다.';
     const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'story-save-check'; check.value = save.id; check.setAttribute('aria-label', `${save.name} 선택`);
-    const handle = document.createElement('button'); handle.type = 'button'; handle.className = 'story-save-drag-handle'; handle.draggable = true;
-    handle.textContent = '⋮⋮'; handle.title = '원고 순서 변경 또는 폴더로 이동'; handle.setAttribute('aria-label', `${save.name} 드래그`);
     const info = document.createElement('div'); info.className = 'story-save-info';
     const name = document.createElement('strong'); name.textContent = save.name;
     const meta = document.createElement('small'); meta.textContent = stats(save); info.append(name, meta);
@@ -648,15 +706,20 @@ async function renderList(ui) {
     const load = document.createElement('button'); load.type = 'button'; load.className = 'primary'; load.textContent = '불러오기';
     const exp = document.createElement('button'); exp.type = 'button'; exp.textContent = '내보내기';
     const del = document.createElement('button'); del.type = 'button'; del.className = 'danger'; del.textContent = '삭제';
-    actions.append(load, exp, del); row.append(handle, check, info, actions); ui.list.append(row);
-    handle.addEventListener('dragstart', event => {
+    const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = '이름 변경';
+    actions.append(load, exp, rename, del); row.append(check, info, actions); ui.list.append(row);
+    let controlPress = false;
+    row.addEventListener('pointerdown', event => { controlPress = !!event.target.closest('button, input, label'); });
+    row.addEventListener('dragstart', event => {
+      if (controlPress) { event.preventDefault(); return; }
       const checked = selectedSaveIds(ui.list);
       ui.draggedSaveIds = checked.has(save.id) ? visibleSaves.filter(item => checked.has(item.id)).map(item => item.id) : [save.id];
       ui.draggedFolderIds = [];
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('application/x-hhj-story-save', save.id);
+      ui.parentDrop.hidden = !ui.currentFolderId;
     });
-    handle.addEventListener('dragend', () => { ui.draggedSaveIds = []; clearStoryDropGuide(ui); });
+    row.addEventListener('dragend', () => { ui.draggedSaveIds = []; ui.parentDrop.hidden = true; clearStoryDropGuide(ui); });
     const guideRowDrop = event => {
       const before = event.clientY < row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
       acceptStorySaveDrag(event, ui, row, before ? 'story-drop-before' : 'story-drop-after');
@@ -673,6 +736,32 @@ async function renderList(ui) {
     });
     load.addEventListener('click', () => loadSave(save).catch(error => alert(`원고를 불러올 수 없습니다.\n${error.message || error}`)));
     exp.addEventListener('click', () => downloadJson(`${sanitizeDownloadName(save.name, '콘문학')}.hhjconstory.json`, exportSave(save)));
+    rename.addEventListener('click', async () => {
+      const input = await showPrompt('새 원고 이름을 입력하세요.', save.name, {
+        title: '원고 이름 변경', label: '원고 이름 (최대 80자)', confirmText: '변경', maxLength: 80
+      });
+      if (input == null) return;
+      const nextName = input.trim();
+      if (!nextName) return alert('원고 이름을 입력하세요.');
+      try {
+        const [latestSaves, latestFolders] = await Promise.all([getSaves(), getFolders()]);
+        const current = latestSaves.find(item => item.id === save.id);
+        if (!current || current.name !== save.name) throw new Error('원고 목록이 변경되었습니다. 다시 확인한 뒤 이름을 바꿔주세요.');
+        if (nextName === current.name) return;
+        const folderId = normalizeStoryFolderId(current.folderId, latestFolders);
+        if (latestSaves.some(item => item.id !== current.id && item.name === nextName
+          && normalizeStoryFolderId(item.folderId, latestFolders) === folderId)) {
+          throw new Error('같은 폴더에 같은 이름의 원고가 이미 있습니다.');
+        }
+        await putOne('documents', { ...current, name: nextName });
+        if (storyNameInput?.value.trim() === current.name
+          && normalizeStoryFolderId(storyNameInput.dataset.folderId, latestFolders) === folderId) {
+          rememberSaveTarget(nextName, folderId);
+        }
+        showToast(`“${nextName}”으로 원고 이름을 바꿨습니다.`);
+        await renderList(ui);
+      } catch (error) { alert(error.message || error); }
+    });
     del.addEventListener('click', async () => {
       const ok = await confirmStoryDeletion(`“${save.name}” 원고를 삭제합니다.`);
       if (!ok) return;
@@ -682,9 +771,10 @@ async function renderList(ui) {
   if (!folders.length && !visibleSaves.length || currentFolder && !visibleSaves.length) {
     const empty = document.createElement('div');
     empty.className = 'story-save-empty';
-    empty.textContent = currentFolder ? '이 폴더에 저장된 콘문학이 없습니다.' : '저장된 콘문학이 없습니다.';
+    empty.textContent = currentFolder ? '이 폴더에 저장된 원고가 없습니다.' : '원고 목록이 비어 있습니다.';
     ui.list.append(empty);
   }
+  syncSelectionCheckbox(ui);
 }
 
 function selectedSaveIds(list) {
@@ -756,49 +846,40 @@ async function deleteSelectedItems(ui) {
 }
 
 async function createStoryFolder(ui) {
-  const folders = await getFolders();
   const input = await showPrompt('새 원고 폴더 이름을 입력하세요.', '', {
     title: '새 원고 폴더', label: `폴더 이름 (최대 ${STORY_FOLDER_NAME_MAX_LENGTH}자)`, confirmText: '만들기', maxLength: STORY_FOLDER_NAME_MAX_LENGTH
   });
   if (input == null) return;
   try {
-    const name = validateStoryFolderName(input, folders);
+    let name = validateStoryFolderName(input, []);
+    const folders = await getFolders();
+    const matches = folders.filter(folder => folder.name.toLocaleLowerCase('ko-KR') === name.toLocaleLowerCase('ko-KR'));
+    if (matches.length) {
+      const separateName = nextAvailableStoryName(name, folders.map(folder => folder.name), STORY_FOLDER_NAME_MAX_LENGTH, true);
+      const choice = await chooseStoryNameConflict('원고 폴더 이름 중복',
+        `“${name}” 폴더가 이미 있습니다. 기존 폴더를 열어도 안의 원고는 지워지지 않습니다.\n별도로 만들면 “${separateName}” 폴더가 생성됩니다.`,
+        matches.map(folder => ({ id: folder.id, label: folder.name })), '기존 폴더 열기', '별도 폴더 만들기');
+      if (!choice) return;
+      if (choice.action === 'existing') {
+        const latest = await getFolders();
+        if (!latest.some(folder => folder.id === choice.id && folder.name === matches.find(item => item.id === choice.id)?.name)) {
+          throw new Error('기존 폴더가 변경되었습니다. 다시 확인해주세요.');
+        }
+        ui.currentFolderId = choice.id;
+        showToast(`기존 “${name}” 폴더를 열었습니다.`);
+        await renderList(ui);
+        return;
+      }
+      name = separateName;
+    }
+    const latestFolders = await getFolders();
+    validateStoryFolderName(name, latestFolders);
     const folder = { id: `story-folder:${crypto.randomUUID()}`, name, createdAt: Date.now() };
-    await putOne('documents', makeStoryFolderDocument([...folders, folder]));
-    ui.currentFolderId = folder.id;
+    await putOne('documents', makeStoryFolderDocument([...latestFolders, folder]));
+    ui.currentFolderId = '';
     showToast(`“${name}” 원고 폴더를 만들었습니다.`);
     await renderList(ui);
   } catch (error) { alert(error.message || error); }
-}
-
-async function moveSelectedSaves(ui) {
-  const selectedIds = selectedSaveIds(ui.list);
-  const folderIds = selectedFolderIds(ui.list);
-  if (!selectedIds.size && !folderIds.size) return alert('이동할 원고나 폴더를 하나 이상 선택하세요.');
-  if (selectedIds.size && folderIds.size) return alert('원고와 폴더의 이동 방식이 다릅니다. 한 종류씩 선택해 이동하세요.');
-  if (folderIds.size) {
-    const position = await showFolderOrderPicker(folderIds.size);
-    if (!position) return;
-    const folders = await getFolders();
-    const beforeId = position === 'first' ? folders.find(folder => !folderIds.has(folder.id))?.id || '' : '';
-    const next = planStoryFolderPlacement(folders, [...folderIds], beforeId);
-    if (!next.length) return showToast('선택한 폴더가 이미 해당 위치에 있습니다.');
-    await putOne('documents', makeStoryFolderDocument(next));
-    showToast(`${folderIds.size}개 원고 폴더의 순서를 변경했습니다.`);
-    await renderList(ui);
-    return;
-  }
-  const folders = await getFolders();
-  const folderId = await showFolderPicker(folders, ui.currentFolderId);
-  if (folderId == null) return;
-  if (folderId === ui.currentFolderId) return showToast('선택한 원고가 이미 해당 위치에 있습니다.');
-  const saves = await getSaves();
-  const target = sortStorySavesInFolder(saves, folders, folderId);
-  const updates = planStorySavePlacement(saves, folders, [...selectedIds], folderId, target[0]?.id || '');
-  if (!updates.length) return;
-  await putMany('documents', updates);
-  showToast(`${selectedIds.size}개 원고를 이동했습니다.`);
-  await renderList(ui);
 }
 
 async function openManager() {
@@ -806,14 +887,28 @@ async function openManager() {
   ui.save.addEventListener('click', async () => { if (await saveCurrent()) await renderList(ui); });
   ui.newFolder.addEventListener('click', () => createStoryFolder(ui));
   ui.deleteSelected.addEventListener('click', () => deleteSelectedItems(ui).catch(error => alert(`항목을 삭제할 수 없습니다.\n${error.message || error}`)));
-  ui.selectAll.addEventListener('click', () => ui.list.querySelectorAll('.story-save-check, .story-folder-check').forEach(input => { input.checked = true; }));
-  ui.clearAll.addEventListener('click', () => ui.list.querySelectorAll('.story-save-check, .story-folder-check').forEach(input => { input.checked = false; }));
-  ui.moveSelected.addEventListener('click', () => moveSelectedSaves(ui).catch(error => alert(`항목을 이동할 수 없습니다.\n${error.message || error}`)));
+  ui.selectAll.addEventListener('change', () => {
+    ui.list.querySelectorAll('.story-save-check, .story-folder-check').forEach(input => { input.checked = ui.selectAll.checked; });
+    syncSelectionCheckbox(ui);
+  });
+  ui.list.addEventListener('change', event => {
+    if (event.target.matches('.story-save-check, .story-folder-check')) syncSelectionCheckbox(ui);
+  });
+  ui.selectionMenu.addEventListener('click', event => {
+    const action = event.target.closest('button[data-select]')?.dataset.select;
+    if (!action) return;
+    ui.list.querySelectorAll('.story-save-check, .story-folder-check').forEach(input => {
+      input.checked = action === 'folders' ? input.matches('.story-folder-check')
+        : action === 'saves' && input.matches('.story-save-check');
+    });
+    ui.selectionMenu.open = false;
+    syncSelectionCheckbox(ui);
+  });
   ui.exportSelected.addEventListener('click', () => exportSelectedSaves(ui.list).catch(error => alert(`원고를 내보낼 수 없습니다.\n${error.message || error}`)));
   ui.up.addEventListener('click', () => { ui.currentFolderId = ''; renderList(ui); });
-  ui.up.addEventListener('dragenter', event => acceptStorySaveDrag(event, ui, ui.up, 'story-drop-folder'));
-  ui.up.addEventListener('dragover', event => acceptStorySaveDrag(event, ui, ui.up, 'story-drop-folder'));
-  ui.up.addEventListener('drop', event => {
+  ui.parentDrop.addEventListener('dragenter', event => acceptStorySaveDrag(event, ui, ui.parentDrop, 'story-drop-folder'));
+  ui.parentDrop.addEventListener('dragover', event => acceptStorySaveDrag(event, ui, ui.parentDrop, 'story-drop-folder'));
+  ui.parentDrop.addEventListener('drop', event => {
     if (!ui.draggedSaveIds.length) return;
     event.preventDefault(); event.stopPropagation();
     const ids = ui.draggedSaveIds;
@@ -886,8 +981,25 @@ async function openManager() {
 }
 
 if (storyList && editorActions) {
+  document.addEventListener('hhjcon:story-cleared', () => rememberSaveTarget('', ''));
+  storyNameInput = document.createElement('input');
+  storyNameInput.id = 'storyNameInput';
+  storyNameInput.type = 'text';
+  storyNameInput.maxLength = 80;
+  storyNameInput.placeholder = '원고 이름';
+  storyNameInput.setAttribute('aria-label', '원고 이름');
+  storyNameInput.dataset.tooltipTitle = '원고 이름';
+  storyNameInput.dataset.tooltipDescription = '원고를 저장할 때 사용할 이름입니다. 비워 두면 “콘문학 (날짜) (시간)”이 자동으로 채워집니다.';
+  try {
+    storyNameInput.value = localStorage.getItem(NAME_KEY) || '';
+    storyNameInput.dataset.folderId = localStorage.getItem(FOLDER_KEY) || '';
+  } catch { /* 저장소가 막혀도 입력칸은 사용할 수 있다. */ }
+  storyNameInput.addEventListener('input', () => {
+    try { localStorage.setItem(NAME_KEY, storyNameInput.value); } catch { /* 현재 화면에서만 유지 */ }
+  });
   const save = document.createElement('button'); save.type = 'button'; save.className = 'small'; save.textContent = '원고 저장';
   const manage = document.createElement('button'); manage.type = 'button'; manage.className = 'small'; manage.textContent = '원고 목록';
+  editorActions.insertBefore(storyNameInput, clearButton || null);
   editorActions.insertBefore(save, clearButton || null); editorActions.insertBefore(manage, clearButton || null);
   save.addEventListener('click', saveCurrent);
   manage.addEventListener('click', () => openManager().catch(error => alert(`원고 목록을 열 수 없습니다.\n${error.message || error}`)));

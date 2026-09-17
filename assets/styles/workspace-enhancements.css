@@ -1,7 +1,7 @@
 .library-view-tabs { display: flex; gap: 4px; min-height: 40px; padding: 6px 8px 0; overflow-x: auto; border-bottom: 1px solid var(--line); background: #151a23; }
 .library-view-tab { flex: 0 0 auto; display: inline-flex; align-items: center; max-width: 220px; overflow: hidden; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: #171d27; background-clip: padding-box; }
 .library-view-tab.active { background: var(--panel-2); border-color: #50617e; box-shadow: inset 0 -2px var(--accent); }
-.library-view-tab.collection-tab::before { content: "묶음"; margin-left: 8px; color: var(--muted); font-size: 9px; }
+.library-view-tab.collection-tab::before { content: "묶음"; flex-shrink: 0; margin-left: 8px; color: var(--muted); font-size: 9px; white-space: nowrap; }
 .library-view-tab.drop-target { outline: 2px solid var(--accent); outline-offset: -2px; background: #22304a; }
 .library-view-tab-main, .library-view-tab-close { border: 0; border-radius: 0; background: transparent; }
 .library-view-tab-main:first-child { border-radius: 7px 0 0; }

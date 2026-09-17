@@ -9,7 +9,7 @@
   <script src="./src/ui/theme-init.js?v=20260908-2"></script>
   <link rel="stylesheet" href="./assets/styles/styles.css?v=20260917-3">
   <link rel="stylesheet" href="./assets/styles/story-multiselect.css?v=20260914-2">
-  <link rel="stylesheet" href="./assets/styles/workspace-enhancements.css?v=20260913-1">
+  <link rel="stylesheet" href="./assets/styles/workspace-enhancements.css?v=20260917-1">
   <link rel="stylesheet" href="./assets/styles/control-row-pager.css?v=20260914-1">
   <link rel="stylesheet" href="./assets/styles/interaction-fixes.css?v=20260913-1">
   <link rel="stylesheet" href="./assets/styles/text-formatting.css?v=20260916-7">
@@ -44,7 +44,7 @@
         <button id="editorBackupRestoreBtn" class="setup-link-button" type="button">백업 불러오기</button>
         <span class="bridge-setup-group" role="group" aria-label="DC 브리지 설치 도구">
           <a class="file-button setup-link-button" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey 설치</a>
-          <a class="file-button setup-link-button" href="./bridge/hhjcon-dc-bridge.user.js?v=0.6.10" target="_blank" rel="noopener">DC 브리지 설치</a>
+          <a class="file-button setup-link-button" href="./bridge/hhjcon-dc-bridge.user.js?v=1.0.0" target="_blank" rel="noopener">DC 브리지 설치</a>
           <span class="bridge-help">
             <button class="bridge-help-trigger" type="button" aria-label="Tampermonkey와 DC 브리지 설치 안내" aria-describedby="bridgeHelpPanel">?</button>
             <span id="bridgeHelpPanel" class="bridge-help-panel" role="tooltip">
@@ -109,7 +109,7 @@
       <div id="conGrid" class="con-grid" aria-live="polite"></div>
     </section>
 
-    <div id="workspaceSplitter" class="workspace-splitter" role="separator" aria-orientation="vertical" aria-label="콘 라이브러리와 원고 영역 크기 조절" aria-valuemin="30" aria-valuemax="70" aria-valuenow="50" tabindex="0"></div>
+    <div id="workspaceSplitter" class="workspace-splitter" role="separator" aria-orientation="vertical" aria-label="콘 라이브러리와 원고 영역 크기 조절" aria-valuemin="30" aria-valuemax="70" aria-valuenow="50" tabindex="0" data-tooltip-title="화면 구분선" data-tooltip-description="좌우로 끌어 콘 라이브러리와 원고 폭을 조절합니다. 더블클릭 또는 Home으로 초기화하고, ←/→로 조금씩 옮길 수 있습니다." data-tooltip-anchor="pointer"></div>
 
     <aside class="panel editor-panel">
       <div class="editor-header">
@@ -153,6 +153,6 @@
   <script type="module" src="./src/collections/collection-backup.js?v=20260912-1"></script>
   <script type="module" src="./src/backup/editor-backup.js?v=20260910-1"></script>
   <script type="module" src="./src/ui/app-ready.js?v=20260908-1"></script>
-  <script type="module" src="./src/ui/feature-tooltips.js?v=20260917-8"></script>
+  <script type="module" src="./src/ui/feature-tooltips.js?v=20260917-9"></script>
 </body>
 </html>

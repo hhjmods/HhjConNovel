@@ -140,7 +140,7 @@ if (toggle) {
     tooltip.hidden = true;
   }
 
-  function schedule(entry, delay) {
+  function schedule(entry, delay, pointerY = null) {
     if (!enabled || entry.target.matches(':disabled') || entry.target === active) return;
     hide();
     active = entry.target;
@@ -158,7 +158,9 @@ if (toggle) {
       tooltip.style.visibility = 'hidden';
       const rect = active.getBoundingClientRect();
       const size = tooltip.getBoundingClientRect();
-      const position = placeFeatureTooltip(rect, size, { width: innerWidth, height: innerHeight });
+      const anchor = active.dataset.tooltipAnchor === 'pointer' && pointerY !== null
+        ? { ...rect, top: pointerY, bottom: pointerY } : rect;
+      const position = placeFeatureTooltip(anchor, size, { width: innerWidth, height: innerHeight });
       tooltip.style.left = `${position.left}px`;
       tooltip.style.top = `${position.top}px`;
       tooltip.style.visibility = '';
@@ -186,7 +188,7 @@ if (toggle) {
       return;
     }
     suppressNativeTitle(entry.target);
-    schedule(entry, 190);
+    schedule(entry, 190, event.clientY);
   });
   document.addEventListener('pointerout', event => {
     if (event.pointerType === 'touch' || !active?.contains(event.target)) return;

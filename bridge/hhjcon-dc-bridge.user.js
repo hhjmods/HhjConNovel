@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      0.6.10
+// @version      1.0.0
 // @description  HhjConNovel의 디시콘 동기화와 DC 글쓰기 붙여넣기를 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
@@ -20,7 +20,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '0.6.10';
+  const VERSION = '1.0.0';
   const MAX_PAGE = 30;
   const DC_HTML_LIMIT = 65535;
   const CI_CACHE_KEY = 'hhjcon-dc-ci-c';

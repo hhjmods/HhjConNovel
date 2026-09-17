@@ -1,4 +1,4 @@
-import { appendStoryTextBlock } from './app.js?v=20260917-1';
+import { appendStoryTextBlock } from './app.js?v=20260917-2';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { writeStoryCreateTransfer } from './story/story-create-payload.js?v=20260914-1';

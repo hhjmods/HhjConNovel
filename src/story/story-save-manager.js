@@ -1,6 +1,6 @@
 import { applyMany, deleteOne, getAll, getOne, putMany, putOne } from '../db.js?v=20260915-1';
 import { downloadJson, makeDatedDefaultName, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
-import { createDialog, showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260917-1';
+import { chooseNameConflict, createDialog, showConfirm, showPrompt } from '../ui/action-dialogs.js?v=20260917-2';
 import { saveToastForReload, showToast } from '../ui/toast.js?v=20260909-2';
 import { FORMAT, VERSION, exportBundle, exportSave, filtered, normalizeConRef, parseImportData } from './story-save-format.js?v=20260915-2';
 import {
@@ -333,44 +333,6 @@ function showSavePrompt(folders, initialName = '', initialFolderId = '') {
   });
 }
 
-function chooseStoryNameConflict(title, message, matches, existingText, separateText) {
-  const { dialog, body, footer } = createDialog(title, 'warning');
-  dialog.classList.add('story-save-conflict-dialog');
-  const explanation = document.createElement('p');
-  explanation.className = 'hhj-ui-dialog-message';
-  explanation.textContent = message;
-  body.append(explanation);
-  let selectedId = matches.length === 1 ? matches[0].id : '';
-  const existing = document.createElement('button'); existing.type = 'button'; existing.textContent = existingText;
-  existing.disabled = !selectedId;
-  if (matches.length === 1) {
-    const note = document.createElement('p');
-    note.className = 'hhj-ui-dialog-note';
-    note.textContent = `기존 항목: ${matches[0].label}`;
-    body.append(note);
-  } else {
-    const field = document.createElement('label'); field.className = 'hhj-ui-dialog-field';
-    const caption = document.createElement('span'); caption.textContent = '기존 항목 선택';
-    const select = document.createElement('select'); select.className = 'story-save-conflict-select';
-    select.append(new Option('기존 항목을 선택하세요', ''));
-    matches.forEach(item => select.append(new Option(item.label, item.id)));
-    select.addEventListener('change', () => { selectedId = select.value; existing.disabled = !selectedId; });
-    field.append(caption, select); body.append(field);
-  }
-  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = '취소';
-  const separate = document.createElement('button'); separate.type = 'button'; separate.className = 'primary'; separate.textContent = separateText;
-  footer.append(cancel, separate, existing);
-  cancel.addEventListener('click', () => dialog.close('cancel'));
-  separate.addEventListener('click', () => dialog.close('separate'));
-  existing.addEventListener('click', () => { if (selectedId) dialog.close('existing'); });
-  return new Promise(resolve => {
-    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'existing' ? { action: 'existing', id: selectedId }
-      : dialog.returnValue === 'separate' ? { action: 'separate' } : null), { once: true });
-    dialog.showModal();
-    queueMicrotask(() => cancel.focus());
-  });
-}
-
 async function saveCurrent() {
   const folders = await getFolders();
   const draftName = storyNameInput?.value.trim() || '';
@@ -392,7 +354,7 @@ async function saveCurrent() {
       return folder ? `“${folder.name}” 폴더` : '최상위';
     }))];
     const where = locations.length === 1 ? `${locations[0]}에 있습니다.` : `다음 위치에 있습니다: ${locations.join(', ')}.`;
-    const choice = await chooseStoryNameConflict('원고 이름 중복',
+    const choice = await chooseNameConflict('원고 이름 중복',
       `“${name}” 원고가 이미 ${where}\n덮어쓰면 기존 원고의 저장 위치가 유지됩니다. 별도 저장을 선택하면 “${separateName}”로 저장합니다.`,
       targets, '덮어쓰기', '별도 저장');
     if (!choice) return false;
@@ -856,7 +818,7 @@ async function createStoryFolder(ui) {
     const matches = folders.filter(folder => folder.name.toLocaleLowerCase('ko-KR') === name.toLocaleLowerCase('ko-KR'));
     if (matches.length) {
       const separateName = nextAvailableStoryName(name, folders.map(folder => folder.name), STORY_FOLDER_NAME_MAX_LENGTH, true);
-      const choice = await chooseStoryNameConflict('원고 폴더 이름 중복',
+      const choice = await chooseNameConflict('원고 폴더 이름 중복',
         `“${name}” 폴더가 이미 있습니다. 기존 폴더를 열어도 안의 원고는 지워지지 않습니다.\n별도로 만들면 “${separateName}” 폴더가 생성됩니다.`,
         matches.map(folder => ({ id: folder.id, label: folder.name })), '기존 폴더 열기', '별도 폴더 만들기');
       if (!choice) return;

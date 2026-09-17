@@ -90,18 +90,18 @@ if (files.dragStart.includes('application/x-hhj')) {
   fail('src/library/library-con-drag-source.js bypasses centralized DnD MIME helpers');
 }
 
-const directAppImport = './app.js?v=20260917-1';
+const directAppImport = './app.js?v=20260917-2';
 const directAppClients = [
-  ['src/story-insertion.js', files.insertion, '20260917-1'],
-  ['src/story-con-run-end-drop.js', files.runEnd, '20260917-1'],
-  ['src/story-tail-blank-drop.js', files.tail, '20260917-1'],
-  ['src/story-output-tools.js', files.outputTools, '20260917-2']
+  ['src/story-insertion.js', files.insertion, '20260917-2'],
+  ['src/story-con-run-end-drop.js', files.runEnd, '20260917-2'],
+  ['src/story-tail-blank-drop.js', files.tail, '20260917-2'],
+  ['src/story-output-tools.js', files.outputTools, '20260917-3']
 ];
 for (const [path, source, cacheVersion] of directAppClients) {
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
   if (!index.includes(`./${path}?v=${cacheVersion}`)) fail(`index.html does not load the current ${path} cache version`);
 }
-if (!index.includes('./src/app.js?v=20260917-1')) fail('index.html app module version differs from DnD clients');
+if (!index.includes('./src/app.js?v=20260917-2')) fail('index.html app module version differs from DnD clients');
 if (!index.includes('./src/story-slot-mode.js?v=20260914-7')) fail('index.html does not load the current slot guide cache version');
 if (!index.includes('./src/story-drag-autoscroll.js?v=20260914-2')) fail('index.html does not load the tested autoscroll module version');
 if (!files.slot.includes("from './story/story-dnd-geometry.js?v=20260914-1'")
@@ -172,11 +172,11 @@ for (const forbidden of [
 }
 
 if (!files.app.includes('export async function applyStoryDropTransfer')) fail('app.js lost direct drop mutation bridge');
-if (!files.app.includes("./story/story-render.js?v=20260917-1")
+if (!files.app.includes("./story/story-render.js?v=20260917-2")
   || !files.app.includes('renderStoryList(el.storyList')
   || files.app.includes("document.createElement('textarea')")
   || !files.storyRender.includes("../story-dnd-utils.js?v=20260906-2")
-  || !files.storyRender.includes("../collections/collection-missing-ui.js?v=20260917-1")
+  || !files.storyRender.includes("../collections/collection-missing-ui.js?v=20260917-2")
   || !files.storyRender.includes('export function renderStoryList(')
   || !files.storyRender.includes("tail.className = 'story-tail-drop'")) {
   fail('story DOM construction must remain delegated to the story renderer');

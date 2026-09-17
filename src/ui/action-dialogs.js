@@ -1,10 +1,12 @@
+import { getAll } from '../db.js';
 import { COLLECTION_NAME_MAX_LENGTH } from '../model.js?v=20260912-1';
+import { nextAvailableStoryName } from '../story/story-save-folders.js?v=20260917-1';
 import {
   clearCurrentStory,
   createNamedCollection,
   deleteCollectionById,
   hasCurrentStoryItems
-} from '../app.js?v=20260917-1';
+} from '../app.js?v=20260917-2';
 
 const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
@@ -82,6 +84,41 @@ export function showConfirm(message, options = {}) {
     dialog.addEventListener('close', () => resolve(dialog.returnValue === 'confirm'), { once: true });
     dialog.showModal();
     queueMicrotask(() => (options.danger ? cancel : confirm).focus());
+  });
+}
+
+export function chooseNameConflict(title, message, matches, existingText, separateText) {
+  const { dialog, body, footer } = createDialog(title, 'warning');
+  dialog.classList.add('story-save-conflict-dialog');
+  body.append(messageNode(message));
+  let selectedId = matches.length === 1 ? matches[0].id : '';
+  const existing = document.createElement('button'); existing.type = 'button'; existing.textContent = existingText;
+  existing.disabled = !selectedId;
+  if (matches.length === 1) {
+    const note = document.createElement('p');
+    note.className = 'hhj-ui-dialog-note';
+    note.textContent = `기존 항목: ${matches[0].label}`;
+    body.append(note);
+  } else {
+    const field = document.createElement('label'); field.className = 'hhj-ui-dialog-field';
+    const caption = document.createElement('span'); caption.textContent = '기존 항목 선택';
+    const select = document.createElement('select'); select.className = 'story-save-conflict-select';
+    select.append(new Option('기존 항목을 선택하세요', ''));
+    matches.forEach(item => select.append(new Option(item.label, item.id)));
+    select.addEventListener('change', () => { selectedId = select.value; existing.disabled = !selectedId; });
+    field.append(caption, select); body.append(field);
+  }
+  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = '취소';
+  const separate = document.createElement('button'); separate.type = 'button'; separate.className = 'primary'; separate.textContent = separateText;
+  footer.append(cancel, separate, existing);
+  cancel.addEventListener('click', () => dialog.close('cancel'));
+  separate.addEventListener('click', () => dialog.close('separate'));
+  existing.addEventListener('click', () => { if (selectedId) dialog.close('existing'); });
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'existing' ? { action: 'existing', id: selectedId }
+      : dialog.returnValue === 'separate' ? { action: 'separate' } : null), { once: true });
+    dialog.showModal();
+    queueMicrotask(() => cancel.focus());
   });
 }
 
@@ -185,13 +222,38 @@ document.addEventListener('click', async event => {
         requiredMessage: '콘묶음 이름을 입력하세요.', note: COLLECTION_WARNING
       });
       if (name == null) return;
-      const collectionName = name.trim();
+      let collectionName = name.trim();
+      const collections = await getAll('collections');
+      const matches = collections.filter(item => item.name.toLocaleLowerCase('ko-KR') === collectionName.toLocaleLowerCase('ko-KR'));
+      if (matches.length) {
+        const separateName = nextAvailableStoryName(collectionName, collections.map(item => item.name), COLLECTION_NAME_MAX_LENGTH, true);
+        const choice = await chooseNameConflict('콘묶음 이름 중복',
+          `“${collectionName}” 콘묶음이 이미 있습니다. 기존 콘묶음을 열거나 “${separateName}”로 새로 만들 수 있습니다.`,
+          matches.map(item => ({ id: item.id, label: `${item.name} · 콘 ${item.items.length}개 · ${item.id.slice(-6)}` })),
+          '기존 콘묶음 열기', '별도 콘묶음 만들기');
+        if (!choice) return;
+        if (choice.action === 'existing') {
+          const existing = (await getAll('collections')).find(item => item.id === choice.id);
+          if (!existing || existing.name.toLocaleLowerCase('ko-KR') !== collectionName.toLocaleLowerCase('ko-KR')) {
+            throw new Error('기존 콘묶음이 변경되었습니다. 다시 확인해주세요.');
+          }
+          const target = [...document.querySelectorAll('#collectionList .collection-row')]
+            .find(row => row.dataset.collectionId === existing.id)?.querySelector('.collection-main');
+          if (!target) throw new Error('콘묶음 목록이 변경되었습니다. 다시 확인해주세요.');
+          target.click();
+          return;
+        }
+        collectionName = separateName;
+      }
+      if ((await getAll('collections')).some(item => item.name.toLocaleLowerCase('ko-KR') === collectionName.toLocaleLowerCase('ko-KR'))) {
+        throw new Error('같은 이름의 콘묶음이 새로 생겼습니다. 다시 확인해주세요.');
+      }
       const collectionId = await createNamedCollection(collectionName);
       document.dispatchEvent(new CustomEvent('hhjcon:collection-created', {
         detail: { id: collectionId, name: collectionName }
       }));
     };
-  } else if (button.title === '콘묶음 삭제' && button.closest('.collection-row')) {
+  } else if (button.matches('#collectionList .collection-row > .icon-button')) {
     task = async () => {
       const row = button.closest('.collection-row');
       const collectionId = row?.dataset.collectionId || '';

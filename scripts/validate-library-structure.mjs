@@ -52,7 +52,7 @@ const navigationRenderEvent = 'hhjcon:library-navigation-rendered';
 const gridRenderEvent = 'hhjcon:library-grid-rendered';
 const tabsRenderEvent = 'hhjcon:library-tabs-rendered';
 const collectionCreatedEvent = 'hhjcon:collection-created';
-const appImport = "../app.js?v=20260917-1";
+const appImport = "../app.js?v=20260917-2";
 const modelImport = "../model.js?v=20260912-1";
 const selectionImport = "../core/selection.js?v=20260907-1";
 const backupFormatImport = "../core/backup-format.js?v=20260910-1";
@@ -79,11 +79,11 @@ if (!libraryRender.includes(`root.dispatchEvent(new Event('${gridRenderEvent}'))
 }
 if (!collectionMissingUi.includes('export async function showMissingConNotice(meta)')
   || !collectionMissingUi.includes("from './dccon-purchase-url.js?v=20260914-1'")
-  || !collectionMissingUi.includes("import('../ui/action-dialogs.js?v=20260917-1')")
+  || !collectionMissingUi.includes("import('../ui/action-dialogs.js?v=20260917-2')")
   || !collectionMissingUi.includes("window.open(purchaseUrl, '_blank', 'noopener,noreferrer')")
   || !dcconPurchaseUrl.includes("const DCCON_SEARCH_URL = 'https://dccon.dcinside.com/new/1/title/'")
   || !dcconPurchaseUrl.includes("!/^\\d+$/.test(sourcePackageId)")
-  || !storyRender.includes("from '../collections/collection-missing-ui.js?v=20260917-1'")
+  || !storyRender.includes("from '../collections/collection-missing-ui.js?v=20260917-2'")
   || !storyRender.includes('showMissingConNotice(conRef)')
   || app.includes('해당 콘을 구매하지 않았습니다.')) {
   fail('library and story missing cons must share one notice function');
@@ -208,7 +208,7 @@ if (!collectionBackup.includes("exportButton.addEventListener('click', handleExp
 if (collectionBackup.includes('stopImmediatePropagation()') || collectionBackup.includes('capture: true')) {
   fail('collection file handlers must not rely on suppressing legacy listeners');
 }
-if (!actionDialogs.includes("from '../app.js?v=20260917-1'")
+if (!actionDialogs.includes("from '../app.js?v=20260917-2'")
   || !actionDialogs.includes('createNamedCollection,')
   || !actionDialogs.includes('deleteCollectionById,')
   || !actionDialogs.includes('clearCurrentStory,')
@@ -218,6 +218,12 @@ if (!actionDialogs.includes("from '../app.js?v=20260917-1'")
 if (!actionDialogs.includes('const collectionId = await createNamedCollection(collectionName)')
   || !actionDialogs.includes('await deleteCollectionById(collectionId)')) {
   fail('collection dialogs must call app state commands directly');
+}
+if (!actionDialogs.includes("button.matches('#collectionList .collection-row > .icon-button')")
+  || actionDialogs.includes("button.title === '콘묶음 삭제'")
+  || !actionDialogs.includes("chooseNameConflict('콘묶음 이름 중복'")
+  || !actionDialogs.includes('nextAvailableStoryName(collectionName, collections.map(item => item.name), COLLECTION_NAME_MAX_LENGTH, true)')) {
+  fail('collection deletion must survive tooltip title removal and duplicate names must offer safe choices');
 }
 if (!actionDialogs.includes(`new CustomEvent('${collectionCreatedEvent}'`)
   || !workspace.includes(`const COLLECTION_CREATED_EVENT = '${collectionCreatedEvent}'`)
@@ -241,7 +247,7 @@ if (!actionDialogs.includes('if (hasCurrentStoryItems()) {')
   || app.includes("el.clearStoryBtn.addEventListener('click'")) {
   fail('confirmed story clearing must reset the saved name after the app state command');
 }
-if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260917-1'")
+if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260917-2'")
   || !storySaveManager.includes('showConfirm, showPrompt')) {
   fail('story save manager must import the canonical async dialog API');
 }
@@ -290,12 +296,12 @@ if ([editorBackup, storySaveManager].some(source => source.includes('function de
   || !storySaveManager.includes("makeDatedDefaultName('콘문학')")) {
   fail('readable dated default names must have one tested owner');
 }
-if (!index.includes('./src/app.js?v=20260917-1')
-  || !index.includes('./src/collections/collection-missing-ui.js?v=20260917-1')
-  || !index.includes('./src/library/library-workspace.js?v=20260917-1')
+if (!index.includes('./src/app.js?v=20260917-2')
+  || !index.includes('./src/collections/collection-missing-ui.js?v=20260917-2')
+  || !index.includes('./src/library/library-workspace.js?v=20260917-2')
   || !index.includes('./src/library/library-tab-close-all.js?v=20260910-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260917-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260917-10')
+  || !index.includes('./src/ui/action-dialogs.js?v=20260917-2')
+  || !index.includes('./src/story/story-save-manager.js?v=20260917-11')
   || !index.includes('./src/collections/collection-backup.js?v=20260912-1')
   || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
   fail('index.html dialog and story-save cache versions are not canonical');
@@ -428,7 +434,7 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy):not(.story-format-presets)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
   || !index.includes('./assets/styles/story-output-tools.css?v=20260916-1')
-  || !index.includes('./src/story-output-tools.js?v=20260917-2')
+  || !index.includes('./src/story-output-tools.js?v=20260917-3')
   || !index.includes('./src/story/story-html-copy.js?v=20260914-2')
   || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle):not(.story-format-presets)")
   || !storyOutputTools.includes('button.disabled = previewMode')
@@ -474,7 +480,7 @@ if (!storyHtml.includes("from './rich-html.js?v=20260914-1'")
   || !formatPresets.includes("toolbar?.querySelector('[data-format=\"font\"]')?.before(trigger)")
   || !formatPresets.includes("trigger.addEventListener('pointerdown', event => event.preventDefault())")
   || !index.includes('./src/story/text-formatting.js?v=20260916-6')
-  || !index.includes('./src/story/format-presets.js?v=20260917-2')) {
+  || !index.includes('./src/story/format-presets.js?v=20260917-3')) {
   fail('rich text paste and story output must share the canonical sanitizer');
 }
 if (!storyHtml.includes("from './story-html-utils.js?v=20260912-3'")
@@ -505,7 +511,7 @@ if (storySaveManager.includes("document.createElement('style')")
   || !storySaveStyles.includes('.story-save-parent-drop[hidden]')
   || !index.includes('./assets/styles/story-save-manager.css?v=20260917-6')
   || !storySaveManager.includes('warning.textContent = STORY_WARNING')
-  || !index.includes('./src/story/story-save-manager.js?v=20260917-10')) {
+  || !index.includes('./src/story/story-save-manager.js?v=20260917-11')) {
   fail('story save manager presentation must stay in its dedicated stylesheet');
 }
 if (!storySaveManager.includes("const draftName = storyNameInput?.value.trim() || '';")
@@ -588,8 +594,8 @@ if (actionDialogs.includes("document.createElement('style')")
   || !actionDialogStyles.includes('.hhj-ui-dialog .danger-action {')
   || !actionDialogStyles.includes('.collection-backup-dialog {')
   || !index.includes('./assets/styles/action-dialogs.css?v=20260909-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260917-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260917-10')) {
+  || !index.includes('./src/ui/action-dialogs.js?v=20260917-2')
+  || !index.includes('./src/story/story-save-manager.js?v=20260917-11')) {
   fail('shared action dialog presentation must stay in its dedicated stylesheet');
 }
 const toastClients = [app, collectionBackup, editorBackup, storySaveManager, storyHtmlCopy];

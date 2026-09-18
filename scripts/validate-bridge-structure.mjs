@@ -32,8 +32,11 @@ requireText(storyHtmlCopy, "classList.add('hhjcon-bridge-paste');", 'story clipb
 requireText(bridge, "querySelectorAll('img.written_dccon.hhjcon-bridge-dccon')", 'bridge does not limit detail repair to HhjConNovel clipboard cons');
 requireText(bridge, "image.classList.remove('hhjcon-bridge-dccon');", 'bridge does not clear the processed clipboard marker');
 requireText(bridge, "marker.classList.remove('hhjcon-bridge-paste');", 'bridge does not clear the con-free paste marker');
-requireText(bridge, "const VERSION = '1.0.0';", 'bridge runtime version is not current');
-requireText(index, './bridge/hhjcon-dc-bridge.user.js?v=1.0.0', 'index does not link the current bridge version');
+requireText(bridge, "const VERSION = '1.0.1';", 'bridge runtime version is not current');
+requireText(index, './bridge/hhjcon-dc-bridge.user.js?v=1.0.1', 'index does not link the current bridge version');
+if ((bridge.match(/for \(let page = 0; page <= lastPage; page \+= 1\)/g) || []).length !== 2) {
+  failures.push('both bridge DCcon readers must start at page 0 and use max_page');
+}
 requireText(bridge, 'const IMAGE_NETWORK_LIMIT = 6;', 'bridge image network limit is not current');
 requireText(bridge, 'activeEditor.innerHTML.length', 'bridge does not report the final DC editor HTML length');
 requireText(bridge, "querySelectorAll('img.written_dccon[title=\"\"]')", 'bridge does not stabilize the temporary empty con title');

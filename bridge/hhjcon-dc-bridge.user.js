@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HhjConNovel DC Bridge
 // @namespace    https://github.com/hhjmods/HhjConNovel
-// @version      1.0.0
+// @version      1.0.1
 // @description  HhjConNovel의 디시콘 동기화와 DC 글쓰기 붙여넣기를 연결합니다.
 // @match        https://hhjmods.github.io/HhjConNovel/*
 // @match        https://gall.dcinside.com/*
@@ -20,7 +20,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
   const MAX_PAGE = 30;
   const DC_HTML_LIMIT = 65535;
   const CI_CACHE_KEY = 'hhjcon-dc-ci-c';
@@ -100,6 +100,15 @@
     if (!url) return '';
     const match = String(url).match(/[?&]no=([^&#]+)/i);
     return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function readLastIconPage(payload) {
+    const lastPage = Number(payload?.max_page);
+    if (payload?.max_page == null || !Number.isInteger(lastPage) || lastPage < 0) {
+      throw new Error('DC 디시콘 목록의 페이지 수를 확인할 수 없습니다.');
+    }
+    if (lastPage > MAX_PAGE) throw new Error(`보유 디시콘이 ${MAX_PAGE + 1}페이지를 초과해 동기화할 수 없습니다.`);
+    return lastPage;
   }
 
   function walk(value, visitor, seen = new Set()) {
@@ -245,8 +254,8 @@
       fetching = true;
       const fresh = new Map();
       try {
-        for (let page = 1; page <= MAX_PAGE; page += 1) {
-          const before = fresh.size;
+        let lastPage = 0;
+        for (let page = 0; page <= lastPage; page += 1) {
           const body = new URLSearchParams({ ci_t: token, target: 'icon', page: String(page) }).toString();
           const responseText = await requestText({
             method: 'POST',
@@ -258,10 +267,9 @@
               'Referer': location.href
             }
           });
-          let payload;
-          try { payload = JSON.parse(responseText); } catch { break; }
+          const payload = JSON.parse(responseText);
+          if (page === 0) lastPage = readLastIconPage(payload);
           harvestDetailMap(payload, fresh);
-          if (fresh.size === before) break;
         }
         if (fresh.size) {
           extraDetailMap.clear();
@@ -601,10 +609,8 @@
     const packageMap = new Map();
     const conMap = new Map();
 
-    let stableEmptyPages = 0;
-    for (let page = 1; page <= MAX_PAGE; page += 1) {
-      const beforePackages = packageMap.size;
-      const beforeCons = conMap.size;
+    let lastPage = 0;
+    for (let page = 0; page <= lastPage; page += 1) {
       const body = new URLSearchParams({ ci_t: ciT, target: 'icon', page: String(page) }).toString();
       const responseText = await requestText({
         method: 'POST',
@@ -617,10 +623,8 @@
         }
       });
       const payload = parseJson(responseText);
+      if (page === 0) lastPage = readLastIconPage(payload);
       harvestPage(payload, packageMap, conMap, writeUrl.href);
-      const changed = packageMap.size !== beforePackages || conMap.size !== beforeCons;
-      stableEmptyPages = changed ? 0 : stableEmptyPages + 1;
-      if (stableEmptyPages >= 1) break;
     }
 
     if (!packageMap.size || !conMap.size) {

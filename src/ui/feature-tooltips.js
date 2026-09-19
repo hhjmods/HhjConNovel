@@ -81,6 +81,29 @@ const descriptions = [
   ['.text-format-toolbar [data-action="remove-format"]', '서식 초기화', '선택한 글자의 서식을 지웁니다.']
 ];
 
+const bridgeHelp = document.querySelector('.bridge-help');
+if (bridgeHelp) {
+  const introKey = 'hhjcon-bridge-help-intro-shown';
+  let shouldShowIntro = true;
+  try {
+    shouldShowIntro = localStorage.getItem(introKey) !== 'yes';
+    if (shouldShowIntro) localStorage.setItem(introKey, 'yes');
+  } catch { /* 저장소가 막힌 경우 현재 방문에서만 표시 */ }
+
+  if (shouldShowIntro) {
+    bridgeHelp.classList.add('bridge-help-intro-open');
+    const closeIntro = () => {
+      bridgeHelp.classList.remove('bridge-help-intro-open');
+      document.removeEventListener('pointerdown', closeIntro, true);
+      document.removeEventListener('keydown', closeIntro, true);
+      window.removeEventListener('scroll', closeIntro, true);
+    };
+    document.addEventListener('pointerdown', closeIntro, true);
+    document.addEventListener('keydown', closeIntro, true);
+    window.addEventListener('scroll', closeIntro, true);
+  }
+}
+
 const toggle = document.getElementById('tooltipToggle');
 if (toggle) {
   const key = 'hhjcon-feature-tooltips';

@@ -64,7 +64,8 @@
 }
 .bridge-help-panel strong:not(:first-child) { margin-top: 4px; }
 .bridge-help:hover .bridge-help-panel,
-.bridge-help:focus-within .bridge-help-panel {
+.bridge-help:focus-within .bridge-help-panel,
+.bridge-help.bridge-help-intro-open .bridge-help-panel {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;

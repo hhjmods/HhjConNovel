@@ -56,7 +56,7 @@ const descriptions = [
   ['.story-tools > button:nth-last-child(3)', '위로 이동', '이 블록을 한 칸 위로 옮깁니다. 여러 블록을 선택했다면 함께 이동합니다.'],
   ['.story-tools > button:nth-last-child(2)', '아래로 이동', '이 블록을 한 칸 아래로 옮깁니다. 여러 블록을 선택했다면 함께 이동합니다.'],
   ['.story-tools > button:last-child', '블록 삭제', '이 블록 또는 선택한 블록들을 삭제합니다. 대사가 포함되면 한 번 더 눌러 확인합니다.'],
-  ['.story-tools .con-size-toggle', '대왕콘 전환', '일반콘과 대왕콘 크기를 전환합니다. 여러 콘을 선택했다면 함께 바뀝니다.'],
+  ['.story-tools .con-size-toggle', '대왕콘 전환', '일반콘과 대왕콘 크기를 전환합니다. 여러 콘을 선택했다면 함께 바뀝니다. 대왕콘은 디시에서 대왕콘 미션을 완료해야만 적용됩니다. 당일 글 10개, 댓글 20개 작성 시 대왕디시콘을 3일간 사용할 수 있습니다. 대왕콘 마이너 갤러리를 활용하는것을 추천합니다.'],
   ['.story-drag-handle', '블록 이동 손잡이', '끌어 놓아 이 블록을 원고 안에서 이동합니다. Ctrl/Shift를 누른 채 클릭하면 여러 블록을 선택할 수 있습니다.'],
   ['.story-break, .story-break-count-control, .story-break-count-input', '줄바꿈 블록', target => `이 위치에서 ${Number(target.closest('.story-break')?.dataset.breakCount) || 1}줄 줄바꿈합니다. 숫자 입력칸에서 줄 수를 바꿀 수 있습니다. 연속된 콘 삽입시 필요하다면 콘과 콘 사이 줄바꿈을 위해서도 사용합니다.`],
   ['.story-image-placeholder, .story-image-memo-input', '이미지 자료 위치 마커', '나중에 DC 글쓰기에서 이미지를 넣을 위치를 표시합니다. 메모로 어떤 이미지인지 구분할 수 있습니다.'],

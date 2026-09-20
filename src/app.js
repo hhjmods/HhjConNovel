@@ -19,7 +19,7 @@ import {
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { installBoxSelection } from './core/box-selection.js?v=20260913-2';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260911-1';
-import { renderStoryList } from './story/story-render.js?v=20260917-2';
+import { renderStoryList } from './story/story-render.js?v=20260921-1';
 import { showToast } from './ui/toast.js?v=20260909-2';
 import {
   CON_IDS_MIME,
@@ -27,6 +27,7 @@ import {
   readTransferIds
 } from './story-dnd-utils.js?v=20260906-2';
 import { readStoryCreateText } from './story/story-create-payload.js?v=20260914-1';
+import { materializeStoryBlockClipboardPayload, STORY_BLOCKS_PASTED_EVENT } from './story/story-block-clipboard.js?v=20260921-1';
 
 const DC_WRITE_URL = 'https://gall.dcinside.com/mgallery/board/write/?id=legendofmortal';
 
@@ -302,6 +303,27 @@ async function commitStoryItems(items, selectedItems = []) {
   await saveStory();
   renderStory();
   return true;
+}
+
+export function selectedStoryItemsForClipboard() {
+  return state.story.items
+    .filter(item => state.storySelectedIds.has(item.id))
+    .map(item => structuredClone(item));
+}
+
+export async function pasteStoryBlockClipboardPayload(payload) {
+  const { items, metadataEntries } = materializeStoryBlockClipboardPayload(payload, makeStoryItemId);
+  if (!items.length) return 0;
+  let lastSelectedIndex = -1;
+  state.story.items.forEach((item, index) => {
+    if (state.storySelectedIds.has(item.id)) lastSelectedIndex = index;
+  });
+  const beforeId = lastSelectedIndex >= 0 ? state.story.items[lastSelectedIndex + 1]?.id || null : null;
+  const detail = { entries: metadataEntries, tasks: [] };
+  document.dispatchEvent(new CustomEvent(STORY_BLOCKS_PASTED_EVENT, { detail }));
+  await Promise.all(detail.tasks);
+  await commitStoryItems(insertStoryItemsBefore(state.story.items, items, beforeId), items);
+  return items.length;
 }
 
 export function hasCurrentStoryItems() {

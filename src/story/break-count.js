@@ -1,4 +1,5 @@
 import { getOne, putOne } from '../db.js';
+import { STORY_BLOCKS_PASTED_EVENT } from './story-block-clipboard.js?v=20260921-1';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const DOC_ID = 'break-count-v1';
@@ -13,6 +14,8 @@ if (storyList) {
   };
   let loaded = false;
   let saveChain = Promise.resolve();
+  let resolveReady;
+  const ready = new Promise(resolve => { resolveReady = resolve; });
 
   function countFor(storyId) {
     const value = Number(breakDoc.items?.[storyId]?.count);
@@ -29,7 +32,24 @@ if (storyList) {
     breakDoc.updatedAt = Date.now();
     const snapshot = structuredClone(breakDoc);
     saveChain = saveChain.catch(() => {}).then(() => putOne('documents', snapshot));
+    return saveChain;
   }
+
+  document.addEventListener(STORY_BLOCKS_PASTED_EVENT, event => {
+    if (!Array.isArray(event.detail?.tasks)) return;
+    const entries = event.detail?.entries || [];
+    const apply = () => {
+      let changed = false;
+      entries.forEach(entry => {
+        const count = Number(entry?.metadata?.breakCount);
+        if (!entry?.storyId || !Number.isSafeInteger(count) || count <= 1) return;
+        breakDoc.items[entry.storyId] = { count, updatedAt: Date.now() };
+        changed = true;
+      });
+      return changed ? queueSave() : Promise.resolve();
+    };
+    event.detail.tasks.push(loaded ? apply() : ready.then(apply));
+  });
 
   function setCount(storyId, count) {
     const next = normalizedCount(count);
@@ -125,9 +145,11 @@ if (storyList) {
   getOne('documents', DOC_ID).then(saved => {
     if (saved?.items && typeof saved.items === 'object') breakDoc = saved;
     loaded = true;
+    resolveReady();
     decorateStory();
   }).catch(() => {
     loaded = true;
+    resolveReady();
     decorateStory();
   });
 }

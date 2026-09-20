@@ -1,4 +1,4 @@
-import { addIdsToCollection, commitCollectionDraft } from '../app.js?v=20260917-2';
+import { addIdsToCollection, commitCollectionDraft } from '../app.js?v=20260921-1';
 import { getAll } from '../db.js';
 import { CON_IDS_MIME, readTransferIds, transferHasType } from '../story-dnd-utils.js?v=20260906-2';
 import {

@@ -1,9 +1,10 @@
-import { appendStoryTextBlock } from './app.js?v=20260917-2';
+import { appendStoryTextBlock } from './app.js?v=20260921-1';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { writeStoryCreateTransfer } from './story/story-create-payload.js?v=20260914-1';
 import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260914-1';
 import { DC_HTML_LIMIT } from './story/story-html-utils.js?v=20260912-3';
+import { STORY_BLOCKS_PASTED_EVENT } from './story/story-block-clipboard.js?v=20260921-1';
 
 const storyList = document.getElementById('storyList');
 const editorPanel = document.querySelector('.editor-panel');
@@ -17,15 +18,38 @@ let imageMemoLoaded = false;
 let imageMemoSaveTimer = null;
 let imageMemoSaveChain = Promise.resolve();
 const imageMemoEditedBeforeLoad = new Set();
+let resolveImageMemoReady;
+const imageMemoReady = new Promise(resolve => { resolveImageMemoReady = resolve; });
 
 function queueImageMemoSave() {
   clearTimeout(imageMemoSaveTimer);
-  imageMemoSaveTimer = setTimeout(() => {
-    imageMemoDoc.updatedAt = Date.now();
-    const snapshot = structuredClone(imageMemoDoc);
-    imageMemoSaveChain = imageMemoSaveChain.catch(() => {}).then(() => putOne('documents', snapshot));
-  }, 160);
+  imageMemoSaveTimer = setTimeout(flushImageMemoSave, 160);
 }
+
+function flushImageMemoSave() {
+  clearTimeout(imageMemoSaveTimer);
+  imageMemoSaveTimer = null;
+  imageMemoDoc.updatedAt = Date.now();
+  const snapshot = structuredClone(imageMemoDoc);
+  imageMemoSaveChain = imageMemoSaveChain.catch(() => {}).then(() => putOne('documents', snapshot));
+  return imageMemoSaveChain;
+}
+
+document.addEventListener(STORY_BLOCKS_PASTED_EVENT, event => {
+  if (!Array.isArray(event.detail?.tasks)) return;
+  const entries = event.detail?.entries || [];
+  const apply = () => {
+    let changed = false;
+    entries.forEach(entry => {
+      const text = entry?.metadata?.imageMemo;
+      if (!entry?.storyId || typeof text !== 'string' || !text.trim()) return;
+      imageMemoDoc.items[entry.storyId] = { text, updatedAt: Date.now() };
+      changed = true;
+    });
+    return changed ? flushImageMemoSave() : Promise.resolve();
+  };
+  event.detail.tasks.push(imageMemoLoaded ? apply() : imageMemoReady.then(apply));
+});
 
 function setImageMemo(storyId, value) {
   const text = String(value ?? '');
@@ -218,10 +242,12 @@ getOne('documents', IMAGE_MEMO_DOC_ID).then(saved => {
     });
   }
   imageMemoLoaded = true;
+  resolveImageMemoReady();
   decorateImages();
   scheduleRefresh(0);
 }).catch(() => {
   imageMemoLoaded = true;
+  resolveImageMemoReady();
   decorateImages();
   scheduleRefresh(0);
 });

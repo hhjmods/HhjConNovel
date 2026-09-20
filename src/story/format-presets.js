@@ -1,4 +1,4 @@
-import { createDialog } from '../ui/action-dialogs.js?v=20260917-2';
+import { createDialog } from '../ui/action-dialogs.js?v=20260921-1';
 import { showToast } from '../ui/toast.js?v=20260909-2';
 import {
   FORMAT_PRESET_LIMIT,

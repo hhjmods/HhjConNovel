@@ -1,4 +1,5 @@
 import { getOne, putOne } from '../db.js';
+import { STORY_BLOCKS_PASTED_EVENT } from './story-block-clipboard.js?v=20260921-1';
 
 const storyList = document.getElementById('storyList');
 const DOC_ID = 'con-display-v1';
@@ -11,6 +12,9 @@ if (storyList) {
     updatedAt: Date.now()
   };
   let saveChain = Promise.resolve();
+  let loaded = false;
+  let resolveReady;
+  const ready = new Promise(resolve => { resolveReady = resolve; });
 
   function isBig(storyId) {
     return Boolean(displayDoc.items?.[storyId]?.big);
@@ -20,7 +24,23 @@ if (storyList) {
     displayDoc.updatedAt = Date.now();
     const snapshot = structuredClone(displayDoc);
     saveChain = saveChain.catch(() => {}).then(() => putOne('documents', snapshot));
+    return saveChain;
   }
+
+  document.addEventListener(STORY_BLOCKS_PASTED_EVENT, event => {
+    if (!Array.isArray(event.detail?.tasks)) return;
+    const entries = event.detail?.entries || [];
+    const apply = () => {
+      let changed = false;
+      entries.forEach(entry => {
+        if (!entry?.storyId || entry.metadata?.big !== true) return;
+        displayDoc.items[entry.storyId] = { big: true, updatedAt: Date.now() };
+        changed = true;
+      });
+      return changed ? queueSave() : Promise.resolve();
+    };
+    event.detail.tasks.push(loaded ? apply() : ready.then(apply));
+  });
 
   function applyRowState(row, button) {
     const storyId = row.dataset.storyId;
@@ -81,6 +101,12 @@ if (storyList) {
 
   getOne('documents', DOC_ID).then(saved => {
     if (saved?.items && typeof saved.items === 'object') displayDoc = saved;
+    loaded = true;
+    resolveReady();
     decorateStory();
-  }).catch(() => decorateStory());
+  }).catch(() => {
+    loaded = true;
+    resolveReady();
+    decorateStory();
+  });
 }

@@ -1,4 +1,4 @@
-import { applyStoryDropTransfer } from './app.js?v=20260917-2';
+import { applyStoryDropTransfer } from './app.js?v=20260921-1';
 import { hasStoryAreaPayload, storyAreaDropEffect } from './story-dnd-utils.js?v=20260906-2';
 
 const storyList = document.getElementById('storyList');

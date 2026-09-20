@@ -1,5 +1,6 @@
 import { getOne, putOne } from '../db.js';
 import { sanitizeRichHtml as sanitizeHtml } from './rich-html.js?v=20260914-1';
+import { STORY_BLOCKS_PASTED_EVENT } from './story-block-clipboard.js?v=20260921-1';
 
 const BREAK_SENTINEL = '\uE000HHJCON_BREAK\uE001';
 const RICH_DOC_ID = 'rich-text-v1';
@@ -15,6 +16,8 @@ if (storyList && editorPanel && editorHeader) {
   let activeEditor = null;
   let activeRow = null;
   let savedRange = null;
+  let resolveRichDocReady;
+  const richDocReady = new Promise(resolve => { resolveRichDocReady = resolve; });
 
   const toolbar = document.createElement('div');
   toolbar.className = 'text-format-toolbar';
@@ -132,6 +135,26 @@ if (storyList && editorPanel && editorHeader) {
     richDoc.updatedAt = Date.now();
     return putOne('documents', richDoc).catch(() => {});
   }
+
+  document.addEventListener(STORY_BLOCKS_PASTED_EVENT, event => {
+    if (!Array.isArray(event.detail?.tasks)) return;
+    const entries = event.detail?.entries || [];
+    const apply = () => {
+      let changed = false;
+      entries.forEach(entry => {
+        const rich = entry?.metadata?.rich;
+        if (!entry?.storyId || !rich || typeof rich.text !== 'string' || typeof rich.html !== 'string') return;
+        richDoc.items[entry.storyId] = {
+          text: rich.text,
+          html: sanitizeHtml(rich.html),
+          updatedAt: Date.now()
+        };
+        changed = true;
+      });
+      return changed ? flushSave() : Promise.resolve();
+    };
+    event.detail.tasks.push(richDocLoaded ? apply() : richDocReady.then(apply));
+  });
 
   function plainToHtml(text) {
     const box = document.createElement('div');
@@ -385,9 +408,11 @@ if (storyList && editorPanel && editorHeader) {
   getOne('documents', RICH_DOC_ID).then(saved => {
     if (saved?.items && typeof saved.items === 'object') richDoc = saved;
     richDocLoaded = true;
+    resolveRichDocReady();
     upgradeStory();
   }).catch(() => {
     richDocLoaded = true;
+    resolveRichDocReady();
     upgradeStory();
   });
 }

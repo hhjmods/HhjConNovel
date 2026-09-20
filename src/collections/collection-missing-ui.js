@@ -10,7 +10,7 @@ export async function showMissingConNotice(meta) {
   const purchaseUrl = makeDcconPurchaseUrl(meta);
   if (!purchaseUrl) return alert(message);
 
-  const { showConfirm } = await import('../ui/action-dialogs.js?v=20260917-2');
+  const { showConfirm } = await import('../ui/action-dialogs.js?v=20260921-1');
   const openPurchase = await showConfirm(message, {
     title: '미보유 디시콘', cancelText: '닫기', confirmText: '구매 페이지 열기'
   });

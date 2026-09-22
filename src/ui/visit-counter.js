@@ -15,7 +15,6 @@ export function planVisit(currentUrl, navigationType) {
 
 function sendVisit(endpoint) {
   if (!endpoint) return;
-  if (typeof navigator.sendBeacon === 'function' && navigator.sendBeacon(endpoint)) return;
   fetch(endpoint, { method: 'POST', mode: 'no-cors', keepalive: true }).catch(() => {});
 }
 

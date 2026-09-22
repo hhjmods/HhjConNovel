@@ -24,11 +24,12 @@ async function checkForUpdate() {
   try {
     const current = document.querySelector('meta[name="hhjcon-app-version"]')?.content;
     if (!validVersion(current)) return;
+    const currentUrl = location.href;
     const manifestUrl = new URL('./version.json', document.baseURI);
     manifestUrl.searchParams.set('_', String(Date.now()));
     const response = await fetch(manifestUrl, { cache: 'no-store' });
     if (!response.ok) return;
-    const nextUrl = nextVersionUrl(location.href, current, (await response.json())?.version);
+    const nextUrl = nextVersionUrl(currentUrl, current, (await response.json())?.version);
     if (nextUrl) location.replace(nextUrl);
   } catch {
     // 오프라인이거나 확인에 실패하면 현재 버전을 그대로 사용한다.

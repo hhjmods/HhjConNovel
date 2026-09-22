@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS daily_visits (
+  date TEXT PRIMARY KEY,
+  count INTEGER NOT NULL
+);

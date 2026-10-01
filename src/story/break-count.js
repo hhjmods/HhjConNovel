@@ -149,14 +149,15 @@ if (storyList) {
   }
 
   function syncAfterBreakMarker(row, count) {
-    const existing = row.nextElementSibling?.classList.contains('story-con-after-break-marker')
-      ? row.nextElementSibling
-      : null;
-    if (count > 0) {
+    const existing = storyList.querySelector(`:scope > .story-con-after-break-marker[data-story-id="${CSS.escape(row.dataset.storyId)}"]`);
+    let nextStory = row.nextElementSibling;
+    while (nextStory && !nextStory.classList.contains('story-item')) nextStory = nextStory.nextElementSibling;
+    if (count > 0 && nextStory?.classList.contains('story-con')) {
       const marker = existing || document.createElement('br');
       marker.className = 'story-con-after-break-marker';
+      marker.dataset.storyId = row.dataset.storyId;
       marker.setAttribute('aria-hidden', 'true');
-      if (!existing) row.after(marker);
+      storyList.insertBefore(marker, nextStory);
     } else {
       existing?.remove();
     }

@@ -132,10 +132,13 @@ for (const [path, source] of [
   if (!source.includes(`document.addEventListener('${storyRenderEvent}'`)) fail(`${path} no longer uses the explicit story render event`);
   if (source.includes('new MutationObserver')) fail(`${path} reintroduced story render observation`);
 }
-if (!index.includes('./src/story/break-count.js?v=20261001-2')
+if (!index.includes('./src/story/break-count.js?v=20261001-3')
   || !index.includes('./src/story/con-size-mode.js?v=20260921-1')
   || !index.includes('./src/story/text-formatting.js?v=20260921-1')) {
   fail('index.html story decorator cache versions are not canonical');
+}
+if (!files.breakCount.includes('storyList.insertBefore(marker, nextStory);')) {
+  fail('con trailing break marker must stay after the insertion slot so the next row remains left-aligned');
 }
 if (!index.includes('./assets/styles/story-con-controls.css?v=20260914-1')
   || !files.conSizeStyles.includes('width: 156px;')

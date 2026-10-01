@@ -1,4 +1,4 @@
-import { buildStoryHtmlSnapshot } from './story-html.js?v=20260914-1';
+import { buildStoryHtmlSnapshot } from './story-html.js?v=20260923-1';
 import { DC_HTML_LIMIT } from './story-html-utils.js?v=20260912-3';
 import { showToast } from '../ui/toast.js?v=20260909-2';
 

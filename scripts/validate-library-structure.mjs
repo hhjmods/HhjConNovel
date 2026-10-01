@@ -329,7 +329,7 @@ if (!layoutResizer.includes('const MIN_RATIO = 0.3;')
 if (!index.includes('id="workspaceSplitter"')
   || !index.includes('data-tooltip-title="화면 구분선"')
   || !index.includes('data-tooltip-anchor="pointer"')
-  || !index.includes('./src/ui/feature-tooltips.js?v=20260921-3')
+  || !index.includes('./src/ui/feature-tooltips.js?v=20260923-1')
   || !featureTooltips.includes("active.dataset.tooltipAnchor === 'pointer'")
   || !featureTooltips.includes('left: rect.left, width: rect.width, top: pointerY, bottom: pointerY')) {
   fail('workspace splitter tooltip must use the shared pointer-anchored tooltip');
@@ -443,13 +443,13 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy):not(.story-format-presets)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
   || !index.includes('./assets/styles/story-output-tools.css?v=20260916-1')
-  || !index.includes('./src/story-output-tools.js?v=20260921-1')
-  || !index.includes('./src/story/story-html-copy.js?v=20260914-2')
+  || !index.includes('./src/story-output-tools.js?v=20260923-1')
+  || !index.includes('./src/story/story-html-copy.js?v=20260923-1')
   || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle):not(.story-format-presets)")
   || !storyOutputTools.includes('button.disabled = previewMode')
-  || !storyOutputTools.includes("from './story/story-html.js?v=20260914-1'")
+  || !storyOutputTools.includes("from './story/story-html.js?v=20260923-1'")
   || !storyOutputTools.includes("toolbar.insertBefore(toggle, toolbar.querySelector('.story-html-copy'))")
-  || !storyHtmlCopy.includes("from './story-html.js?v=20260914-1'")
+  || !storyHtmlCopy.includes("from './story-html.js?v=20260923-1'")
   || !storyHtmlCopy.includes('if (toggle) toggle.after(copyButton)')) {
   fail('story output presentation must stay in its dedicated stylesheet');
 }

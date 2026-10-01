@@ -4,7 +4,7 @@ import {
   parseStoryBlockClipboardPayload,
   STORY_BLOCK_CLIPBOARD_MIME
 } from '../story/story-block-clipboard.js?v=20260921-1';
-import { BREAK_SENTINEL, IMAGE_SENTINEL } from '../story/story-html.js?v=20260914-1';
+import { BREAK_SENTINEL, IMAGE_SENTINEL } from '../story/story-html.js?v=20260923-1';
 import { showToast } from './toast.js?v=20260909-2';
 
 const storyList = document.getElementById('storyList');

@@ -95,7 +95,7 @@ const directAppClients = [
   ['src/story-insertion.js', files.insertion, '20260921-1'],
   ['src/story-con-run-end-drop.js', files.runEnd, '20260921-1'],
   ['src/story-tail-blank-drop.js', files.tail, '20260921-1'],
-  ['src/story-output-tools.js', files.outputTools, '20260921-1']
+  ['src/story-output-tools.js', files.outputTools, '20260923-1']
 ];
 for (const [path, source, cacheVersion] of directAppClients) {
   if (!source.includes(directAppImport)) fail(`${path} does not import canonical app module version`);
@@ -132,7 +132,7 @@ for (const [path, source] of [
   if (!source.includes(`document.addEventListener('${storyRenderEvent}'`)) fail(`${path} no longer uses the explicit story render event`);
   if (source.includes('new MutationObserver')) fail(`${path} reintroduced story render observation`);
 }
-if (!index.includes('./src/story/break-count.js?v=20260921-1')
+if (!index.includes('./src/story/break-count.js?v=20261001-2')
   || !index.includes('./src/story/con-size-mode.js?v=20260921-1')
   || !index.includes('./src/story/text-formatting.js?v=20260921-1')) {
   fail('index.html story decorator cache versions are not canonical');

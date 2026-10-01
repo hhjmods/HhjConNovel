@@ -11,6 +11,11 @@ const CON_DISPLAY_DOC_ID = 'con-display-v1';
 const BREAK_COUNT_DOC_ID = 'break-count-v1';
 const IMAGE_MEMO_DOC_ID = 'image-marker-memo-v1';
 
+export function normalizeAfterBreakCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+}
+
 function replaceLiteralNewlines(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const targets = [];
@@ -113,6 +118,13 @@ function breakCountFor(row, breakDoc, storyId) {
   return Number.isInteger(saved) && saved >= 1 ? saved : 1;
 }
 
+function afterBreakCountFor(row, breakDoc, storyId) {
+  const liveInput = row?.querySelector('.story-con-after-break-input');
+  if (liveInput) return normalizeAfterBreakCount(liveInput.value);
+  if (row?.dataset.afterBreakCount !== undefined) return normalizeAfterBreakCount(row.dataset.afterBreakCount);
+  return normalizeAfterBreakCount(breakDoc?.items?.[storyId]?.afterCount);
+}
+
 function imageMemoFor(row, memoDoc, storyId) {
   const liveInput = row?.querySelector('.story-image-memo-input');
   if (liveInput) return String(liveInput.value || '').trim();
@@ -169,6 +181,12 @@ export async function buildStoryHtmlSnapshot(root = document.getElementById('sto
       const big = row?.classList.contains('story-con-big') || Boolean(displayDoc?.items?.[item.id]?.big);
       if (!validDcConSource(con?.imageUrl || con?.thumbnailUrl || '')) missingConCount += 1;
       conBuffer.push(buildDcConHtml(item, con, big));
+      const afterCount = afterBreakCountFor(row, breakDoc, item.id);
+      if (afterCount > 0) {
+        flushCons();
+        breakCount += afterCount;
+        for (let index = 0; index < afterCount; index += 1) htmlParts.push('<p><br></p>');
+      }
       continue;
     }
 

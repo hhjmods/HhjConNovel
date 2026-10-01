@@ -28,3 +28,77 @@
   padding: 1px 5px;
   text-align: center;
 }
+
+.story-con {
+  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-rows: 104px auto;
+  align-items: start;
+}
+
+.story-con.story-con-big {
+  grid-template-rows: 204px auto;
+}
+
+.story-con img,
+.story-con .missing-thumb {
+  align-self: start;
+}
+
+.story-con .story-tools {
+  justify-self: center;
+}
+
+.story-con > span {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+}
+
+.story-con-after-break-control {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  display: grid;
+  gap: 3px;
+  width: 48px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.story-con-after-break-control > span {
+  grid-column: auto;
+  grid-row: auto;
+  overflow: visible;
+  font-size: inherit;
+}
+
+.story-con-after-break-input {
+  box-sizing: border-box;
+  width: 48px;
+  height: 24px;
+  padding: 1px 3px;
+  text-align: center;
+}
+
+.story-con-after-break-control.active {
+  color: #ffd58c;
+}
+
+.story-con-after-break-control.active .story-con-after-break-input {
+  background: rgba(255, 184, 77, .10);
+  border-color: #765d32;
+  color: #ffd58c;
+}
+
+:root[data-theme="light"] .story-con-after-break-control.active {
+  color: #815800;
+}
+
+:root[data-theme="light"] .story-con-after-break-control.active .story-con-after-break-input {
+  background: #fff8e8;
+  border-color: #d7b66b;
+  color: #815800;
+}

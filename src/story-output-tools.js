@@ -2,7 +2,7 @@ import { appendStoryTextBlock } from './app.js?v=20260921-1';
 import { getOne, putOne } from './db.js';
 import { writeStoryTransfer } from './story-dnd-utils.js?v=20260906-2';
 import { writeStoryCreateTransfer } from './story/story-create-payload.js?v=20260914-1';
-import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260914-1';
+import { buildStoryHtmlSnapshot, IMAGE_PLACEHOLDER_TEXT, IMAGE_SENTINEL } from './story/story-html.js?v=20260923-1';
 import { DC_HTML_LIMIT } from './story/story-html-utils.js?v=20260912-3';
 import { STORY_BLOCKS_PASTED_EVENT } from './story/story-block-clipboard.js?v=20260921-1';
 

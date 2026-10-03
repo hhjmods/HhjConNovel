@@ -39,10 +39,15 @@ export function exportSave(save) {
 export function exportBundle(saves, folderName = '', folders = []) {
   return {
     format: BUNDLE_FORMAT,
-    version: BUNDLE_VERSION,
+    version: folders.some(folder => folder.folders?.length) ? 2 : BUNDLE_VERSION,
     exportedAt: new Date().toISOString(),
     ...(folderName ? { folderName } : {}),
-    ...(folders.length ? { folders: folders.map(folder => ({ name: folder.name, saves: folder.saves.map(exportSave) })) } : {}),
+    ...(folders.length ? { folders: folders.map(folder => ({
+      name: folder.name, saves: folder.saves.map(exportSave),
+      ...(folder.folders?.length ? { folders: folder.folders.map(child => ({
+        name: child.name, saves: child.saves.map(exportSave)
+      })) } : {})
+    })) } : {}),
     saves: saves.map(exportSave)
   };
 }
@@ -78,11 +83,13 @@ function parseSave(data) {
   };
 }
 
-function parseFolder(name, saves) {
+function parseFolder(name, saves, children = [], depth = 0) {
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 40 || !Array.isArray(saves)) {
     throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
   }
-  return { name: name.trim(), saves: saves.map(parseSave) };
+  if (!Array.isArray(children) || depth > 0 && children.length) throw new Error('원고 폴더는 두 단계까지만 불러올 수 있습니다.');
+  const folders = children.map(child => parseFolder(child?.name, child?.saves, child?.folders || [], depth + 1));
+  return { name: name.trim(), saves: saves.map(parseSave), ...(folders.length ? { folders } : {}) };
 }
 
 export function parseImportData(data) {
@@ -91,7 +98,7 @@ export function parseImportData(data) {
   if (data?.format === BUNDLE_FORMAT) {
     const hasFolder = Object.hasOwn(data, 'folderName');
     const hasFolders = Object.hasOwn(data, 'folders');
-    if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.saves) || hasFolder && hasFolders
+    if (![BUNDLE_VERSION, 2].includes(Number(data.version)) || !Array.isArray(data.saves) || hasFolder && hasFolders
       || hasFolders && (!Array.isArray(data.folders) || !data.folders.length)
       || !hasFolder && !hasFolders && !data.saves.length) {
       throw new Error('지원하지 않는 콘문학 백업 파일입니다.');
@@ -99,7 +106,7 @@ export function parseImportData(data) {
     return {
       saves: hasFolder ? [] : data.saves.map(parseSave),
       folders: hasFolder ? [parseFolder(data.folderName, data.saves)]
-        : hasFolders ? data.folders.map(folder => parseFolder(folder?.name, folder?.saves)) : []
+        : hasFolders ? data.folders.map(folder => parseFolder(folder?.name, folder?.saves, folder?.folders || [])) : []
     };
   }
   return { saves: [parseSave(data)], folders: [] };

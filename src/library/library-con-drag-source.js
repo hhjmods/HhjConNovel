@@ -1,4 +1,5 @@
 import { writeConTransfer } from '../story-dnd-utils.js?v=20260906-2';
+import { beginLibraryDrag, endLibraryDrag } from './library-drag-session.js?v=20261002-1';
 
 const conGrid = document.getElementById('conGrid');
 const selectionStatus = document.getElementById('selectionStatus');
@@ -30,11 +31,13 @@ if (conGrid) {
 
     event.stopImmediatePropagation();
     const ids = selectedIdsForDrag(card);
+    beginLibraryDrag('con');
     writeConTransfer(event.dataTransfer, ids);
     card.classList.add('dragging');
   }, true);
 
   conGrid.addEventListener('dragend', event => {
+    endLibraryDrag('con');
     const card = event.target.closest('.con-card[data-con-id]');
     card?.classList.remove('dragging');
 

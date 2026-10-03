@@ -1,3 +1,5 @@
+import { libraryDragKind } from './library-drag-session.js?v=20261002-1';
+
 export function createMissingThumbnail(label = '미보유콘') {
   const thumbnail = document.createElement('div');
   thumbnail.className = 'missing-thumb';
@@ -48,11 +50,18 @@ export function renderCollectionNavigation(root, { collections, activeId, onSele
   collections.forEach(collection => {
     const row = document.createElement('div');
     row.className = 'collection-row';
+    row.draggable = true;
     row.dataset.collectionId = collection.id;
+    row.dataset.viewType = 'collections';
+    row.dataset.viewId = String(collection.id);
+    row.dataset.viewName = String(collection.name);
     row.classList.toggle('active', collection.id === activeId);
 
     const button = document.createElement('button');
     button.className = 'collection-main';
+    button.dataset.viewType = 'collections';
+    button.dataset.viewId = String(collection.id);
+    button.dataset.viewName = String(collection.name);
     const name = document.createElement('span');
     name.textContent = String(collection.name);
     const count = document.createElement('small');
@@ -61,22 +70,35 @@ export function renderCollectionNavigation(root, { collections, activeId, onSele
     button.addEventListener('click', () => onSelect(collection.id));
 
     row.addEventListener('dragover', event => {
+      if (libraryDragKind() !== 'con') return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'copy';
       row.classList.add('drop-target');
     });
     row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
     row.addEventListener('drop', async event => {
+      if (libraryDragKind() !== 'con') return;
       event.preventDefault();
       row.classList.remove('drop-target');
       await onDrop(event, collection.id);
     });
 
+    const actions = document.createElement('div');
+    actions.className = 'collection-row-actions';
+    actions.dataset.noCollectionDrag = 'true';
+    const rename = document.createElement('button');
+    rename.type = 'button';
+    rename.className = 'icon-button collection-rename-button';
+    rename.setAttribute('aria-label', '콘묶음 이름 변경');
+    rename.dataset.tooltipTitle = '콘묶음 이름 변경';
+    rename.dataset.tooltipDescription = '이 콘묶음의 이름을 바꿉니다.';
     const remove = document.createElement('button');
-    remove.className = 'icon-button';
+    remove.className = 'icon-button collection-delete-button';
+    remove.dataset.noCollectionDrag = 'true';
     remove.title = '콘묶음 삭제';
     remove.textContent = '×';
-    row.append(button, remove);
+    actions.append(rename, remove);
+    row.append(button, actions);
     root.append(row);
   });
   root.dispatchEvent(new Event('hhjcon:library-navigation-rendered'));

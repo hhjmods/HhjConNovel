@@ -1,14 +1,16 @@
-import { getAll } from '../db.js';
+import { getAll, getOne } from '../db.js';
 import { COLLECTION_NAME_MAX_LENGTH } from '../model.js?v=20260912-1';
-import { nextAvailableStoryName } from '../story/story-save-folders.js?v=20260917-1';
+import { COLLECTION_FOLDER_DOCUMENT_ID, normalizeCollectionFolders } from '../collections/collection-folders.js?v=20261004-1';
+import { nextAvailableStoryName } from '../story/story-save-folders.js?v=20261003-2';
 import {
   clearCurrentStory,
   createNamedCollection,
   deleteCollectionById,
-  hasCurrentStoryItems
-} from '../app.js?v=20260921-1';
+  hasCurrentStoryItems,
+  renameCollectionById
+} from '../app.js?v=20261004-1';
 
-const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
+export const COLLECTION_WARNING = '(만들어둔 콘묶음은 브라우저 데이터 삭제시 지워집니다. 콘묶음 내보내기로 백업을 해두십시오.)';
 const PENDING_ALERT_KEY = 'hhjcon-ui-pending-alerts';
 let alertChain = Promise.resolve();
 
@@ -84,6 +86,13 @@ export function showConfirm(message, options = {}) {
     dialog.addEventListener('close', () => resolve(dialog.returnValue === 'confirm'), { once: true });
     dialog.showModal();
     queueMicrotask(() => (options.danger ? cancel : confirm).focus());
+  });
+}
+
+export function confirmNamedItemDeletion(name, kind) {
+  const collection = kind === '콘묶음';
+  return showConfirm(`“${name}” ${kind}${collection ? '을' : '를'} 삭제합니다.\n삭제된 ${kind}${collection ? '은' : '는'} 복구할 수 없습니다.\n정말 삭제하시겠습니까?${collection ? '\n원본 디시콘은 삭제되지 않습니다.' : ''}`, {
+    title: `${kind} 삭제`, confirmText: '삭제', danger: true
   });
 }
 
@@ -217,6 +226,7 @@ document.addEventListener('click', async event => {
 
   if (button.id === 'newCollectionBtn') {
     task = async () => {
+      const folderId = document.getElementById('collectionPanel')?.dataset.folderId || '';
       const name = await showPrompt('새 콘묶음 이름을 입력하세요.', '', {
         title: '새 콘묶음', label: `콘묶음 이름 (최대 ${COLLECTION_NAME_MAX_LENGTH}자)`, confirmText: '만들기', maxLength: COLLECTION_NAME_MAX_LENGTH,
         requiredMessage: '콘묶음 이름을 입력하세요.', note: COLLECTION_WARNING
@@ -227,10 +237,15 @@ document.addEventListener('click', async event => {
       const matches = collections.filter(item => item.name.toLocaleLowerCase('ko-KR') === collectionName.toLocaleLowerCase('ko-KR'));
       if (matches.length) {
         const separateName = nextAvailableStoryName(collectionName, collections.map(item => item.name), COLLECTION_NAME_MAX_LENGTH, true);
+        const folderDocument = await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID);
+        const folders = normalizeCollectionFolders(folderDocument);
+        const folder = folders.find(item => item.id === matches[0].folderId);
+        const parent = folders.find(item => item.id === folder?.parentId);
+        const location = [parent?.name, folder?.name].filter(Boolean).join(' / ');
         const choice = await chooseNameConflict('콘묶음 이름 중복',
-          `“${collectionName}” 콘묶음이 이미 있습니다. 기존 콘묶음을 열거나 “${separateName}”로 새로 만들 수 있습니다.`,
-          matches.map(item => ({ id: item.id, label: `${item.name} · 콘 ${item.items.length}개 · ${item.id.slice(-6)}` })),
-          '기존 콘묶음 열기', '별도 콘묶음 만들기');
+          `“${collectionName}” 콘묶음이 이미 ${location ? `“${location}” 폴더` : '최상위'}에 있습니다.\n콘묶음을 새로 만들지 않고 기존 콘묶음을 열거나 “${separateName}”로 콘묶음을 새로 만들 수 있습니다.`,
+          [{ id: matches[0].id, label: `${matches[0].name} · 콘 ${matches[0].items.length}개` }],
+          '기존 콘묶음 열기', '새로 만들기');
         if (!choice) return;
         if (choice.action === 'existing') {
           const existing = (await getAll('collections')).find(item => item.id === choice.id);
@@ -248,19 +263,28 @@ document.addEventListener('click', async event => {
       if ((await getAll('collections')).some(item => item.name.toLocaleLowerCase('ko-KR') === collectionName.toLocaleLowerCase('ko-KR'))) {
         throw new Error('같은 이름의 콘묶음이 새로 생겼습니다. 다시 확인해주세요.');
       }
-      const collectionId = await createNamedCollection(collectionName);
+      const collectionId = await createNamedCollection(collectionName, folderId);
       document.dispatchEvent(new CustomEvent('hhjcon:collection-created', {
         detail: { id: collectionId, name: collectionName }
       }));
     };
-  } else if (button.matches('#collectionList .collection-row > .icon-button')) {
+  } else if (button.matches('#collectionList .collection-rename-button')) {
+    task = async () => {
+      const row = button.closest('.collection-row');
+      const collectionId = row?.dataset.collectionId || '';
+      const currentName = row?.querySelector('.collection-main span')?.textContent?.trim() || '';
+      const name = await showPrompt('새 콘묶음 이름을 입력하세요.', currentName, {
+        title: '콘묶음 이름 변경', label: `콘묶음 이름 (최대 ${COLLECTION_NAME_MAX_LENGTH}자)`,
+        confirmText: '변경', maxLength: COLLECTION_NAME_MAX_LENGTH, requiredMessage: '콘묶음 이름을 입력하세요.'
+      });
+      if (name != null) await renameCollectionById(collectionId, name);
+    };
+  } else if (button.matches('#collectionList .collection-delete-button')) {
     task = async () => {
       const row = button.closest('.collection-row');
       const collectionId = row?.dataset.collectionId || '';
       const name = row?.querySelector('.collection-main span')?.textContent?.trim() || '선택한';
-      const ok = await showConfirm(`“${name}” 콘묶음을 삭제할까요?\n콘묶음만 삭제되며 원본 디시콘은 삭제되지 않습니다.`, {
-        title: '콘묶음 삭제', confirmText: '삭제', danger: true
-      });
+      const ok = await confirmNamedItemDeletion(name, '콘묶음');
       if (ok) await deleteCollectionById(collectionId);
     };
   } else if (button.id === 'clearStoryBtn') {

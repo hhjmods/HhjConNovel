@@ -14,7 +14,7 @@ export function createCollectionEditControls(container) {
   const cancelButton = document.createElement('button');
   cancelButton.className = 'small';
   cancelButton.textContent = '취소';
-  root.append(editButton, deleteButton, saveButton, cancelButton);
+  root.append(editButton, saveButton, deleteButton, cancelButton);
   container.prepend(root);
 
   return {
@@ -23,8 +23,9 @@ export function createCollectionEditControls(container) {
     saveButton,
     cancelButton,
     render({ isCollection, editing, hasItems }) {
-      root.classList.toggle('hidden', !isCollection || (!editing && !hasItems));
-      editButton.classList.toggle('hidden', !hasItems || editing);
+      root.classList.toggle('hidden', !isCollection);
+      editButton.classList.toggle('hidden', editing);
+      editButton.disabled = !hasItems;
       deleteButton.classList.toggle('hidden', !isCollection || !editing);
       saveButton.classList.toggle('hidden', !isCollection || !editing);
       cancelButton.classList.toggle('hidden', !isCollection || !editing);

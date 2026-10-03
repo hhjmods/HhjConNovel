@@ -4,6 +4,14 @@ const RELOAD_TOAST_KEY = 'hhjcon-reload-toast';
 export function showToast(message, duration = 2400) {
   const toast = document.getElementById('toast');
   if (!toast) return;
+  const dialogs = document.querySelectorAll?.('dialog:modal') || [];
+  const dialog = dialogs[dialogs.length - 1];
+  if (dialog && toast.parentElement !== dialog) {
+    dialog.append(toast);
+    dialog.addEventListener('close', () => {
+      if (toast.parentElement === dialog) document.body.append(toast);
+    }, { once: true });
+  }
   toast.textContent = String(message);
   toast.classList.add('show');
   clearTimeout(hideTimer);

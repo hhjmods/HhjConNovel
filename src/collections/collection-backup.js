@@ -1,8 +1,10 @@
-import { getAll, putMany } from '../db.js';
+import { getAll, getOne, putOne } from '../db.js';
 import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
 import { downloadJson, makeTimestampedBackupName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
-import { exportCollection, importCollectionFile } from '../model.js?v=20260912-1';
-import { saveToastForReload } from '../ui/toast.js?v=20260909-2';
+import { COLLECTION_NAME_MAX_LENGTH, exportCollection, importCollectionFile } from '../model.js?v=20260912-1';
+import { showToast } from '../ui/toast.js?v=20261003-1';
+import { COLLECTION_FOLDER_DOCUMENT_ID, COLLECTION_FOLDER_NAME_MAX_LENGTH, collectionFolderTree, collectionFoldersIn, makeCollectionFolderDocument, nextCollectionOrder, normalizeCollectionFolders, sortCollectionsInFolder, validateCollectionFolderName } from './collection-folders.js?v=20261004-1';
+import { nextAvailableStoryName } from '../story/story-save-folders.js?v=20261003-2';
 
 const BUNDLE_FORMAT = 'hhjcon-collections';
 const BUNDLE_VERSION = 1;
@@ -12,6 +14,37 @@ const importInput = document.getElementById('importCollectionInput');
 
 function mapById(items) {
   return new Map(items.map(item => [item.id, item]));
+}
+
+export async function exportCollectionSelection(collectionIds, folderIds = []) {
+  const [collections, cons, packages, folderDocument] = await Promise.all([
+    getAll('collections'), getAll('cons'), getAll('packages'), getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID)
+  ]);
+  const folders = normalizeCollectionFolders(folderDocument);
+  const selectedFolders = folders.filter(folder => folderIds.includes(folder.id) && !folderIds.includes(folder.parentId));
+  const containedIds = new Set(selectedFolders.flatMap(folder => collectionFolderTree(folders, folder.id))
+    .flatMap(folder => sortCollectionsInFolder(collections, folders, folder.id).map(item => item.id)));
+  const selected = collections.filter(item => collectionIds.includes(item.id) && !containedIds.has(item.id));
+  if (!selected.length && !selectedFolders.length) throw new Error('내보낼 콘묶음이나 폴더를 하나 이상 선택하세요.');
+  const consById = mapById(cons);
+  const packagesById = mapById(packages);
+  const encode = item => exportCollection(item, consById, packagesById);
+  if (selected.length === 1 && !selectedFolders.length) {
+    downloadJson(`${sanitizeDownloadName(selected[0].name, 'collection')}.hhjconset.json`, encode(selected[0]));
+    return;
+  }
+  downloadJson(makeTimestampedBackupName('콘묶음_백업', '.hhjconset.json'), {
+    format: BUNDLE_FORMAT,
+    version: selectedFolders.some(folder => collectionFoldersIn(folders, folder.id).length) ? 2 : BUNDLE_VERSION,
+    exportedAt: new Date().toISOString(),
+    collections: selected.map(encode),
+    folders: selectedFolders.map(folder => ({
+      name: folder.name, collections: sortCollectionsInFolder(collections, folders, folder.id).map(encode),
+      ...(collectionFoldersIn(folders, folder.id).length ? { folders: collectionFoldersIn(folders, folder.id).map(child => ({
+        name: child.name, collections: sortCollectionsInFolder(collections, folders, child.id).map(encode)
+      })) } : {})
+    }))
+  });
 }
 
 function activeCollectionName() {
@@ -100,7 +133,7 @@ async function handleExport() {
     getAll('packages')
   ]);
 
-  collections.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  collections.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   if (!collections.length) {
     alert('내보낼 콘묶음이 없습니다.');
     return;
@@ -136,16 +169,38 @@ async function handleExport() {
   dialog.showModal();
 }
 
-function importData(data) {
+export function parseCollectionBackup(data) {
   const typeMessage = wrongBackupTypeMessage(data?.format, 'collection');
   if (typeMessage) throw new Error(typeMessage);
   if (data?.format === BUNDLE_FORMAT) {
-    if (Number(data.version) !== BUNDLE_VERSION || !Array.isArray(data.collections) || !data.collections.length) {
+    if (![BUNDLE_VERSION, 2].includes(Number(data.version)) || !Array.isArray(data.collections) || !Array.isArray(data.folders || [])
+      || !data.collections.length && !(data.folders || []).length) {
       throw new Error('지원하지 않는 콘묶음 백업 파일입니다.');
     }
-    return data.collections.map(item => importCollectionFile(item));
+    return {
+      collections: data.collections.map(item => importCollectionFile(item)),
+      folders: (data.folders || []).map(folder => parseCollectionFolder(folder))
+    };
   }
-  return [importCollectionFile(data)];
+  return { collections: [importCollectionFile(data)], folders: [] };
+}
+
+function parseCollectionFolder(folder, depth = 0) {
+  if (!Array.isArray(folder?.collections) || !Array.isArray(folder.folders || []) || depth > 0 && folder.folders?.length) {
+    throw new Error('콘묶음 폴더 백업 형식이 올바르지 않습니다. 폴더는 두 단계까지만 불러올 수 있습니다.');
+  }
+  const children = (folder.folders || []).map(child => parseCollectionFolder(child, depth + 1));
+  return { name: validateCollectionFolderName(folder.name, []), collections: folder.collections.map(item => importCollectionFile(item)),
+    ...(children.length ? { folders: children } : {}) };
+}
+
+export function nameImportedCollections(collections, existingNames) {
+  const names = [...existingNames];
+  return collections.map(collection => {
+    const name = nextAvailableStoryName(collection.name, names, COLLECTION_NAME_MAX_LENGTH, true);
+    names.push(name);
+    return { ...collection, name };
+  });
 }
 
 async function handleImport() {
@@ -154,34 +209,77 @@ async function handleImport() {
   if (!files.length) return;
 
   const imported = [];
+  const importedFolders = [];
   const failures = [];
+  const renamed = [];
 
   for (const file of files) {
     try {
       const data = JSON.parse(await file.text());
-      imported.push(...importData(data));
+      const parsed = parseCollectionBackup(data);
+      imported.push(...parsed.collections);
+      importedFolders.push(...parsed.folders);
     } catch (error) {
       failures.push(`${file.name}: ${error.message}`);
     }
   }
 
-  if (imported.length) {
-    const baseTime = Date.now();
-    imported.forEach((collection, index) => {
-      collection.createdAt = baseTime + index;
-      collection.updatedAt = baseTime + index;
+  const folderCount = importedFolders.reduce((count, folder) => count + 1 + (folder.folders?.length || 0), 0);
+  const rootCount = imported.length;
+
+  if (imported.length || importedFolders.length) {
+    const existingCollections = await getAll('collections');
+    const existingNames = existingCollections.map(collection => collection.name);
+    const existing = normalizeCollectionFolders(await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID));
+    const rootOrder = nextCollectionOrder(existingCollections, existing, '');
+    const created = [];
+    if (importedFolders.length) {
+      const folderRenames = [];
+      importedFolders.forEach(group => {
+        const name = nextAvailableStoryName(group.name, collectionFoldersIn([...existing, ...created]).map(folder => folder.name), COLLECTION_FOLDER_NAME_MAX_LENGTH, true);
+        const folder = { id: `collection-folder_${crypto.randomUUID()}`, name, createdAt: Date.now() };
+        created.push(folder);
+        if (group.name !== name) folderRenames.push(`[최상위][폴더] “${group.name}” → “${name}”`);
+        group.collections.forEach((collection, sortOrder) => imported.push({ ...collection, folderId: folder.id, sortOrder }));
+        (group.folders || []).forEach(child => {
+          const childName = nextAvailableStoryName(child.name, collectionFoldersIn(created, folder.id).map(item => item.name), COLLECTION_FOLDER_NAME_MAX_LENGTH, true);
+          const nested = { id: `collection-folder_${crypto.randomUUID()}`, name: childName, parentId: folder.id, createdAt: Date.now() };
+          created.push(nested);
+          if (child.name !== childName) folderRenames.push(`[${folder.name}][폴더] “${child.name}” → “${childName}”`);
+          child.collections.forEach((collection, sortOrder) => imported.push({ ...collection, folderId: nested.id, sortOrder }));
+        });
+      });
+      await putOne('documents', makeCollectionFolderDocument([...created, ...existing]));
+      renamed.push(...folderRenames);
+    }
+    const namedImported = nameImportedCollections(imported, existingNames);
+    const baseTime = existingCollections.reduce((latest, item) => Math.max(latest, item.createdAt || 0), Date.now());
+    namedImported.forEach((collection, index) => {
+      collection.createdAt = baseTime + namedImported.length - index;
+      collection.updatedAt = collection.createdAt;
+      if (index < rootCount && Number.isFinite(rootOrder)) collection.sortOrder = rootOrder - rootCount + 1 + index;
     });
-    await putMany('collections', imported);
+    const { addImportedCollections } = await import('../app.js?v=20261004-1');
+    await addImportedCollections(namedImported);
+    namedImported.forEach((collection, index) => {
+      if (collection.name !== imported[index].name) {
+        const folder = created.find(item => item.id === collection.folderId);
+        const parent = created.find(item => item.id === folder?.parentId);
+        const path = [parent?.name, folder?.name].filter(Boolean).join(' / ') || '최상위';
+        renamed.push(`[${path}][콘묶음] “${imported[index].name}” → “${collection.name}”`);
+      }
+    });
   }
 
+  if (renamed.length) alert(`백업을 불러오며 중복된 이름이 다음과 같이 변경되었습니다.\n${renamed.join('\n')}`);
   if (failures.length) {
-    alert(`${imported.length ? `${imported.length}개 콘묶음을 불러왔습니다.\n\n` : ''}불러오지 못한 파일이 있습니다.\n${failures.map(message => `- ${message}`).join('\n')}`);
+    alert(`${imported.length || importedFolders.length ? `${folderCount ? `${folderCount}개 폴더와 ` : ''}${imported.length}개 콘묶음을 불러왔습니다.\n\n` : ''}불러오지 못한 파일이 있습니다.\n${failures.map(message => `- ${message}`).join('\n')}`);
   }
 
-  if (!imported.length) return;
+  if (!imported.length && !importedFolders.length) return;
 
-  saveToastForReload(`${imported.length}개 콘묶음을 불러왔습니다.`);
-  location.reload();
+  showToast(`${folderCount ? `${folderCount}개 폴더와 ` : ''}${imported.length}개 콘묶음을 불러왔습니다.`);
+  importInput.dispatchEvent(new Event('hhjcon:collection-imported'));
 }
 
 if (exportButton && importInput) {

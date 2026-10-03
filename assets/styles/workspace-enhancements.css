@@ -9,7 +9,10 @@
 .library-view-tab-main { min-width: 0; max-width: 170px; padding: 8px 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .library-view-tab-close { padding: 7px 8px; color: var(--muted); }
 .library-view-tab-close:hover { color: var(--text); }
-.collection-edit-controls { display: inline-flex; gap: 5px; }
+.library-toolbar .toolbar-actions > .collection-edit-controls { display: inline-flex; flex: 0 0 128px; width: 128px; gap: 4px; }
+.collection-edit-controls button:not(.hidden) { flex: 1 1 0; min-width: 0; padding-inline: 5px; }
+.collection-edit-controls button:first-child:not(.hidden) { flex: 0 0 auto; }
+.library-toolbar .toolbar-actions > #searchInput { flex: 1 1 180px; min-width: 120px; }
 .collection-order-editing { outline: 2px solid #526b97; outline-offset: -2px; }
 .collection-order-editing .con-card { cursor: grab; }
 .collection-order-editing .con-card:active { cursor: grabbing; }

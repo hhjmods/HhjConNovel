@@ -26,8 +26,8 @@ const descriptions = [
   ['#selectAllBtn', '전체 선택', '현재 목록에 표시된 콘을 모두 선택합니다.'],
   ['#clearSelectionBtn', '선택 해제', '현재 선택한 콘을 모두 해제합니다.'],
   ['.collection-edit-controls button:nth-child(1)', '콘 편집', '이 콘묶음에서 콘 삭제나 순서 변경을 시작합니다.'],
-  ['.collection-edit-controls button:nth-child(2)', '선택 콘 삭제', '편집 중 선택한 콘을 콘묶음에서 제거합니다.'],
-  ['.collection-edit-controls button:nth-child(3)', '편집 저장', '콘묶음 편집 내용을 저장합니다.'],
+  ['.collection-edit-controls button:nth-child(2)', '편집 저장', '콘묶음 편집 내용을 저장합니다.'],
+  ['.collection-edit-controls button:nth-child(3)', '선택 콘 삭제', '편집 중 선택한 콘을 콘묶음에서 제거합니다.'],
   ['.collection-edit-controls button:nth-child(4)', '편집 취소', '저장하지 않은 콘묶음 편집을 취소합니다.'],
   ['.story-header-save-actions button:first-child', '원고 저장', '현재 작성 중인 원고를 저장합니다.'],
   ['.story-header-save-actions button:last-child', '원고 목록', '저장한 원고와 폴더를 관리합니다.'],
@@ -42,10 +42,9 @@ const descriptions = [
   ['.story-save-selection-tools > button:nth-child(2)', '선택 항목 삭제', '체크한 원고와 폴더를 삭제합니다. 폴더 안의 원고를 함께 삭제할지 선택할 수 있습니다.'],
   ['.story-save-selection-tools > button:nth-child(3)', '선택 항목 내보내기', '체크한 원고와 폴더를 백업 파일로 내보냅니다.'],
   ['.story-save-selection-tools .file-button', '원고 백업 불러오기', '백업 파일에서 원고를 불러옵니다.'],
-  ['.story-save-location > button', '최상위로 이동', '폴더 밖의 최상위 원고 목록으로 돌아갑니다.'],
-  ['.story-folder-row .story-save-drag-handle', '폴더 이동 손잡이', '끌어 놓아 폴더 순서를 바꿉니다.'],
+  ['.story-save-location > button', '상위 폴더로 이동', '한 단계 위의 원고 목록으로 돌아갑니다. 원고나 폴더를 놓으면 상위 위치로 이동합니다.'],
   ['.story-folder-check, .story-save-check', '항목 선택', '여러 원고와 폴더를 함께 이동·내보내기·삭제할 때 체크합니다.'],
-  ['.story-folder-main', '폴더 열기', '이 폴더에 저장된 원고 목록을 엽니다.'],
+  ['.story-folder-main', '폴더 열기·이동', '클릭하면 원고와 하위 폴더를 열고, 끌면 폴더를 이동합니다. 폴더는 두 단계까지만 만들 수 있습니다.'],
   ['.story-folder-row .story-save-actions > button:nth-child(1)', '폴더 내보내기', '이 폴더와 안의 원고를 백업 파일로 내보냅니다.'],
   ['.story-folder-row .story-save-actions > button:nth-child(2)', '폴더 이름 변경', '폴더 이름을 바꿉니다.'],
   ['.story-folder-row .story-save-actions > button:nth-child(3)', '폴더 삭제', '폴더를 삭제합니다. 안의 원고를 남길지 함께 삭제할지 선택할 수 있습니다.'],
@@ -79,6 +78,32 @@ const descriptions = [
   ['.text-format-toolbar [data-command="strikeThrough"]', '취소선', '선택한 글자에 취소선을 넣거나 해제합니다.'],
   ['.text-format-toolbar [data-action="toggle-align-menu"]', '문단 정렬', '대사를 왼쪽·가운데·오른쪽으로 정렬하거나 해제합니다.'],
   ['.text-format-toolbar [data-action="remove-format"]', '서식 초기화', '선택한 글자의 서식을 지웁니다.']
+];
+
+const collectionManagerDescriptions = [
+  ['.story-save-head .icon-button', '콘묶음 관리 닫기', '콘묶음 관리창을 닫습니다.'],
+  ['[data-action="new-collection"]', '새 콘묶음', '콘을 모아 둘 새 콘묶음을 만듭니다.'],
+  ['[data-action="new-folder"]', '새 폴더', '콘묶음을 정리할 폴더를 만듭니다.'],
+  ['.story-save-select-group > input', '전체 선택', '체크하면 현재 목록의 콘묶음과 폴더를 모두 선택하고, 해제하면 선택을 지웁니다.'],
+  ['.story-save-select-menu summary', '선택 종류', '폴더만 선택하거나 콘묶음만 선택할 수 있습니다.'],
+  ['[data-action="select-folders"]', '폴더 선택', '현재 목록의 폴더만 모두 선택합니다.'],
+  ['[data-action="select-collections"]', '콘묶음 선택', '현재 목록의 콘묶음만 모두 선택합니다.'],
+  ['[data-action="select-clear"]', '선택 해제', '현재 목록의 선택을 모두 지웁니다.'],
+  ['[data-action="delete-selected"]', '선택 항목 삭제', '체크한 콘묶음과 폴더를 삭제합니다. 폴더 안의 콘묶음을 남길지 함께 삭제할지 선택할 수 있습니다.'],
+  ['[data-action="export-selected"]', '선택 항목 내보내기', '체크한 콘묶음과 폴더를 백업 파일로 내보냅니다.'],
+  ['[data-action="import"]', '콘묶음 백업 불러오기', '백업 파일에서 콘묶음과 폴더를 불러옵니다.'],
+  ['[data-action="copy"]', '선택 복사', '체크한 콘묶음을 복사합니다. 폴더는 복사되지 않습니다.'],
+  ['[data-action="paste"]', '붙여넣기', '복사한 콘묶음을 현재 폴더에 붙여넣습니다.'],
+  ['.story-save-location > button', '상위 폴더로 이동', '한 단계 위의 콘묶음 목록으로 돌아갑니다. 콘묶음이나 폴더를 놓으면 상위 위치로 이동합니다.'],
+  ['.story-folder-check, .story-save-check', '항목 선택', '여러 콘묶음과 폴더를 함께 이동·내보내기·삭제할 때 체크합니다.'],
+  ['.story-folder-main', '폴더 열기·이동', '클릭하면 콘묶음과 하위 폴더를 열고, 끌면 폴더를 이동합니다. 폴더는 두 단계까지만 만들 수 있습니다.'],
+  ['[data-action="export-folder"]', '폴더 내보내기', '이 폴더와 안의 콘묶음을 백업 파일로 내보냅니다.'],
+  ['[data-action="rename-folder"]', '폴더 이름 변경', '폴더 이름을 바꿉니다.'],
+  ['[data-action="delete-folder"]', '폴더 삭제', '폴더를 삭제합니다. 안의 콘묶음을 남길지 함께 삭제할지 선택할 수 있습니다.'],
+  ['[data-action="open-collection"]', '콘묶음 열기', '이 콘묶음의 콘 목록을 엽니다.'],
+  ['[data-action="export-collection"]', '콘묶음 내보내기', '이 콘묶음을 백업 파일로 내보냅니다.'],
+  ['[data-action="rename-collection"]', '콘묶음 이름 변경', '이 콘묶음의 이름을 바꿉니다.'],
+  ['[data-action="delete-collection"]', '콘묶음 삭제', '이 콘묶음을 삭제합니다. 삭제 전 확인창이 열립니다.']
 ];
 
 const bridgeHelp = document.querySelector('.bridge-help');
@@ -132,7 +157,8 @@ if (toggle) {
     if (target.dataset.tooltipTitle) {
       return { target, title: target.dataset.tooltipTitle, description: target.dataset.tooltipDescription || '' };
     }
-    for (const [selector, title, description] of descriptions) {
+    const entries = target.closest('.collection-manager-dialog') ? collectionManagerDescriptions : descriptions;
+    for (const [selector, title, description] of entries) {
       if (target.matches(selector)) {
         return { target, title: typeof title === 'function' ? title(target) : title, description: typeof description === 'function' ? description(target) : description };
       }

@@ -1,7 +1,7 @@
 import { getAll, replaceStores } from '../db.js?v=20260906-1';
 import { wrongBackupTypeMessage } from '../core/backup-format.js?v=20260910-1';
 import { downloadJson, makeDatedDefaultName, sanitizeDownloadName } from '../core/json-download.js?v=20260909-3';
-import { saveToastForReload, showToast } from '../ui/toast.js?v=20260909-2';
+import { saveToastForReload, showToast } from '../ui/toast.js?v=20261003-1';
 
 const FORMAT = 'hhjcon-editor-backup';
 const VERSION = 1;

@@ -33,7 +33,7 @@
   display: grid;
   gap: 3px;
   width: max-content;
-  max-width: min(300px, calc(100vw - 16px));
+  max-width: min(360px, calc(100vw - 16px));
   max-height: calc(100dvh - 16px);
   overflow: hidden;
   padding: 8px 10px;
@@ -48,5 +48,5 @@
 }
 .feature-tooltip[hidden] { display: none; }
 .feature-tooltip strong { font-weight: 700; }
-.feature-tooltip span { color: var(--muted); font-size: 11px; }
+.feature-tooltip span { color: var(--muted); font-size: 11px; white-space: pre-line; word-break: keep-all; }
 :root[data-theme="light"] .feature-tooltip { box-shadow: 0 8px 24px rgb(31 41 55 / 16%); }

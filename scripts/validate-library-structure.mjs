@@ -10,12 +10,17 @@ const closeAll = fs.readFileSync('src/library/library-tab-close-all.js', 'utf8')
 const collectionMissingUi = fs.readFileSync('src/collections/collection-missing-ui.js', 'utf8');
 const dcconPurchaseUrl = fs.readFileSync('src/collections/dccon-purchase-url.js', 'utf8');
 const collectionBackup = fs.readFileSync('src/collections/collection-backup.js', 'utf8');
+const collectionManager = fs.readFileSync('src/collections/collection-manager.js', 'utf8');
+const collectionFolders = fs.readFileSync('src/collections/collection-folders.js', 'utf8');
+const libraryConDragSource = fs.readFileSync('src/library/library-con-drag-source.js', 'utf8');
+const libraryDragSession = fs.readFileSync('src/library/library-drag-session.js', 'utf8');
 const editorBackup = fs.readFileSync('src/backup/editor-backup.js', 'utf8');
 const editorBackupStyles = fs.readFileSync('assets/styles/editor-backup.css', 'utf8');
 const backupFormat = fs.readFileSync('src/core/backup-format.js', 'utf8');
 const jsonDownload = fs.readFileSync('src/core/json-download.js', 'utf8');
 const layoutResizer = fs.readFileSync('src/ui/layout-resizer.js', 'utf8');
 const featureTooltips = fs.readFileSync('src/ui/feature-tooltips.js', 'utf8');
+const featureTooltipStyles = fs.readFileSync('assets/styles/feature-tooltip.css', 'utf8');
 const themeInit = fs.readFileSync('src/ui/theme-init.js', 'utf8');
 const appReady = fs.readFileSync('src/ui/app-ready.js', 'utf8');
 const baseStyles = fs.readFileSync('assets/styles/styles.css', 'utf8');
@@ -53,7 +58,7 @@ const navigationRenderEvent = 'hhjcon:library-navigation-rendered';
 const gridRenderEvent = 'hhjcon:library-grid-rendered';
 const tabsRenderEvent = 'hhjcon:library-tabs-rendered';
 const collectionCreatedEvent = 'hhjcon:collection-created';
-const appImport = "../app.js?v=20260921-1";
+const appImport = "../app.js?v=20261004-1";
 const modelImport = "../model.js?v=20260912-1";
 const selectionImport = "../core/selection.js?v=20260907-1";
 const backupFormatImport = "../core/backup-format.js?v=20260910-1";
@@ -73,6 +78,61 @@ if (!libraryRender.includes(`root.dispatchEvent(new Event('${navigationRenderEve
   || workspace.includes('new MutationObserver')) {
   fail('library navigation refresh must use the explicit render event');
 }
+if (!collectionFolders.includes("COLLECTION_FOLDER_DOCUMENT_ID = 'collection-folders-v1'")
+  || !collectionFolders.includes('export function planCollectionPlacement(')
+  || !collectionFolders.includes('export function planCollectionFolderRemoval(')
+  || !workspace.includes("from '../collections/collection-folders.js?v=20261004-1'")
+  || !workspace.includes("getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID)")
+  || !workspace.includes('commitCollectionPlacements(updates)')
+  || !app.includes('export async function commitCollectionPlacements(updates)')
+  || !app.includes('export async function deleteCollectionsByIds(collectionIds)')) {
+  fail('collection folders must use the existing documents store and app collection state commands');
+}
+if (!index.includes('id="manageCollectionsBtn"')
+  || !index.includes('./src/collections/collection-manager.js?v=20261004-1')
+  || !collectionManager.includes("row.draggable = true; row.dataset.kind = 'folder'")
+  || !collectionManager.includes("controlPress = !!event.target.closest('[data-item-id]') && !!event.target.closest('input, .story-save-actions')")
+  || !collectionManager.includes('if (!row || !event.dataTransfer || controlPress)')
+  || !collectionManager.includes('planCollectionSelectionPlacement(')
+  || !collectionManager.includes('planCollectionFolderSelectionPlacement(')
+  || !collectionManager.includes('copyCollectionsByIds(')
+  || !collectionBackup.includes('export async function exportCollectionSelection(')) {
+  fail('collection manager must keep folder, bulk move, copy, and backup actions wired');
+}
+if (!app.includes('export async function addImportedCollections(collections)')
+  || !collectionBackup.includes('await addImportedCollections(namedImported)')
+  || !collectionBackup.includes('nameImportedCollections(imported, existingNames)')
+  || !collectionBackup.includes("importInput.dispatchEvent(new Event('hhjcon:collection-imported'))")
+  || !collectionManager.includes("importInput?.addEventListener('hhjcon:collection-imported', onImport)")
+  || collectionBackup.includes('location.reload()')) {
+  fail('collection backup import must refresh the open manager and app state without reloading');
+}
+if (![workspace, collectionManager, storySaveManager].every(source => source.includes('어떻게 처리할까요?')
+  && source.includes("keep.dataset.tooltipTitle = '폴더 안 내용 남기기'")
+  && source.includes("remove.dataset.tooltipTitle = '폴더 안 내용도 삭제'"))
+  || !storySaveManager.includes("keep.className = 'primary'")
+  || !collectionManager.includes("button('폴더 안 내용도 삭제', 'remove'")
+  || ![workspace, collectionManager, storySaveManager].every(source => source.includes('폴더안의 하위 폴더') && source.includes('상위 폴더로 옮겨 보존합니다.'))
+  || !collectionManager.includes('선택된 폴더 ${folderIds.length}개와 콘묶음 ${collectionIds.length}개를 삭제합니다.')
+  || !storySaveManager.includes('선택된 폴더 ${folderIds.size}개와 원고 ${saveIds.size}개를 삭제합니다.')
+  || !collectionManager.includes("action === 'delete-folder' ? [id] : [], action === 'delete-folder')")
+  || !collectionManager.includes("title: '폴더와 콘묶음 삭제', confirmText: '모두 삭제', danger: true")
+  || !collectionManager.includes('삭제된 콘묶음은 복구할 수 없습니다.')
+  || !workspace.includes("remove.textContent = '폴더 안 내용도 삭제'")) {
+  fail('folder deletion dialogs must share choice labels, tooltips, and warning layout');
+}
+if (!index.includes('id="newCollectionFolderBtn"')
+  || !index.includes('./src/library/library-workspace.js?v=20261004-2')
+  || !index.includes('./src/library/library-con-drag-source.js?v=20261002-1')
+  || !libraryDragSession.includes('export function libraryDragKind()')
+  || !libraryConDragSource.includes("beginLibraryDrag('con')")
+  || !libraryRender.includes("libraryDragKind() !== 'con'")
+  || !workspace.includes("kind === 'con' && folder")
+  || !workspace.includes("event.dataTransfer.dropEffect = 'none'")
+  || !baseStyles.includes('.collection-drop-blocked { outline: 2px dashed #d94f63;')
+  || !workspace.includes("collectionFoldersIn(folders, draggingFolderId).length ? 'collection-drop-blocked'")) {
+  fail('collection folders must visibly reject con drops while accepting collection moves');
+}
 if (!libraryRender.includes(`root.dispatchEvent(new Event('${gridRenderEvent}'))`)
   || !collectionMissingUi.includes(`addEventListener('${gridRenderEvent}', annotateMissingCards)`)
   || collectionMissingUi.includes('new MutationObserver')) {
@@ -80,11 +140,11 @@ if (!libraryRender.includes(`root.dispatchEvent(new Event('${gridRenderEvent}'))
 }
 if (!collectionMissingUi.includes('export async function showMissingConNotice(meta)')
   || !collectionMissingUi.includes("from './dccon-purchase-url.js?v=20260914-1'")
-  || !collectionMissingUi.includes("import('../ui/action-dialogs.js?v=20260921-1')")
+  || !collectionMissingUi.includes("import('../ui/action-dialogs.js?v=20261004-1')")
   || !collectionMissingUi.includes("window.open(purchaseUrl, '_blank', 'noopener,noreferrer')")
   || !dcconPurchaseUrl.includes("const DCCON_SEARCH_URL = 'https://dccon.dcinside.com/new/1/title/'")
   || !dcconPurchaseUrl.includes("!/^\\d+$/.test(sourcePackageId)")
-  || !storyRender.includes("from '../collections/collection-missing-ui.js?v=20260921-1'")
+  || !storyRender.includes("from '../collections/collection-missing-ui.js?v=20261004-1'")
   || !storyRender.includes('showMissingConNotice(conRef)')
   || app.includes('해당 콘을 구매하지 않았습니다.')) {
   fail('library and story missing cons must share one notice function');
@@ -103,11 +163,11 @@ if (!workspace.includes("from './library-tab-render.js?v=20260913-1'")
   || !libraryTabRender.includes('await onDrop(event, view);')) {
   fail('library tab DOM construction must remain delegated to the tab renderer');
 }
-if (!workspace.includes("from './library-edit-controls.js?v=20260914-1'")
+if (!workspace.includes("from './library-edit-controls.js?v=20261002-2'")
   || !workspace.includes('createCollectionEditControls(toolbarActions)')
   || workspace.includes("editControls.className = 'collection-edit-controls'")
   || !libraryEditControls.includes("root.className = 'collection-edit-controls'")
-  || !libraryEditControls.includes('root.append(editButton, deleteButton, saveButton, cancelButton)')) {
+  || !libraryEditControls.includes('root.append(editButton, saveButton, deleteButton, cancelButton)')) {
   fail('collection edit control DOM must remain delegated to its renderer');
 }
 if (!workspace.includes(appImport) || !workspace.includes('commitCollectionDraft(collectionId, editDraft.items)')) {
@@ -148,6 +208,13 @@ if (!app.includes('function renderLibrary()')
   || (app.match(/renderAll\(\);/g) || []).length !== 2) {
   fail('library-only changes must not rebuild the story DOM');
 }
+const collectionSelect = app.match(/onSelect: collectionId => \{([\s\S]*?)\n    \},\n    onDrop:/)?.[1] || '';
+if (!collectionSelect.includes("row.classList.toggle('active'")
+  || !collectionSelect.includes('renderGrid()')
+  || collectionSelect.includes('renderLibrary()')
+  || collectionSelect.includes('renderCollectionList()')) {
+  fail('opening a collection must keep the sidebar folder DOM in place');
+}
 if (!workspace.includes('addIdsToCollection(view.id, ids)')
   || !app.includes('export async function addIdsToCollection')
   || workspace.includes('forwardDrop(')
@@ -180,6 +247,11 @@ if (workspace.includes('location.reload()')) {
 if (!workspace.includes('function deleteDraftSelection()') || !workspace.includes("deleteButton.addEventListener('click', deleteDraftSelection)")) {
   fail('collection item deletion must remain inside the explicit edit draft flow');
 }
+if (!workspace.includes('clearSelectionButton.click();')
+  || !workspace.includes('createCollectionEditDraft(editDraft.collectionId, editDraft.items, editDraft.items)')
+  || !workspace.includes('createCollectionEditDraft(editDraft.collectionId, editDraft.items)')) {
+  fail('collection edit mode must clear normal selection and own bulk selection changes');
+}
 if (app.includes('removeSelectedFromCollection') || app.includes("event.key === 'Delete' && state.activeTab === 'collections'")) {
   fail('normal collection view must not expose direct Delete-key persistence');
 }
@@ -209,18 +281,21 @@ if (!collectionBackup.includes("exportButton.addEventListener('click', handleExp
 if (collectionBackup.includes('stopImmediatePropagation()') || collectionBackup.includes('capture: true')) {
   fail('collection file handlers must not rely on suppressing legacy listeners');
 }
-if (!actionDialogs.includes("from '../app.js?v=20260921-1'")
+if (!actionDialogs.includes("from '../app.js?v=20261004-1'")
   || !actionDialogs.includes('createNamedCollection,')
   || !actionDialogs.includes('deleteCollectionById,')
+  || !actionDialogs.includes('renameCollectionById')
   || !actionDialogs.includes('clearCurrentStory,')
   || !actionDialogs.includes('hasCurrentStoryItems')) {
   fail('action dialogs must import canonical app state commands');
 }
-if (!actionDialogs.includes('const collectionId = await createNamedCollection(collectionName)')
+if (!actionDialogs.includes('const collectionId = await createNamedCollection(collectionName, folderId)')
+  || !actionDialogs.includes('await renameCollectionById(collectionId, name)')
   || !actionDialogs.includes('await deleteCollectionById(collectionId)')) {
   fail('collection dialogs must call app state commands directly');
 }
-if (!actionDialogs.includes("button.matches('#collectionList .collection-row > .icon-button')")
+if (!actionDialogs.includes("button.matches('#collectionList .collection-delete-button')")
+  || !actionDialogs.includes("button.matches('#collectionList .collection-rename-button')")
   || actionDialogs.includes("button.title === '콘묶음 삭제'")
   || !actionDialogs.includes("chooseNameConflict('콘묶음 이름 중복'")
   || !actionDialogs.includes('nextAvailableStoryName(collectionName, collections.map(item => item.name), COLLECTION_NAME_MAX_LENGTH, true)')) {
@@ -240,6 +315,20 @@ if (app.includes("el.newCollectionBtn.addEventListener('click'")
 if (!libraryRender.includes('row.dataset.collectionId = collection.id')) {
   fail('collection rows must expose their stable id to the dialog action');
 }
+if (!app.includes('export async function renameCollectionById(collectionId, name)')
+  || !libraryRender.includes("rename.className = 'icon-button collection-rename-button'")
+  || !workspace.includes("rename.className = 'icon-button collection-folder-rename-button'")
+  || !baseStyles.includes('.collection-rename-button::before')
+  || !baseStyles.includes('background: currentColor;')) {
+  fail('collection and folder rename controls must share the theme-colored pencil icon');
+}
+if (!app.includes("normalizeCollectionFolders(await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID))")
+  || !app.includes('다음 위치에 같은 이름의 콘묶음이 이미 있습니다:')
+  || !storySaveManager.includes('다음 위치에 같은 이름의 원고가 이미 있습니다:')
+  || !storySaveManager.includes('이름을 바꿀 수 없습니다.')
+  || !collectionManager.includes('message.startsWith(`${label}')) {
+  fail('duplicate rename warnings must show the existing item location without repeating the error heading');
+}
 if (!actionDialogs.includes('if (hasCurrentStoryItems()) {')
   || !actionDialogs.includes('현재 편집 중인 원고의 모든 내용을 비웁니다.')
   || !actionDialogs.includes('await clearCurrentStory();')
@@ -248,7 +337,7 @@ if (!actionDialogs.includes('if (hasCurrentStoryItems()) {')
   || app.includes("el.clearStoryBtn.addEventListener('click'")) {
   fail('confirmed story clearing must reset the saved name after the app state command');
 }
-if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20260921-1'")
+if (!storySaveManager.includes("from '../ui/action-dialogs.js?v=20261004-1'")
   || !storySaveManager.includes('showConfirm, showPrompt')) {
   fail('story save manager must import the canonical async dialog API');
 }
@@ -297,14 +386,14 @@ if ([editorBackup, storySaveManager].some(source => source.includes('function de
   || !storySaveManager.includes("makeDatedDefaultName('콘문학')")) {
   fail('readable dated default names must have one tested owner');
 }
-if (!index.includes('./src/app.js?v=20260921-1')
-  || !index.includes('./src/collections/collection-missing-ui.js?v=20260921-1')
-  || !index.includes('./src/library/library-workspace.js?v=20260921-1')
+if (!index.includes('./src/app.js?v=20261004-1')
+  || !index.includes('./src/collections/collection-missing-ui.js?v=20261004-1')
+  || !index.includes('./src/library/library-workspace.js?v=20261004-2')
   || !index.includes('./src/library/library-tab-close-all.js?v=20260910-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260921-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260921-1')
-  || !index.includes('./src/collections/collection-backup.js?v=20260912-1')
-  || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
+  || !index.includes('./src/ui/action-dialogs.js?v=20261004-1')
+  || !index.includes('./src/story/story-save-manager.js?v=20261004-1')
+  || !index.includes('./src/collections/collection-backup.js?v=20261004-1')
+  || !index.includes('./src/backup/editor-backup.js?v=20261003-1')) {
   fail('index.html dialog and story-save cache versions are not canonical');
 }
 const topbarOrder = ['themeToggleBtn', 'tooltipToggle', 'editorBackupBtn', 'editorBackupRestoreBtn', 'syncDcBtn'];
@@ -329,10 +418,17 @@ if (!layoutResizer.includes('const MIN_RATIO = 0.3;')
 if (!index.includes('id="workspaceSplitter"')
   || !index.includes('data-tooltip-title="화면 구분선"')
   || !index.includes('data-tooltip-anchor="pointer"')
-  || !index.includes('./src/ui/feature-tooltips.js?v=20260923-1')
+  || !index.includes('./src/ui/feature-tooltips.js?v=20261003-3')
   || !featureTooltips.includes("active.dataset.tooltipAnchor === 'pointer'")
   || !featureTooltips.includes('left: rect.left, width: rect.width, top: pointerY, bottom: pointerY')) {
   fail('workspace splitter tooltip must use the shared pointer-anchored tooltip');
+}
+const collectionTooltips = featureTooltips.match(/const collectionManagerDescriptions = \[([\s\S]*?)\];/)?.[1] || '';
+if (!featureTooltips.includes("target.closest('.collection-manager-dialog') ? collectionManagerDescriptions : descriptions")
+  || /원고/.test(collectionTooltips)
+  || !['select-collections', 'delete-selected', 'import', 'open-collection', 'delete-collection']
+    .every(action => collectionTooltips.includes(`[data-action="${action}"]`))) {
+  fail('collection manager tooltips must describe collection actions, not story actions');
 }
 if (!themeStyles.includes(':root[data-theme="light"] .library-view-tab .library-view-tab-main,')
   || !themeStyles.includes(':root[data-theme="light"] .library-view-tab .library-view-tab-close { background: transparent; }')) {
@@ -347,11 +443,11 @@ if (!themeInit.includes("classList.add('hhj-app-booting')")
 }
 if (!index.includes('./src/ui/theme-init.js?v=20260908-2')
   || !index.includes('./src/ui/layout-resizer.js?v=20260908-3')
-  || !index.includes('./assets/styles/theme.css?v=20260916-5')
-  || !index.includes('./assets/styles/styles.css?v=20260917-3')
+  || !index.includes('./assets/styles/theme.css?v=20261002-5')
+  || !index.includes('./assets/styles/styles.css?v=20261003-2')
   || !baseStyles.includes('button:hover:not(:disabled)')
   || !themeStyles.includes('button:hover:not(:disabled)')
-  || !index.includes('./assets/styles/workspace-enhancements.css?v=20260917-1')) {
+  || !index.includes('./assets/styles/workspace-enhancements.css?v=20261002-1')) {
   fail('workspace UI cache versions are not canonical');
 }
 if (!baseStyles.includes('.con-card { min-height: 140px;')
@@ -424,7 +520,7 @@ if (storyHeaderLayout.includes("document.createElement('style')")
   || !storyHeaderLayoutStyles.includes('.editor-header.story-header-split {')
   || !storyHeaderLayoutStyles.includes('.editor-header > .story-header-top { align-items: flex-start; flex-direction: column; }')
   || !storyHeaderLayoutStyles.includes('@media (max-width: 900px)')
-  || !index.includes('./assets/styles/story-header-layout.css?v=20260917-3')
+  || !index.includes('./assets/styles/story-header-layout.css?v=20261002-2')
   || storyHeaderLayout.includes('patchWarning')
   || storyHeaderLayout.includes('bodyObserver')
   || storyHeaderLayout.includes('new MutationObserver')
@@ -443,8 +539,8 @@ if (storyOutputTools.includes("document.createElement('style')")
   || !storyOutputStyles.includes('.text-format-toolbar.html-preview-active .hhj-control-row-track > :not(.story-html-toggle):not(.story-html-copy):not(.story-format-presets)')
   || storyOutputStyles.includes('.text-format-toolbar.html-preview-active > :not(.story-html-toggle)')
   || !index.includes('./assets/styles/story-output-tools.css?v=20260916-1')
-  || !index.includes('./src/story-output-tools.js?v=20260923-1')
-  || !index.includes('./src/story/story-html-copy.js?v=20260923-1')
+  || !index.includes('./src/story-output-tools.js?v=20261004-1')
+  || !index.includes('./src/story/story-html-copy.js?v=20261003-1')
   || !storyOutputTools.includes(".story-header-edit-actions button:not(.story-html-copy):not(.story-html-toggle):not(.story-format-presets)")
   || !storyOutputTools.includes('button.disabled = previewMode')
   || !storyOutputTools.includes("from './story/story-html.js?v=20260923-1'")
@@ -491,7 +587,7 @@ if (!storyHtml.includes("from './rich-html.js?v=20260914-1'")
   || !formatPresets.includes("toolbar?.querySelector('[data-format=\"font\"]')?.before(trigger)")
   || !formatPresets.includes("trigger.addEventListener('pointerdown', event => event.preventDefault())")
   || !index.includes('./src/story/text-formatting.js?v=20260921-1')
-  || !index.includes('./src/story/format-presets.js?v=20260921-1')) {
+  || !index.includes('./src/story/format-presets.js?v=20261004-1')) {
   fail('rich text paste and story output must share the canonical sanitizer');
 }
 if (!storyHtml.includes("from './story-html-utils.js?v=20260912-3'")
@@ -520,9 +616,9 @@ if (storySaveManager.includes("document.createElement('style')")
   || !storySaveManager.includes('row.append(check, info, actions)')
   || storySaveManager.includes('moveSelectedSaves(')
   || !storySaveStyles.includes('.story-save-parent-drop[hidden]')
-  || !index.includes('./assets/styles/story-save-manager.css?v=20260917-6')
+  || !index.includes('./assets/styles/story-save-manager.css?v=20261003-2')
   || !storySaveManager.includes('warning.textContent = STORY_WARNING')
-  || !index.includes('./src/story/story-save-manager.js?v=20260921-1')) {
+  || !index.includes('./src/story/story-save-manager.js?v=20261004-1')) {
   fail('story save manager presentation must stay in its dedicated stylesheet');
 }
 if (!storySaveManager.includes("const draftName = storyNameInput?.value.trim() || '';")
@@ -540,24 +636,34 @@ if (!storySaveManager.includes("head.innerHTML = '<strong>원고 목록</strong>
   || !storySaveManager.includes('actions.append(load, exp, rename, del)')
   || !storySaveManager.includes('const current = latestSaves.find(item => item.id === save.id)')
   || !storySaveManager.includes('item.id !== current.id && item.name === nextName')
+  || storySaveManager.includes("throw new Error('같은 폴더에 같은 이름의 원고가 이미 있습니다.')")
+  || !storySaveManager.includes('saveCurrent(ui.currentFolderId)')
+  || !storySaveManager.includes('폴더 속 원고')
+  || !collectionManager.includes('폴더 속 콘묶음')
+  || !workspace.includes('`\\n폴더 안에 ${directCount}개의 콘묶음, ${children.length}개의 하위 폴더, ${nestedCount}개의 하위 폴더 속 콘묶음이 있습니다.`')
+  || !featureTooltipStyles.includes('white-space: pre-line')
   || !storySaveManager.includes("await putOne('documents', { ...current, name: nextName })")
   || !storySaveStyles.includes('.story-save-actions button { padding: 5px 8px; font-size: 12px; }')) {
   fail('saved manuscripts must support safe renaming and compact list controls');
 }
-if (!storySaveManager.includes("from './story-save-folders.js?v=20260917-1'")
+if (!storySaveManager.includes("from './story-save-folders.js?v=20261003-2'")
   || !storySaveFolders.includes("STORY_FOLDER_DOCUMENT_ID = 'story-save-folders-v1'")
   || !storySaveManager.includes("makeImportedSave(parsed, names, '', sortOrder)")
   || !storySaveManager.includes('normalizeStoryFolderId(save.folderId, folders)')
   || !storySaveManager.includes("row.dataset.tooltipTitle = '저장된 원고'")
   || !storySaveManager.includes("row.addEventListener('dragstart', event => {")
   || !storySaveManager.includes('syncSelectionCheckbox(ui)')
-  || !storySaveManager.includes('row.append(check, handle, open, actions)')
+  || !/row\.className = 'story-folder-row';\s+row\.draggable = true/.test(storySaveManager)
+  || !storySaveManager.includes('row.append(check, open, actions)')
+  || !storySaveManager.includes("controlPress = !!event.target.closest('input, .story-save-actions')")
+  || storySaveManager.includes('story-save-drag-handle')
+  || collectionManager.includes('story-save-drag-handle')
   || !storySaveManager.includes("newFolder.textContent = '+ 새 폴더'")
   || !storySaveManager.includes("trigger.setAttribute('aria-haspopup', 'listbox')")
   || !storySaveManager.includes("event.key === 'Escape'")) {
   fail('story folders must preserve legacy top-level saves and use the accessible folder picker');
 }
-if (!storySaveManager.includes("remove.textContent = '폴더 안 원고도 삭제'")
+if (!storySaveManager.includes("remove.textContent = '폴더 안 내용도 삭제'")
   || !storySaveManager.includes("title: '폴더와 원고 삭제', confirmText: '모두 삭제', danger: true")
   || !storySaveManager.includes("row.addEventListener('dragenter', guideRowDrop)")
   || !storySaveManager.includes("ui.parentDrop.addEventListener('dragenter'")
@@ -565,12 +671,15 @@ if (!storySaveManager.includes("remove.textContent = '폴더 안 원고도 삭�
   fail('story folder deletion must confirm contents twice, and native dragenter must accept save drops');
 }
 if (!storySaveManager.includes("event.dataTransfer.setData('application/x-hhj-story-folder'")
-  || !storySaveManager.includes('dropStoryFolders(ui, beforeId)')
+  || !storySaveManager.includes("blocked ? 'story-drop-blocked'")
+  || !collectionManager.includes("? 'story-drop-blocked' : 'story-drop-folder'")
+  || !storySaveStyles.includes('.story-folder-row.story-drop-blocked')
+  || !storySaveManager.includes("dropStoryFolders(ui, nest ? '' : beforeId, ui.draggedFolderIds, nest ? folder.id : ui.currentFolderId)")
   || !storySaveFolders.includes('export function planStoryFolderPlacement(')
   || !storySaveStyles.includes('.story-folder-row.story-drop-before')) {
-  fail('folder handles must reorder selected folders with native drag and visible drop guides');
+  fail('folder rows must reorder selected folders with native drag and visible drop guides');
 }
-if (!storySaveManager.includes("from './story-save-format.js?v=20260915-2'")
+if (!storySaveManager.includes("from './story-save-format.js?v=20261003-1'")
   || storySaveManager.includes('function parseImportData(')
   || storySaveManager.includes('function exportSave(')
   || !storySaveFormat.includes('export function parseImportData(')
@@ -583,9 +692,9 @@ if (!storySaveManager.includes("deleteSelected.textContent = '선택 항목 삭�
   || !storySaveManager.includes("title: '원고 삭제', confirmText: '삭제', danger: true")
   || storySaveManager.includes("title: '저장 원고 삭제'")
   || storySaveManager.includes("title: '선택 원고 삭제'")
-  || !storySaveManager.includes('“${save.name}” 원고를 삭제합니다.')
+  || !storySaveManager.includes("confirmNamedItemDeletion(save.name, '원고')")
   || !storySaveManager.includes('선택된 원고 ${saveIds.size}개를 삭제합니다.')
-  || !storySaveManager.includes('chooseStoryFolderDeletion(folderIds.size, contained.length, saveIds.size)')
+  || !storySaveManager.includes('chooseStoryFolderDeletion(folderIds.size === 1 ? selectedFolders[0].name : folderIds.size, contained.length, saveIds.size, childFolderCount)')
   || !storySaveManager.includes("applyMany('documents', folderIds.size ? [plan.document, ...plan.updates] : [], plan.deleteIds)")
   || !storySaveFolders.includes('export function planStoryFolderSelectionRemoval(')
   || !db.includes('export async function applyMany(')
@@ -596,7 +705,7 @@ if (editorBackup.includes("document.createElement('style')")
   || !editorBackupStyles.includes('.editor-backup-dialog {')
   || !editorBackupStyles.includes('.editor-backup-warning-dialog .editor-backup-head strong {')
   || !index.includes('./assets/styles/editor-backup.css?v=20260908-1')
-  || !index.includes('./src/backup/editor-backup.js?v=20260910-1')) {
+  || !index.includes('./src/backup/editor-backup.js?v=20261003-1')) {
   fail('editor backup presentation must stay in its dedicated stylesheet');
 }
 if (actionDialogs.includes("document.createElement('style')")
@@ -605,23 +714,27 @@ if (actionDialogs.includes("document.createElement('style')")
   || !actionDialogStyles.includes('.hhj-ui-dialog .danger-action {')
   || !actionDialogStyles.includes('.collection-backup-dialog {')
   || !index.includes('./assets/styles/action-dialogs.css?v=20260909-1')
-  || !index.includes('./src/ui/action-dialogs.js?v=20260921-1')
-  || !index.includes('./src/story/story-save-manager.js?v=20260921-1')) {
+  || !index.includes('./src/ui/action-dialogs.js?v=20261004-1')
+  || !index.includes('./src/story/story-save-manager.js?v=20261004-1')) {
   fail('shared action dialog presentation must stay in its dedicated stylesheet');
 }
 const toastClients = [app, collectionBackup, editorBackup, storySaveManager, storyHtmlCopy];
 if (!toastUi.includes('export function showToast(message, duration = 2400)')
   || !toastUi.includes('export function saveToastForReload(message)')
   || !toastUi.includes('clearTimeout(hideTimer)')
-  || !toastClients.every(source => source.includes('ui/toast.js?v=20260909-2'))
+  || !toastUi.includes("document.querySelectorAll?.('dialog:modal')")
+  || !toastUi.includes('dialog.append(toast)')
+  || !toastUi.includes('document.body.append(toast)')
+  || !toastClients.every(source => source.includes('ui/toast.js?v=20261003-1'))
   || toastClients.some(source => /function\s+(?:toast|showToast)\s*\(/.test(source))
-  || ![collectionBackup, editorBackup, storySaveManager].every(source => source.includes('saveToastForReload('))
+  || !collectionBackup.includes('showToast(')
+  || ![editorBackup, storySaveManager].every(source => source.includes('saveToastForReload('))
   || [collectionBackup, editorBackup, storySaveManager].some(source => /sessionStorage\.(?:getItem|setItem|removeItem)\([^)]*toast/i.test(source))
   || !app.includes(', 1800)')
   || !storyHtmlCopy.includes(', 2600)')) {
   fail('toast messages must share one timer owner while preserving feature durations');
 }
-if (!app.includes("from './library/library-render.js?v=20260913-1'")
+if (!app.includes("from './library/library-render.js?v=20261002-4'")
   || !app.includes('renderPackageNavigation(el.packageList')
   || !app.includes('renderCollectionNavigation(el.collectionList')
   || !app.includes('renderConGrid(el.conGrid')
@@ -644,8 +757,10 @@ if (!workspace.includes('openViews, activeViewKey, packages, collections, restor
 if (!workspace.includes("if (activate && editDraft && key !== libraryViewKey('collections', editDraft.collectionId)) cancelEditState();")) {
   fail('switching library views must cancel collection editing');
 }
-if (!libraryEditControls.includes("editButton.classList.toggle('hidden', !hasItems || editing)")) {
-  fail('empty collections must not expose collection editing');
+if (!libraryEditControls.includes("root.classList.toggle('hidden', !isCollection)")
+  || !libraryEditControls.includes("editButton.classList.toggle('hidden', editing)")
+  || !libraryEditControls.includes('editButton.disabled = !hasItems;')) {
+  fail('empty collections must keep a disabled edit button in the reserved toolbar space');
 }
 if (!workspace.includes('let shouldOpenDefaultView = localStorage.getItem(VIEWS_KEY) === null;')) {
   fail('first-run state must be distinguished from an explicitly saved empty tab list');

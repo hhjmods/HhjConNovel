@@ -1,7 +1,8 @@
-import { deleteOne, getAll, getOne, putMany, putOne, replaceStores } from './db.js';
+import { applyMany, getAll, getOne, putMany, putOne, replaceStores } from './db.js';
 import {
   addUniqueIds,
   applyCollectionItemDraft,
+  COLLECTION_NAME_MAX_LENGTH,
   createCollection,
   normalizeSyncPayload,
   preserveCollectionRefMeta,
@@ -15,12 +16,12 @@ import {
   renderCollectionNavigation,
   renderConGrid,
   renderPackageNavigation
-} from './library/library-render.js?v=20260913-1';
+} from './library/library-render.js?v=20261002-4';
 import { planOrderedSelection } from './core/selection.js?v=20260907-1';
 import { installBoxSelection } from './core/box-selection.js?v=20260913-2';
 import { insertStoryItemsBefore, planStoryItemReorder, planStorySelectionStep } from './story/story-order.js?v=20260911-1';
-import { renderStoryList } from './story/story-render.js?v=20260921-1';
-import { showToast } from './ui/toast.js?v=20260909-2';
+import { renderStoryList } from './story/story-render.js?v=20261004-1';
+import { showToast } from './ui/toast.js?v=20261003-1';
 import {
   CON_IDS_MIME,
   STORY_IDS_MIME,
@@ -28,6 +29,8 @@ import {
 } from './story-dnd-utils.js?v=20260906-2';
 import { readStoryCreateText } from './story/story-create-payload.js?v=20260914-1';
 import { materializeStoryBlockClipboardPayload, STORY_BLOCKS_PASTED_EVENT } from './story/story-block-clipboard.js?v=20260921-1';
+import { nextAvailableStoryName, planDuplicateNameRepairs } from './story/story-save-folders.js?v=20261003-2';
+import { COLLECTION_FOLDER_DOCUMENT_ID, nextCollectionOrder, normalizeCollectionFolders, sortCollectionsInFolder } from './collections/collection-folders.js?v=20261004-1';
 
 const DC_WRITE_URL = 'https://gall.dcinside.com/mgallery/board/write/?id=legendofmortal';
 
@@ -75,7 +78,14 @@ async function loadState() {
   ]);
   state.packages = packages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   state.cons = cons;
-  state.collections = collections.sort((a, b) => a.createdAt - b.createdAt);
+  const folders = normalizeCollectionFolders(await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID));
+  const visualOrder = ['', ...folders.map(folder => folder.id)]
+    .flatMap(folderId => sortCollectionsInFolder(collections, folders, folderId));
+  const repairs = planDuplicateNameRepairs(visualOrder, COLLECTION_NAME_MAX_LENGTH, true);
+  if (repairs.length) await putMany('collections', repairs.map(repair => repair.item));
+  const repairedById = new Map(repairs.map(repair => [repair.item.id, repair.item]));
+  state.collections = collections.map(item => repairedById.get(item.id) || item)
+    .sort((a, b) => b.createdAt - a.createdAt);
   state.story = story || state.story;
   const addedItemIds = ensureStoryItemIds();
   const previousStory = state.story;
@@ -85,6 +95,7 @@ async function loadState() {
   state.activeCollectionId = state.collections[0]?.id || null;
   updateSyncStatus(meta);
   renderAll();
+  if (repairs.length) alert(`동명 콘묶음의 이름을 정리했습니다.\n${repairs.map(repair => `“${repair.before}” → “${repair.after}”`).join('\n')}`);
 }
 
 function updateSyncStatus(meta) {
@@ -193,7 +204,12 @@ function renderCollectionList() {
       state.activeTab = 'collections';
       state.selectedIds.clear();
       state.selectionAnchorId = null;
-      renderLibrary();
+      renderTabs();
+      el.collectionList.querySelectorAll('.collection-row').forEach(row => {
+        row.classList.toggle('active', row.dataset.collectionId === String(collectionId));
+      });
+      renderGrid();
+      renderSelectionStatus();
     },
     onDrop: async (event, collectionId) => {
       const ids = readDragData(event);
@@ -401,23 +417,106 @@ async function commitCollectionState(collection) {
   return collection;
 }
 
-export async function createNamedCollection(name) {
-  const collection = createCollection(name);
+export async function createNamedCollection(name, folderId = '') {
+  const folders = normalizeCollectionFolders(await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID));
+  const sortOrder = nextCollectionOrder(state.collections, folders, folderId);
+  const fresh = createCollection(name);
+  const createdAt = state.collections.reduce((latest, item) => Math.max(latest, (item.createdAt || 0) + 1), fresh.createdAt);
+  const collection = { ...fresh, createdAt, updatedAt: createdAt, folderId: String(folderId || ''),
+    ...(Number.isFinite(sortOrder) ? { sortOrder } : {}) };
   await putOne('collections', collection);
-  state.collections.push(collection);
+  state.collections.unshift(collection);
   state.activeCollectionId = collection.id;
   state.activeTab = 'collections';
   renderLibrary();
   return collection.id;
 }
 
+export async function addImportedCollections(collections) {
+  if (collections.length) {
+    await putMany('collections', collections);
+    state.collections.unshift(...collections);
+  }
+  renderCollectionList();
+}
+
+export async function copyCollectionsByIds(collectionIds, folderId = '') {
+  const sources = collectionIds.map(id => state.collections.find(item => item.id === id));
+  if (sources.some(item => !item)) throw new Error('복사할 콘묶음을 찾을 수 없습니다.');
+  const names = state.collections.map(item => item.name);
+  const folders = normalizeCollectionFolders(await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID));
+  const targetOrder = nextCollectionOrder(state.collections, folders, folderId);
+  const baseTime = state.collections.reduce((latest, item) => Math.max(latest, item.createdAt || 0), Date.now());
+  const copies = sources.map((source, index) => {
+    const name = nextAvailableStoryName(source.name, names, COLLECTION_NAME_MAX_LENGTH, true);
+    names.push(name);
+    const fresh = createCollection(name);
+    const createdAt = baseTime + sources.length - index;
+    return { ...structuredClone(source), id: fresh.id, name, folderId,
+      ...(Number.isFinite(targetOrder) ? { sortOrder: targetOrder - sources.length + 1 + index } : { sortOrder: undefined }),
+      createdAt, updatedAt: createdAt };
+  });
+  if (!copies.length) return [];
+  await putMany('collections', copies);
+  state.collections.unshift(...copies);
+  renderCollectionList();
+  return copies;
+}
+
 export async function deleteCollectionById(collectionId) {
-  if (!state.collections.some(item => item.id === collectionId)) return false;
-  await deleteOne('collections', collectionId);
-  state.collections = state.collections.filter(item => item.id !== collectionId);
-  if (state.activeCollectionId === collectionId) state.activeCollectionId = state.collections[0]?.id || null;
+  return (await deleteCollectionsByIds([collectionId])) > 0;
+}
+
+export async function renameCollectionById(collectionId, name) {
+  const collection = state.collections.find(item => String(item.id) === String(collectionId));
+  if (!collection) throw new Error('이름을 바꿀 콘묶음을 찾을 수 없습니다.');
+  const nextName = String(name || '').trim();
+  if (!nextName) throw new Error('콘묶음 이름을 입력하세요.');
+  if (nextName.length > COLLECTION_NAME_MAX_LENGTH) {
+    throw new Error(`콘묶음 이름은 최대 ${COLLECTION_NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+  }
+  const duplicates = state.collections.filter(item => item.id !== collection.id
+    && item.name.toLocaleLowerCase('ko-KR') === nextName.toLocaleLowerCase('ko-KR'));
+  if (duplicates.length) {
+    const folders = normalizeCollectionFolders(await getOne('documents', COLLECTION_FOLDER_DOCUMENT_ID));
+    const locations = [...new Set(duplicates.map(item => {
+      const folder = folders.find(candidate => candidate.id === item.folderId);
+      const parent = folders.find(candidate => candidate.id === folder?.parentId);
+      const path = [parent?.name, folder?.name].filter(Boolean).join(' / ');
+      return path ? `“${path}” 폴더` : '최상위';
+    }))];
+    throw new Error(`이름을 바꿀 수 없습니다.\n${locations.length === 1
+      ? `${locations[0]}에 같은 이름의 콘묶음이 이미 있습니다.`
+      : `다음 위치에 같은 이름의 콘묶음이 이미 있습니다: ${locations.join(', ')}.`}`);
+  }
+  if (collection.name === nextName) return collection;
+  const next = { ...collection, name: nextName, updatedAt: Date.now() };
+  await commitCollectionState(next);
   renderLibrary();
-  return true;
+  return next;
+}
+
+export async function deleteCollectionsByIds(collectionIds) {
+  const ids = new Set(collectionIds.map(String));
+  const existingIds = state.collections.filter(item => ids.has(String(item.id))).map(item => item.id);
+  if (!existingIds.length) return 0;
+  await applyMany('collections', [], existingIds);
+  state.collections = state.collections.filter(item => !ids.has(String(item.id)));
+  if (ids.has(String(state.activeCollectionId))) state.activeCollectionId = state.collections[0]?.id || null;
+  renderLibrary();
+  return existingIds.length;
+}
+
+export async function commitCollectionPlacements(updates) {
+  if (!updates.length) return [];
+  const knownIds = new Set(state.collections.map(item => String(item.id)));
+  const accepted = updates.filter(item => knownIds.has(String(item.id)));
+  if (!accepted.length) return [];
+  await putMany('collections', accepted);
+  const nextById = new Map(accepted.map(item => [String(item.id), item]));
+  state.collections = state.collections.map(item => nextById.get(String(item.id)) || item);
+  renderCollectionList();
+  return accepted;
 }
 
 export async function commitCollectionDraft(collectionId, draftIds) {
